@@ -19,7 +19,12 @@
     "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
     "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/wiki --shared-schemas test/sharedSchemas",
     "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "thunder:clean": "cd thunder && sh scripts/clean.sh && cd -",
+    "thunder:prepare": "npm run thunder:clean && cd thunder && sh scripts/prepare.sh && cd -",
+    "thunder:setup": "cd thunder && sh scripts/setup.sh && cd -",
+    "native:configure": "cmake-js reconfigure --directory src/c++/sdk --CDTHUNDER_ROOT_PATH=${PWD}/thunder",
+    "native:compile": "cmake-js compile --directory src/c++/sdk"
   },
   "repository": {
     "type": "git",
@@ -57,6 +62,7 @@
     "mkdirp": "^0.5.6",
     "node-fetch": "^3.2.10",
     "nopt": "^5.0.0",
-    "util": "^0.12.4"
+    "util": "^0.12.4",
+    "cmake-js": "^7.0.0"
   }
 }
