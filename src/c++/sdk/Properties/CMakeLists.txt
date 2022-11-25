@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.3)
 
-project(Transport)
+project(Properties)
 
 set(TARGET ${PROJECT_NAME})
 
@@ -12,7 +12,7 @@ find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}COM CONFIG REQUIRED)
 find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
 
-add_library(${TARGET} OBJECT Transport.cpp)
+add_library(${TARGET} OBJECT Properties.cpp)
 
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 target_link_libraries(${TARGET}

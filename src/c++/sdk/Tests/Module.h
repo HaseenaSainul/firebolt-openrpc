@@ -1,13 +1,11 @@
 #pragma once
 
 #ifndef MODULE_NAME
-#define MODULE_NAME Transport
+#define MODULE_NAME OpenRPCTestApp
 #endif
 
 #include <core/core.h>
-#include <tracing/tracing.h>
 #include <com/com.h>
-#include <websocket/websocket.h>
 
 #undef EXTERNAL
 #define EXTERNAL
