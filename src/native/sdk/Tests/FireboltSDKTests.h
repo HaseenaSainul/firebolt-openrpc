@@ -2,7 +2,7 @@
 
 #include "Tests.h"
 
-namespace OpenRPC {
+namespace FireboltSDK {
     typedef uint32_t (*Func)();
 
     class Tests {
@@ -28,6 +28,8 @@ namespace OpenRPC {
         static uint32_t SetLifeCycleClose();
         static uint32_t SetMetricsStopContent();
         static uint32_t SetUnKnownMethod();
+
+        static uint32_t SubscribeEvent();
 
     protected:
         std::list<string> menu;

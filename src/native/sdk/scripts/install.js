@@ -10,14 +10,17 @@ var version = versionStr.split(".");
 var libName = 'lib' + name + '.so.' + version[0] + '.' + version[1] + '.' + version[2];
 var linkName = 'lib' + name + '.so.' + version[0];
 
+var srcPath = 'src/native/sdk/build/'
+var buildType = 'Release/';
 createDir(dstPath + '/usr/lib/pkgconfig');
 createDir(dstPath + '/etc');
-copyFile('src/c++/sdk/build/OpenRPCNativeSDK.pc', dstPath + '/usr/lib/pkgconfig/OpenRPCNativeSDK.pc');
-copyFile('src/c++/sdk/build/config/OpenRPCNativeSDK.json', dstPath + '/etc/OpenRPCNativeSDK.json');
-copyFile('src/c++/sdk/build/Release/' + libName, dstPath + '/usr/lib/' + libName);
+
+copyFile(srcPath + 'FireboltSDK.pc', dstPath + '/usr/lib/pkgconfig/FireboltSDK.pc');
+copyFile(srcPath + 'config/FireboltSDK.json', dstPath + '/etc/FireboltSDK.json');
+copyFile(srcPath + buildType + libName, dstPath + '/usr/lib/' + libName);
 
 createFileLink(libName, dstPath + '/usr/lib/' + linkName);
-createFileLink(linkName, dstPath + '/usr/lib/libOpenRPCNativeSDK.so');
+createFileLink(linkName, dstPath + '/usr/lib/libFireboltSDK.so');
 
 function copyFile(src, dst) {
     fs.copyFileSync(src, dst);

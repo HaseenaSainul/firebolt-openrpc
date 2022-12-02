@@ -1,6 +1,6 @@
 
 #include "Module.h"
-#include "OpenRPCTests.h"
+#include "FireboltSDKTests.h"
 #include "SDKHeaders.h"
 
 namespace WPEFramework {
@@ -15,22 +15,18 @@ ENUM_CONVERSION_BEGIN(::JsonValue::type)
 ENUM_CONVERSION_END(::JsonValue::type)
 
 }
-namespace OpenRPC {
+namespace FireboltSDK {
     Tests::Tests()
     {
-        WPEFramework::OpenRPC::Services::Instance().InitSDK();
-        WPEFramework::OpenRPC::Services::Instance().CreateTransport("/openrpc", "appId=MyAppId");
+        _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("SubscribeEvent"),
+                             std::forward_as_tuple(&SubscribeEvent));
+
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Set UnKnown Method"),
                              std::forward_as_tuple(&SetUnKnownMethod));
-        _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Set Metrics StopContent"),
-                             std::forward_as_tuple(&SetMetricsStopContent));
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Set LifeCycle Close"),
                              std::forward_as_tuple(&SetLifeCycleClose));
-
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get UnKnown Method"),
                              std::forward_as_tuple(&GetUnKnownMethod));
-        _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get Authentication Token"),
-                             std::forward_as_tuple(&GetAuthenticationToken));
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get Device Version"),
                              std::forward_as_tuple(&GetDeviceVersion));
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get Device Id"),
@@ -38,7 +34,7 @@ namespace OpenRPC {
     }
     Tests::~Tests()
     {
-        WPEFramework::OpenRPC::Services::Dispose();
+        FireboltSDK::Accessor::Dispose();
     }
 
     /* static */ void Tests::PrintJsonObject(const JsonObject::Iterator& iterator)
@@ -54,17 +50,15 @@ namespace OpenRPC {
 
     /* static */ uint32_t Tests::GetDeviceId()
     {
-        WPEFramework::OpenRPC::Properties properties;
-
         const string method = _T("device.id");
         WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> response;
-        uint32_t status = properties.Get(method, response, 1000);
+        uint32_t status = FireboltSDK::Properties::Get(method, response);
 
         EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
         if (status == WPEFramework::Core::ERROR_NONE) {
             printf("\nDeviceId : %s", response->Value().c_str());
         } else {
-            printf("\nGet %s status = %d", method.c_str(), status);
+            printf("\nGet %s status = %d\n", method.c_str(), status);
         }
 
         return status;
@@ -72,11 +66,9 @@ namespace OpenRPC {
 
     /*static */ uint32_t Tests::GetDeviceVersion()
     {
-        WPEFramework::OpenRPC::Properties properties;
-
         const string method = _T("device.version");
         WPEFramework::Core::ProxyType<JsonObject> response;
-        uint32_t status = properties.Get(method, response, 1000);
+        uint32_t status = FireboltSDK::Properties::Get(method, response);
 
         EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
         if (status == WPEFramework::Core::ERROR_NONE) {
@@ -89,35 +81,11 @@ namespace OpenRPC {
         return status;
     }
 
-    /*static */ uint32_t Tests::GetAuthenticationToken()
-    {
-        WPEFramework::OpenRPC::Properties properties;
-
-        JsonObject parameters;
-        parameters["type"] = "device";
-
-        const string method = _T("authentication.token");
-        WPEFramework::Core::ProxyType<JsonObject> response;
-        uint32_t status = properties.Get(method, parameters, response, 1000);
-
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status == WPEFramework::Core::ERROR_NONE) {
-            printf("\nAuthenticationToken :\n");
-            PrintJsonObject(response->Variants());
-        } else {
-            printf("\nGet %s status = %d", method.c_str(), status);
-        }
-
-        return status;
-    }
-
     /* static */ uint32_t Tests::GetUnKnownMethod()
     {
-        WPEFramework::OpenRPC::Properties properties;
-
         const string method = _T("get.unknownMethod");
         WPEFramework::Core::ProxyType<JsonObject> response;
-        uint32_t status = properties.Get(method, response, 1000);
+        uint32_t status = FireboltSDK::Properties::Get(method, response);
 
         EXPECT_NE(status, WPEFramework::Core::ERROR_NONE);
         if (status != WPEFramework::Core::ERROR_NONE) {
@@ -129,31 +97,10 @@ namespace OpenRPC {
 
     /* static */ uint32_t Tests::SetLifeCycleClose()
     {
-        WPEFramework::OpenRPC::Properties properties;
-
+        const string method = _T("lifecycle.close");
         JsonObject parameters;
         parameters["reason"] = "remoteButton";
-
-        const string method = _T("lifecycle.close");
-        uint32_t status = properties.Set(method, parameters, 1000);
-
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status != WPEFramework::Core::ERROR_NONE) {
-            printf("\n Set %s status = %d\n", method.c_str(), status);
-        }
-
-        return status;
-    }
-
-    /* static */ uint32_t Tests::SetMetricsStopContent()
-    {
-        WPEFramework::OpenRPC::Properties properties;
-
-        JsonObject parameters;
-        parameters["entityId"] = "abs";
-
-        const string method = _T("metrics.stopContent");
-        uint32_t status = properties.Set(method, parameters, 1000);
+        uint32_t status = FireboltSDK::Properties::Set(method, parameters);
 
         EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
         if (status != WPEFramework::Core::ERROR_NONE) {
@@ -165,18 +112,45 @@ namespace OpenRPC {
 
     /* static */ uint32_t Tests::SetUnKnownMethod()
     {
-        WPEFramework::OpenRPC::Properties properties;
-
-        JsonObject parameters;
-
         const string method = _T("set.unknownMethod");
-        uint32_t status = properties.Set(method, parameters, 1000);
+        JsonObject parameters;
+        uint32_t status = FireboltSDK::Properties::Set(method, parameters);
 
         EXPECT_NE(status, WPEFramework::Core::ERROR_NONE);
         if (status != WPEFramework::Core::ERROR_NONE) {
             printf("\n Set %s status = %d\n", method.c_str(), status);
         }
 
+        return status;
+    }
+
+    bool eventNotTriggered = true;
+    static void deviceNameChangeCallback(const WPEFramework::Core::JSON::String& parameters)
+    {
+        printf("Received a new event: %s\n", parameters.Value().c_str());
+        eventNotTriggered = false;
+    }
+
+    /* static */ uint32_t Tests::SubscribeEvent()
+    {
+        JsonObject parameters;
+        bool response = false;
+
+        const string eventName = _T("device.onNameChanged");
+        uint32_t status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, response);
+
+        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
+        if (status != WPEFramework::Core::ERROR_NONE) {
+            printf("\n Set %s status = %d\n", eventName.c_str(), status);
+        } else {
+            printf(" Yes registered = %d\n", response);
+        }
+
+        if (response == true) {
+            eventNotTriggered = true;
+            do {
+            }  while(eventNotTriggered);
+        }
         return status;
     }
 }
