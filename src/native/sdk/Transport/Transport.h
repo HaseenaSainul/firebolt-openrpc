@@ -545,7 +545,7 @@ namespace FireboltSDK {
                 result = WaitForResponse<RESPONSE>(id, response, _waitTime);
             }
 
-            return (result);
+            return (FireboltErrorValue(result));
         }
 
         template <typename RESPONSE>
@@ -564,7 +564,7 @@ namespace FireboltSDK {
                 result = WaitForEventResponse(id, eventName, response, _waitTime);
             }
 
-            return (result);
+            return (FireboltErrorValue(result));
         }
 
     private:
@@ -854,6 +854,30 @@ namespace FireboltSDK {
                 message->Parameters = values;
             }
             return;
+        }
+
+        uint32_t FireboltErrorValue(const uint32_t error)
+        {
+
+            uint32_t fireboltError = Error::Unknown;
+            switch (error) {
+            case WPEFramework::Core::ERROR_NONE:
+                fireboltError = Error::None;
+                break;
+            case WPEFramework::Core::ERROR_GENERAL:
+                fireboltError = Error::General;
+                break;
+            case WPEFramework::Core::ERROR_UNAVAILABLE:
+                fireboltError = Error::Unavailable;
+                break;
+            case WPEFramework::Core::ERROR_TIMEDOUT:
+                fireboltError = Error::Timedout;
+                break;
+            default:
+                break;
+            }
+
+            return fireboltError;
         }
 
     private:

@@ -12,6 +12,7 @@ namespace FireboltSDK {
    
         class Response : public WPEFramework::Core::JSON::Container {
         public:
+            Response& operator=(const Response&) = delete;
             Response()
                 : WPEFramework::Core::JSON::Container()
                 , Listening(false)
@@ -25,6 +26,7 @@ namespace FireboltSDK {
                 Add(_T("listening"), &Listening);
             }
             ~Response() override = default;
+        public:
             WPEFramework::Core::JSON::Boolean Listening;
         };
 
@@ -42,6 +44,7 @@ namespace FireboltSDK {
             _singleton = nullptr;
         }
 
+    public:
         static Event& Instance()
         {
             if (_singleton == nullptr) {
@@ -60,29 +63,10 @@ namespace FireboltSDK {
             }
         }
 
-        uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override
-        {
-            uint32_t result = FireboltError::General;
-            Response response;
-            _transport->FromMessage((WPEFramework::Core::JSON::IElement*)&response, *jsonResponse);
-            if (response.Listening.IsSet() == true) {
-                result = FireboltError::None;
-                enabled = response.Listening.Value();
-            }
-            return result;
-        }
-
-        uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
-        {
-            string response;
-            _handler.Invoke(WPEFramework::Core::JSONRPC::Context(), EventNameForRegister(eventName), jsonResponse->Result.Value(), response);
-            return FireboltError::None;;
-        }
-
         template <typename PARAMETERS, typename CALLBACK>
         uint32_t Register(const string& eventName, const CALLBACK& callback, bool& enabled)
         {
-            uint32_t status = FireboltError::Unavailable;
+            uint32_t status = Error::Unavailable;
             if (_transport != nullptr) {
 
                 string eventNameForRegister = EventNameForRegister(eventName);
@@ -91,7 +75,7 @@ namespace FireboltSDK {
                 Response response;
                 status = _transport->RegisterEvent(eventName, parameters, response);
 
-                if (status != FireboltError::None) {
+                if (status != Error::None) {
                     Revoke(eventName);
                 } else if (response.Listening.IsSet() == true) {
                     enabled = response.Listening.Value();
@@ -103,7 +87,7 @@ namespace FireboltSDK {
 
         void Unregister(const string& eventName)
         {
-            uint32_t status = FireboltError::Unavailable;
+            uint32_t status = Error::Unavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
  
@@ -112,8 +96,8 @@ namespace FireboltSDK {
 
                 uint32_t status = _transport->Invoke(eventName, parameters, response);
 
-                if ((status != FireboltError::None) || (response.IsValid() == false) || (response->Error.IsSet() == true)) {
-                    if ((status == FireboltError::None) && (response->Error.IsSet() == true)) {
+                if ((status != Error::None) || (response.IsValid() == false) || (response->Error.IsSet() == true)) {
+                    if ((status == Error::None) && (response->Error.IsSet() == true)) {
                         status = response->Error.Code.Value();
                     }
                 }
@@ -153,10 +137,30 @@ namespace FireboltSDK {
                 inbound.FromString(parameters);
                 actualMethod(inbound);
                 result.clear();
-                return (FireboltError::None);
+                return (Error::None);
             };
             _handler.Register(eventName, implementation);
         }
+
+        uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override
+        {
+            uint32_t result = Error::General;
+            Response response;
+            _transport->FromMessage((WPEFramework::Core::JSON::IElement*)&response, *jsonResponse);
+            if (response.Listening.IsSet() == true) {
+                result = Error::None;
+                enabled = response.Listening.Value();
+            }
+            return result;
+        }
+
+        uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
+        {
+            string response;
+            _handler.Invoke(WPEFramework::Core::JSONRPC::Context(), EventNameForRegister(eventName), jsonResponse->Result.Value(), response);
+            return Error::None;;
+        }
+
 
     private:
         Transport<WPEFramework::Core::JSON::IElement>* _transport;

@@ -3,18 +3,25 @@
 
 namespace FireboltSDK {
 
-    namespace Properties {
+    class Properties {
+    public:
+        Properties(const Properties&) = delete;
+        Properties& operator= (const Properties&) = delete;
 
+        Properties() = default;
+        ~Properties() = default;
+
+    public:
         template <typename RESPONSETYPE>
         static uint32_t Get(const string& propertyName, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
         {
-            uint32_t status = FireboltError::Unavailable;
+            uint32_t status = Error::Unavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject parameters;
                 RESPONSETYPE responseType;
                 status = transport->Invoke(propertyName, parameters, responseType);
-                if (status == FireboltError::None) {
+                if (status == Error::None) {
                     ASSERT(response.IsValid() == false);
                     if (response.IsValid() == true) {
                         response.Release();
@@ -32,7 +39,7 @@ namespace FireboltSDK {
         template <typename PARAMETERS>
         static uint32_t Set(const string& propertyName, const PARAMETERS& parameters)
         {
-            uint32_t status = FireboltError::Unavailable;
+            uint32_t status = Error::Unavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject responseType;
@@ -54,5 +61,5 @@ namespace FireboltSDK {
         {
             return Event::Instance().Unregister(eventName);
         }
-    }
+    };
 }

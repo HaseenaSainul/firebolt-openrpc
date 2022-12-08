@@ -51,13 +51,13 @@ namespace FireboltSDK {
         }
 
         _transport = new Transport<WPEFramework::Core::JSON::IElement>(static_cast<WPEFramework::Core::URL>(url), waitTime);
-        if (WaitForLinkReady(_transport, DefaultWaitTime) != FireboltError::None) {
+        if (WaitForLinkReady(_transport, DefaultWaitTime) != Error::None) {
             delete _transport;
             _transport = nullptr;
         }
 
         ASSERT(_transport != nullptr);
-        return ((_transport != nullptr) ? FireboltError::None : FireboltError::Unavailable);
+        return ((_transport != nullptr) ? Error::None : Error::Unavailable);
     }
 
     uint32_t Accessor::DestroyTransport()
@@ -66,7 +66,7 @@ namespace FireboltSDK {
             delete _transport;
             _transport = nullptr;
         }
-        return FireboltError::None;
+        return Error::None;
     }
 
     Transport<WPEFramework::Core::JSON::IElement>* Accessor::GetTransport()
@@ -89,7 +89,7 @@ namespace FireboltSDK {
 
             waiting -= (waiting == WPEFramework::Core::infinite ? 0 : sleepSlot);
         }
-        return (((waiting == 0) || (transport->IsOpen() == true)) ? FireboltError::None : FireboltError::Timedout);
+        return (((waiting == 0) || (transport->IsOpen() == true)) ? Error::None : Error::Timedout);
     }
 
 
