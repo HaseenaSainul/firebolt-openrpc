@@ -527,7 +527,9 @@ namespace FireboltSDK {
 
         void Revoke(const string& eventName)
         {
+            _adminLock.Lock();
             _eventMap.erase(eventName);
+            _adminLock.Unlock();
         }
 
         void SetEventHandler(IEventHandler* eventHandler)
@@ -549,7 +551,7 @@ namespace FireboltSDK {
         }
 
         template <typename RESPONSE>
-        uint32_t RegisterEvent(const string& eventName, const string& parameters, RESPONSE& response)
+        uint32_t Register(const string& eventName, const string& parameters, RESPONSE& response)
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
@@ -565,6 +567,13 @@ namespace FireboltSDK {
             }
 
             return (FireboltErrorValue(result));
+        }
+
+        template <typename RESPONSE>
+        uint32_t Unregister(const string& eventName, const string& parameters, RESPONSE& response)
+        {
+            Revoke(eventName);
+            return (Invoke(eventName, parameters, response));
         }
 
     private:
@@ -784,10 +793,12 @@ namespace FireboltSDK {
                                 if (result == WPEFramework::Core::ERROR_NONE) {
                                     FromMessage((INTERFACE*)&response, *jsonResponse);
                                     if (enabled) {
+                                        _adminLock.Lock();
                                         typename EventMap::iterator index = _eventMap.find(eventName);
                                         if (index != _eventMap.end()) {
                                             index->second = id;
                                         }
+                                        _adminLock.Unlock();
                                     }
                                 }
                             }

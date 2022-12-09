@@ -25,8 +25,6 @@ namespace FireboltSDK {
                              std::forward_as_tuple(&SetUnKnownMethod));
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Set LifeCycle Close"),
                              std::forward_as_tuple(&SetLifeCycleClose));
-        _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Set Discovery Policy"),
-                             std::forward_as_tuple(&SetDiscoveryPolicy));
 
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get UnKnown Method"),
                              std::forward_as_tuple(&GetUnKnownMethod));
@@ -59,8 +57,8 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> response;
         uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status == WPEFramework::Core::ERROR_NONE) {
+        EXPECT_EQ(status, Error::None);
+        if (status == Error::None) {
             printf("\nDeviceId : %s", response->Value().c_str());
         } else {
             printf("\nGet %s status = %d\n", method.c_str(), status);
@@ -75,8 +73,8 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<JsonObject> response;
         uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status == WPEFramework::Core::ERROR_NONE) {
+        EXPECT_EQ(status, Error::None);
+        if (status == Error::None) {
             printf("\nDeviceVersion :\n");
             PrintJsonObject(response->Variants());
         } else {
@@ -122,8 +120,8 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<Policy> response;
         uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status == WPEFramework::Core::ERROR_NONE) {
+        EXPECT_EQ(status, Error::None);
+        if (status == Error::None) {
             printf("\nEnableRecommendations : %d", response->EnableRecommendations.Value());
             printf("\nShareWatchHistory : %d", response->ShareWatchHistory.Value());
             printf("\nRememberWatchedPrograms : %d", response->RememberWatchedPrograms.Value());
@@ -140,39 +138,12 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<JsonObject> response;
         uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-        EXPECT_NE(status, WPEFramework::Core::ERROR_NONE);
-        if (status != WPEFramework::Core::ERROR_NONE) {
+        EXPECT_NE(status, Error::None);
+        if (status != Error::None) {
             printf("\n Get %s status = %d\n", method.c_str(), status);
         }
 
         return status;
-    }
-
-    /* static */ uint32_t Tests::SetDiscoveryPolicy()
-    {
-
-        const string method = _T("discovery.policy");
-        Policy policy;
-        policy.EnableRecommendations = true;
-        policy.ShareWatchHistory = false;
-        policy.RememberWatchedPrograms = false;
-        uint32_t status = FireboltSDK::Properties::Set(method, policy);
-
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status == WPEFramework::Core::ERROR_NONE) {
-            WPEFramework::Core::ProxyType<Policy> response;
-            status = FireboltSDK::Properties::Get(method, response);
-            printf("\nEnableRecommendations : %d, %s", response->EnableRecommendations.Value(), ((response->EnableRecommendations.Value() == policy.EnableRecommendations) ? "is same set" : "is not same set"));
-            printf("\nShareWatchHistory : %d, %s", response->ShareWatchHistory.Value(), ((response->ShareWatchHistory.Value() == policy.ShareWatchHistory) ? "is same set" : "is not same set"));
-            printf("\nRememberWatchedPrograms : %d, %s", response->ShareWatchHistory.Value(), ((response->ShareWatchHistory.Value() == policy.RememberWatchedPrograms) ? "is same set" : "is not same set"));
-
-        } else {
-            printf("\nGet %s status = %d\n", method.c_str(), status);
-        }
-
-        return status;
-
-
     }
 
     /* static */ uint32_t Tests::SetLifeCycleClose()
@@ -182,8 +153,8 @@ namespace FireboltSDK {
         parameters["reason"] = "remoteButton";
         uint32_t status = FireboltSDK::Properties::Set(method, parameters);
 
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status != WPEFramework::Core::ERROR_NONE) {
+        EXPECT_EQ(status, Error::None);
+        if (status != Error::None) {
             printf("\n Set %s status = %d\n", method.c_str(), status);
         }
 
@@ -196,8 +167,8 @@ namespace FireboltSDK {
         JsonObject parameters;
         uint32_t status = FireboltSDK::Properties::Set(method, parameters);
 
-        EXPECT_NE(status, WPEFramework::Core::ERROR_NONE);
-        if (status != WPEFramework::Core::ERROR_NONE) {
+        EXPECT_NE(status, Error::None);
+        if (status != Error::None) {
             printf("\n Set %s status = %d\n", method.c_str(), status);
         }
 
@@ -205,32 +176,75 @@ namespace FireboltSDK {
     }
 
     bool eventNotTriggered = true;
-    static void deviceNameChangeCallback(const WPEFramework::Core::JSON::String& parameters)
+    static void deviceNameChangeCallback(const void* userData, const WPEFramework::Core::JSON::IElement& response)
     {
-        printf("Received a new event: %s\n", parameters.Value().c_str());
+        const WPEFramework::Core::JSON::String& jsonResponse = static_cast<const WPEFramework::Core::JSON::String&>(response);
+        printf("Received a new event: %s\n", jsonResponse.Value().c_str());
         eventNotTriggered = false;
     }
 
     /* static */ uint32_t Tests::SubscribeEvent()
     {
+#if 0
+//Test codes, to be removed
+        WPEFramework::Core::JSON::String jsonString;
+        WPEFramework::Core::JSON::IElement& elementString = jsonString;
+        string str = "Test";
+        elementString.FromString(str);
+        printf("\n jsonString = %s", jsonString.Value().c_str());
+        uint32_t status;
+
+        Policy policy;
+        str = "{\"enableRecommendations\":false,\"shareWatchHistory\":true,\"rememberWatchedPrograms\":true}";
+        elementString = policy;
+        elementString.FromString(str);
+        printf("\n enableRecommendations = %d\n", policy.EnableRecommendations.Value());
+
+        {
+            WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> proxyString = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>::Create();
+            (*proxyString) = "Testing...";
+            WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement> proxyElement = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>(proxyString);
+            proxyElement->ToString(str);
+            *proxyElement = elementString;
+            printf("\n proxyString = %s\n", str.c_str());
+            str = "Helloooo";
+            proxyElement->FromString(str);
+            printf("\n proxyString1 = %s\n", proxyString->Value().c_str());
+        }
+        {
+            WPEFramework::Core::ProxyType<Policy> policy = WPEFramework::Core::ProxyType<Policy>::Create();
+            policy->EnableRecommendations = false;
+            WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement> proxyElement = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>(policy);
+            proxyElement->ToString(str);
+            printf("\n proxyPolicy = %s\n", str.c_str());
+            str = "{\"enableRecommendations\":true,\"shareWatchHistory\":true,\"rememberWatchedPrograms\":true}";
+            proxyElement->FromString(str);
+            printf("\n proxyPolicy = %d\n", policy->EnableRecommendations.Value());
+        }
+#else
         JsonObject parameters;
-        bool response = false;
 
         const string eventName = _T("device.onNameChanged");
-        uint32_t status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, response);
+        const void* userdata = nullptr;
+        WPEFramework::Core::JSON::String response;
+        uint32_t id = 0;
 
-        EXPECT_EQ(status, WPEFramework::Core::ERROR_NONE);
-        if (status != WPEFramework::Core::ERROR_NONE) {
+        uint32_t status = Properties::Register(eventName, deviceNameChangeCallback, userdata, response, id);
+
+        EXPECT_EQ(status, Error::None);
+        if (status != Error::None) {
             printf("\n Set %s status = %d\n", eventName.c_str(), status);
         } else {
-            printf(" Yes registered = %d\n", response);
+            printf(" Yes registered successfully\n");
         }
 
-        if (response == true) {
+        if (status == Error::None) {
             eventNotTriggered = true;
             do {
             }  while(eventNotTriggered);
         }
+        EXPECT_EQ(Properties::Unregister(eventName, id), Error::None);
+#endif
         return status;
     }
 }
