@@ -19,13 +19,13 @@
  */
 
 import h from 'highland'
-import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath } from '../shared/helpers.mjs'
+import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath } from '../../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
-import { localizeDependencies } from '../shared/json-schema.mjs'
+import { localizeDependencies } from '../../shared/json-schema.mjs'
 import compose from 'crocks/helpers/compose.js'
 import safe from 'crocks/Maybe/safe.js'
 import isString from 'crocks/core/isString.js'
@@ -37,7 +37,7 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
 // destructure well-known cli args and alias to variables expected by script
-const run = ({
+const javascript = ({
   source: srcFolderArg,
   template: templateFolderArg,
   output: outputFolderArg,
@@ -51,8 +51,8 @@ const run = ({
   const sharedSchemasFolder = sharedSchemasFolderArg
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const sdkTemplateFolder = path.join(templateFolderArg)
-  const sharedSdkTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js', 'sdk')
-  const staticSdkCodeFolder = path.join(__dirname, '..', '..', 'src', 'js', 'shared')
+  const sharedSdkTemplateFolder = path.join(__dirname, '..', '..', '..', 'src', 'template', 'js', 'sdk')
+  const staticSdkCodeFolder = path.join(__dirname, '..', '..', '..', 'src', 'js', 'shared')
 
   const allModules = localModules(modulesFolder, markdownFolder)
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder)) // Used to 
@@ -90,6 +90,10 @@ const run = ({
       )
     ) // <-- local templates override any shared templates
 
+//    console.log(`allModules: ${allModules.toArray( function (xs) {
+ //     console.log(xs);
+ // })}`)
+
     const macrofiedModules = h(Object.values(modules)
       .concat(Object.values(staticModules))) // <-- Static modules also get the macrofication spa treatment
       .map(module => localizeDependencies(module, module, schemas, { externalOnly: true, keepRefsAndLocalizeAsComponent: true }))
@@ -115,7 +119,7 @@ const run = ({
             return [file, macrofied]
           })
       })
-    
+      logSuccess(`staticSdkCodeFolder: ${staticSdkCodeFolder}`)
     const aggregateMacros = generateAggregateMacros(Object.assign(modules, staticModules))
     
     return h(combinedTemplates)
@@ -131,7 +135,8 @@ const run = ({
         .flatMap(_ => fsWriteFile(file, contents)))
   }
 
-  logHeader(`Generating SDK into: ${trimPath(outputFolderArg)}`)
+  logHeader(`Generating Javascript SDK into: ${trimPath(outputFolderArg)}`)
+
   return fsMkDirP(outputFolderArg)
     .tap(_ => logSuccess(`Created folder: ${trimPath(outputFolderArg)}`))
     .flatMap(clearDirectory(outputFolderArg)
@@ -160,4 +165,6 @@ const run = ({
     )
 }
 
-export default run
+export {
+  javascript
+}

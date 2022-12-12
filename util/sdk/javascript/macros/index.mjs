@@ -30,11 +30,11 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, hasMethodAttributes, getMethodAttributes } from '../../shared/modules.mjs'
-import { getTemplateForMethod } from '../../shared/template.mjs'
-import { getMethodSignatureParams } from '../../shared/javascript.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, hasMethodAttributes, getMethodAttributes } from '../../../shared/modules.mjs'
+import { getTemplateForMethod } from '../../../shared/template.mjs'
+import { getMethodSignatureParams } from '../../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { localizeDependencies } from '../../shared/json-schema.mjs'
+import { localizeDependencies } from '../../../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
