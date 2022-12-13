@@ -8,7 +8,7 @@ set(TARGET ${PROJECT_NAME})
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 
-add_executable(${TARGET} FireboltSDKTestsMain.cpp Module.cpp)
+add_executable(${TARGET} FireboltSDKTestsMain.c Module.cpp)
 
 target_link_libraries(${TARGET}
     PRIVATE

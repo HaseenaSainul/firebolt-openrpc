@@ -9,6 +9,7 @@ int TotalTestsPassed = 0;
 
 int main()
 {
+#if 0
     FireboltSDK::Tests fireboltSDKTest;
 
     for (auto i = fireboltSDKTest.TestList().begin(); i != fireboltSDKTest.TestList().end(); i++) {
@@ -18,5 +19,6 @@ int main()
     printf("TOTAL: %i tests; %i PASSED, %i FAILED\n", TotalTests, TotalTestsPassed, (TotalTests - TotalTestsPassed));
 
     return 0;
+#endif
 }
 

@@ -51,9 +51,10 @@ namespace FireboltSDK {
             return status;
         }
 
-        static uint32_t Register(const string& eventName, const Event::Callback& callback, const void* userdata, WPEFramework::Core::JSON::IElement& parameter, uint32_t& id)
+        template <typename PARAMETERS, typename CALLBACK>
+        static uint32_t Register(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
         {
-            return Event::Instance().Register(eventName, callback, userdata, parameter, id);
+            return Event::Instance().Register<PARAMETERS, CALLBACK>(eventName, callback, userdata, id);
         }
 
         static uint32_t Unregister(const string& eventName, const uint32_t id)

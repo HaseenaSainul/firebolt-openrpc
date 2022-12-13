@@ -569,11 +569,13 @@ namespace FireboltSDK {
             return (FireboltErrorValue(result));
         }
 
-        template <typename RESPONSE>
-        uint32_t Unregister(const string& eventName, const string& parameters, RESPONSE& response)
+        uint32_t Unregister(const string& eventName, const string& parameters)
         {
             Revoke(eventName);
-            return (Invoke(eventName, parameters, response));
+            Entry slot;
+            uint32_t id = _channel->Sequence();
+            uint32_t result = Submit(eventName, parameters, id);
+            return (FireboltErrorValue(result));
         }
 
     private:
@@ -737,7 +739,7 @@ namespace FireboltSDK {
             Entry& slot(index->second);
             _adminLock.Unlock();
 
-              if (slot.WaitForResponse(waitTime) == true) {
+            if (slot.WaitForResponse(waitTime) == true) {
                 WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> jsonResponse = slot.Response();
 
                 // See if we have a jsonResponse, maybe it was just the connection

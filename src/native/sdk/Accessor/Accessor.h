@@ -35,6 +35,7 @@ namespace FireboltSDK {
 
             if (_singleton != nullptr) {
                 delete _singleton;
+                _singleton = nullptr;
             }
         }
         uint32_t CreateTransport(const string& url, const uint32_t waitTime);
