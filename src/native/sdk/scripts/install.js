@@ -15,8 +15,8 @@ var buildType = 'Release/';
 createDir(dstPath + '/usr/lib/pkgconfig');
 createDir(dstPath + '/etc');
 
-copyFile(srcPath + 'FireboltSDK.pc', dstPath + '/usr/lib/pkgconfig/FireboltSDK.pc');
-copyFile(srcPath + 'config/FireboltSDK.json', dstPath + '/etc/FireboltSDK.json');
+copyFile(srcPath + 'Source/' + 'FireboltSDK.pc', dstPath + '/usr/lib/pkgconfig/FireboltSDK.pc');
+copyFile(srcPath + 'Source/' + 'config/FireboltSDK.json', dstPath + '/etc/FireboltSDK.json');
 copyFile(srcPath + buildType + libName, dstPath + '/usr/lib/' + libName);
 
 createFileLink(libName, dstPath + '/usr/lib/' + linkName);

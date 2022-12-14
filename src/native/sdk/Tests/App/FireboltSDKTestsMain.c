@@ -8,14 +8,15 @@ int TotalTestsPassed = 0;
 
 int main()
 {
-//    test_firebolt_main();
+    test_firebolt_main();
 
     // Calling C function sequences
-    printf("%s:%s:%d \n", __FILE__, __func__, __LINE__);
+    printf("%s:%s:%d Calling C function tests\n", __FILE__, __func__, __LINE__);
     test_firebolt_create_instance();
     EXECUTE("test_properties_get_device_id", test_properties_get_device_id);
     EXECUTE("test_properties_get_policy", test_properties_get_policy);
     EXECUTE("test_properties_set", test_properties_set);
+
     EXECUTE("test_eventregister", test_eventregister);
     EXECUTE("test_eventregister_by_providing_callback", test_eventregister_by_providing_callback);
 

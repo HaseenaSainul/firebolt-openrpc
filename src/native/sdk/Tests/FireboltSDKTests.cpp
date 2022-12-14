@@ -158,6 +158,7 @@ namespace FireboltSDK {
     }
     /* static */ uint32_t Tests::SubscribeEvent()
     {
+        ::SleepMs(100);
         const string eventName = _T("device.onNameChanged");
         const char* test = "deviceNameChangeCallback";
         const void* userdata = test;
@@ -167,9 +168,9 @@ namespace FireboltSDK {
 
         EXPECT_EQ(status, Error::None);
         if (status != Error::None) {
-            printf("\n Set %s status = %d\n", eventName.c_str(), status);
+            printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
         } else {
-            printf(" Yes registered successfully\n");
+            printf("%s Yes registered successfully\n", __func__);
         }
 
         if (status == Error::None) {
@@ -177,6 +178,7 @@ namespace FireboltSDK {
             do {
             }  while(eventNotTriggered);
         }
+        ::SleepMs(100);
         EXPECT_EQ(Properties::Unregister(eventName, id), Error::None);
 
         return status;
@@ -187,6 +189,7 @@ namespace FireboltSDK {
     {
         uint32_t status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, callbackFunc, userdata, id);
 
+        printf("%s:%s:%d \n", __FILE__, __func__, __LINE__, status);
         return status;
     }
 
@@ -203,21 +206,22 @@ namespace FireboltSDK {
 
     /* static */ uint32_t Tests::SubscribeEventWithMultipleCallback()
     {
+        ::SleepMs(100);
         const string eventName = _T("device.onNameChanged");
         const char* test = "deviceNameChangeCallback";
         const void* userdata = test;
         uint32_t id1 = 0, id2 = 0;
 
-	eventNotTriggered = true;
+        eventNotTriggered = true;
         eventMultiEventNotTriggered = true;
 
         uint32_t status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id1);
 
         EXPECT_EQ(status, Error::None);
         if (status != Error::None) {
-            printf("\n Set %s status = %d\n", eventName.c_str(), status);
+            printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
         } else {
-            printf(" Yes registered successfully\n");
+            printf("%s Yes registered successfully\n", __func__);
         }
         test = "deviceNameChangeMultipleCallback";
         userdata = test;
@@ -226,15 +230,16 @@ namespace FireboltSDK {
 
         EXPECT_EQ(status, Error::None);
         if (status != Error::None) {
-            printf("\n Set %s status = %d\n", eventName.c_str(), status);
+            printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
         } else {
-            printf(" Yes registered second also successfully\n");
+            printf("%s Yes registered second callback also successfully\n", __func__);
         }
 
         if (status == Error::None) {
             do {
             }  while(eventNotTriggered || eventMultiEventNotTriggered);
         }
+        ::SleepMs(100);
         EXPECT_EQ(Properties::Unregister(eventName, id1), Error::None);
         EXPECT_EQ(Properties::Unregister(eventName, id2), Error::None);
 
@@ -327,11 +332,11 @@ static void deviceNameChangeCallbackForC(const void* userData, WPEFramework::Cor
         printf("userData = %s\n", (const char*)userData);
     }
     eventNotTriggeredFromC = false;
-    printf("%s:%s:%d eventNotTriggeredFromC = %d\n", __FILE__, __func__, __LINE__, eventNotTriggeredFromC);
 }
 
 uint32_t test_eventregister()
 {
+    ::SleepMs(100);
     JsonObject parameters;
 
     const string eventName = _T("device.onNameChanged");
@@ -344,22 +349,24 @@ uint32_t test_eventregister()
 
     EXPECT_EQ(status, FireboltSDK::Error::None);
     if (status != FireboltSDK::Error::None) {
-        printf("\n Set %s status = %d\n", eventName.c_str(), status);
+        printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
     } else {
-        printf(" Yes registered successfully\n");
+        printf("%s Yes registered successfully\n", __func__);
     }
 
-    if (status == FireboltSDK::Error::None) {
+/*    if (status == FireboltSDK::Error::None) {
         do {
         }  while(eventNotTriggeredFromC);
-    }
+    }*/
     EXPECT_EQ(FireboltSDK::Properties::Unregister(eventName, id), FireboltSDK::Error::None);
+    ::SleepMs(100);
 
     return status;
 }
 
 uint32_t test_eventregister_by_providing_callback()
 {
+    ::SleepMs(100);
     const string eventName = _T("device.onNameChanged");
     const char* test = "deviceNameChangeCallbackForCWithCallbackParam";
     const void* userdata = test;
@@ -367,11 +374,20 @@ uint32_t test_eventregister_by_providing_callback()
 
     eventNotTriggeredFromC = true;
     uint32_t status = FireboltSDK::Tests::SubscribeEventForC(eventName, deviceNameChangeCallbackForC, userdata, id);
-    if (status == FireboltSDK::Error::None) {
+
+    EXPECT_EQ(status, FireboltSDK::Error::None);
+    if (status != FireboltSDK::Error::None) {
+        printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
+    } else {
+        printf("%s Yes registered successfully\n", __func__);
+    }
+
+    /*if (status == FireboltSDK::Error::None) {
         do {
         }  while(eventNotTriggeredFromC);
-    }
+    }*/
     EXPECT_EQ(FireboltSDK::Properties::Unregister(eventName, id), FireboltSDK::Error::None);
+    ::SleepMs(100);
 }
 
 }

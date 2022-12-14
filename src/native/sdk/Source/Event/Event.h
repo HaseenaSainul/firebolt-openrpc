@@ -1,6 +1,5 @@
 #pragma once
 #include "Module.h"
-#include "Accessor/Accessor.h"
 
 namespace FireboltSDK {
 
@@ -16,6 +15,7 @@ namespace FireboltSDK {
         };
         using IdMap = std::map<uint32_t, CallbackData>;
         using EventMap = std::map<string, IdMap>;
+  
 
         class Response : public WPEFramework::Core::JSON::Container {
         public:
@@ -45,11 +45,13 @@ namespace FireboltSDK {
             , _transport(nullptr)
         {
             ASSERT(_singleton == nullptr);
-            Configure();
             _singleton = this;
         }
 
         virtual ~Event() {
+            _transport->SetEventHandler(nullptr);
+            _transport = nullptr;
+
             ASSERT(_singleton!=nullptr);
             _singleton = nullptr;
         }
@@ -70,7 +72,14 @@ namespace FireboltSDK {
 
             if (_singleton != nullptr) {
                 delete _singleton;
+                _singleton = nullptr;
             }
+        }
+
+        void Configure(Transport<WPEFramework::Core::JSON::IElement>* transport)
+        {
+            _transport = transport;
+            _transport->SetEventHandler(this);
         }
 
         template <typename PARAMETERS, typename CALLBACK>
@@ -101,17 +110,17 @@ namespace FireboltSDK {
 
         uint32_t Unregister(const string& eventName, const uint32_t id)
         {
-            uint32_t status = Revoke(eventName, id);
+            uint32_t status = Revoke(eventName, id); 
 
             if (status == Error::None) {
-                Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
-                if (transport != nullptr) {
-
+                if (_transport != nullptr) {
+ 
                     const string parameters("{\"listen\":false}");
 
                     status = _transport->Unregister(eventName, parameters);
                 }
             }
+
             return ((status == Error::InUse) ? Error::None: status);
         }
 
@@ -119,12 +128,6 @@ namespace FireboltSDK {
         uint32_t Id() const
         {
             return (++_id);
-        }
-
-        void Configure()
-        {
-            _transport = Accessor::Instance().GetTransport();
-            _transport->SetEventHandler(this);
         }
 
         uint32_t Revoke(const string& eventName, const uint32_t id)
@@ -193,21 +196,20 @@ namespace FireboltSDK {
             return result;
         }
 
-        uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
+uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
         {
             string response = jsonResponse->Result.Value();
             _adminLock.Lock();
             EventMap::iterator eventIndex = _eventMap.find(eventName);
             if (eventIndex != _eventMap.end()) {
-                _adminLock.Unlock();
                 IdMap::iterator idIndex = eventIndex->second.begin();
+
                 while(idIndex != eventIndex->second.end()) {
                      idIndex->second.lambda(idIndex->second.userdata, (jsonResponse->Result.Value()));
                      idIndex++;
                 }
-            } else {
-                _adminLock.Unlock();
             }
+            _adminLock.Unlock();
 
             return Error::None;;
         }

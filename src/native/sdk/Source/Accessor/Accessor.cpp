@@ -13,6 +13,7 @@ namespace FireboltSDK {
         LoadConfigs(config);
         printf("%s:%s:%d URL = %s \n", __FILE__, __func__, __LINE__, config.Url.Value().c_str());
         CreateTransport(config.Url.Value(), config.WaitTime.Value());
+        CreateEventHandler();
 
         _workerPool = WPEFramework::Core::ProxyType<WorkerPoolImplementation>::Create(_threadCount, WPEFramework::Core::Thread::DefaultStackSize(), _queueSize);
         WPEFramework::Core::WorkerPool::Assign(&(*_workerPool));
@@ -21,8 +22,9 @@ namespace FireboltSDK {
 
     Accessor::~Accessor()
     {
-        WPEFramework::Core::IWorkerPool::Assign(nullptr);
         DestroyTransport();
+        DestroyEventHandler();
+        WPEFramework::Core::IWorkerPool::Assign(nullptr);
         _workerPool->Stop();
     }
 
@@ -42,6 +44,23 @@ namespace FireboltSDK {
                 printf("Error in reading config\n");
             }
         }
+    }
+
+    uint32_t Accessor::CreateEventHandler()
+    {
+         Event::Instance().Configure(_transport);
+         return Error::None;
+    }
+
+    uint32_t Accessor::DestroyEventHandler()
+    {
+         Event::Dispose();
+         return Error::None;
+    }
+
+    Event& Accessor::GetEventManager()
+    {
+        return Event::Instance();
     }
 
     uint32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime)

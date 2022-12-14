@@ -3,6 +3,7 @@
 #include "Config.h"
 #include "WorkerPool.h"
 #include "Transport/Transport.h"
+#include "Event/Event.h"
 
 namespace FireboltSDK {
     class Accessor {
@@ -38,6 +39,10 @@ namespace FireboltSDK {
                 _singleton = nullptr;
             }
         }
+        uint32_t CreateEventHandler();
+        uint32_t DestroyEventHandler();
+        Event& GetEventManager();
+
         uint32_t CreateTransport(const string& url, const uint32_t waitTime);
         uint32_t DestroyTransport();
         Transport<WPEFramework::Core::JSON::IElement>* GetTransport();

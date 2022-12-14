@@ -1,5 +1,6 @@
 #pragma once
-#include "Event.h"
+#include "Accessor/Accessor.h"
+#include "Event/Event.h"
 
 namespace FireboltSDK {
 

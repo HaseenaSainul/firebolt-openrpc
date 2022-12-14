@@ -542,7 +542,7 @@ namespace FireboltSDK {
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
-            uint32_t result = Submit(method, parameters, id);
+            uint32_t result = Send(method, parameters, id);
             if (result == WPEFramework::Core::ERROR_NONE) {
                 result = WaitForResponse<RESPONSE>(id, response, _waitTime);
             }
@@ -555,7 +555,7 @@ namespace FireboltSDK {
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
-            uint32_t result = Submit(eventName, parameters, id);
+            uint32_t result = Send(eventName, parameters, id);
             if (result == WPEFramework::Core::ERROR_NONE) {
                 _adminLock.Lock();
                 _eventMap.emplace(std::piecewise_construct,
@@ -572,9 +572,11 @@ namespace FireboltSDK {
         uint32_t Unregister(const string& eventName, const string& parameters)
         {
             Revoke(eventName);
-            Entry slot;
+	    Entry slot;
             uint32_t id = _channel->Sequence();
-            uint32_t result = Submit(eventName, parameters, id);
+            uint32_t result = Send(eventName, parameters, id);
+
+//            ::SleepMs(_waitTime);
             return (FireboltErrorValue(result));
         }
 
@@ -692,8 +694,9 @@ namespace FireboltSDK {
             return (result);
         }
 
+
         template <typename PARAMETERS>
-        uint32_t Submit(const string& method, const PARAMETERS& parameters, const uint32_t& id)
+        uint32_t Send(const string& method, const PARAMETERS& parameters, const uint32_t& id)
         {
             uint32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
 

@@ -18,7 +18,6 @@ namespace FireboltSDK {
         {
             // Diable the queue so the minions can stop, even if they are processing and waiting for work..
             Stop();
-            WPEFramework::Core::Singleton::Dispose();
         }
 
     public:
@@ -30,7 +29,6 @@ namespace FireboltSDK {
         void Run()
         {
             WPEFramework::Core::WorkerPool::Run();
-            printf("%s:%s:%d thread = %x\n", __FILE__, __func__, __LINE__, pthread_self());
         }
 
     private:
