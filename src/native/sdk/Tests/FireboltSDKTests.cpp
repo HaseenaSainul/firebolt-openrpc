@@ -158,7 +158,6 @@ namespace FireboltSDK {
     }
     /* static */ uint32_t Tests::SubscribeEvent()
     {
-        ::SleepMs(100);
         const string eventName = _T("device.onNameChanged");
         const char* test = "deviceNameChangeCallback";
         const void* userdata = test;
@@ -178,7 +177,6 @@ namespace FireboltSDK {
             do {
             }  while(eventNotTriggered);
         }
-        ::SleepMs(100);
         EXPECT_EQ(Properties::Unregister(eventName, id), Error::None);
 
         return status;
@@ -206,7 +204,6 @@ namespace FireboltSDK {
 
     /* static */ uint32_t Tests::SubscribeEventWithMultipleCallback()
     {
-        ::SleepMs(100);
         const string eventName = _T("device.onNameChanged");
         const char* test = "deviceNameChangeCallback";
         const void* userdata = test;
@@ -239,7 +236,6 @@ namespace FireboltSDK {
             do {
             }  while(eventNotTriggered || eventMultiEventNotTriggered);
         }
-        ::SleepMs(100);
         EXPECT_EQ(Properties::Unregister(eventName, id1), Error::None);
         EXPECT_EQ(Properties::Unregister(eventName, id2), Error::None);
 
@@ -336,7 +332,6 @@ static void deviceNameChangeCallbackForC(const void* userData, WPEFramework::Cor
 
 uint32_t test_eventregister()
 {
-    ::SleepMs(100);
     JsonObject parameters;
 
     const string eventName = _T("device.onNameChanged");
@@ -359,14 +354,12 @@ uint32_t test_eventregister()
         }  while(eventNotTriggeredFromC);
     }*/
     EXPECT_EQ(FireboltSDK::Properties::Unregister(eventName, id), FireboltSDK::Error::None);
-    ::SleepMs(100);
 
     return status;
 }
 
 uint32_t test_eventregister_by_providing_callback()
 {
-    ::SleepMs(100);
     const string eventName = _T("device.onNameChanged");
     const char* test = "deviceNameChangeCallbackForCWithCallbackParam";
     const void* userdata = test;
@@ -387,7 +380,6 @@ uint32_t test_eventregister_by_providing_callback()
         }  while(eventNotTriggeredFromC);
     }*/
     EXPECT_EQ(FireboltSDK::Properties::Unregister(eventName, id), FireboltSDK::Error::None);
-    ::SleepMs(100);
 }
 
 }
