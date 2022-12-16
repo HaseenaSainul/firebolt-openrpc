@@ -148,22 +148,24 @@ namespace FireboltSDK {
     }
 
     bool eventNotTriggered = true;
-    static void deviceNameChangeCallback(const void* userData, WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> response)
+    static void deviceNameChangeCallback(const void* userData, void* response)
     {
-        printf("Received a new event: %s\n", response->Value().c_str());
+        WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
+        printf("Received a new event: %s\n", jsonResponse->Value().c_str());
         if (userData != nullptr) {
             printf("userData = %s\n", (const char*)userData);
         }
+        jsonResponse.Release();
         eventNotTriggered = false;
     }
     /* static */ uint32_t Tests::SubscribeEvent()
     {
-        const string eventName = _T("device.onNameChanged");
+        const string eventName = _T("device.Name");
         const char* test = "deviceNameChangeCallback";
         const void* userdata = test;
         uint32_t id = 0;
 
-        uint32_t status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id);
 
         EXPECT_EQ(status, Error::None);
         if (status != Error::None) {
@@ -177,7 +179,7 @@ namespace FireboltSDK {
             do {
             }  while(eventNotTriggered);
         }
-        EXPECT_EQ(Properties::Unregister(eventName, id), Error::None);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, id), Error::None);
 
         return status;
     }
@@ -185,7 +187,7 @@ namespace FireboltSDK {
     template <typename CALLBACK>
     /* static */ uint32_t Tests::SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* userdata, uint32_t& id)
     {
-        uint32_t status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, callbackFunc, userdata, id);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, callbackFunc, userdata, id);
 
         printf("%s:%s:%d \n", __FILE__, __func__, __LINE__, status);
         return status;
@@ -193,18 +195,20 @@ namespace FireboltSDK {
 
 
     bool eventMultiEventNotTriggered = true;
-    static void deviceNameChangeMultipleCallback(const void* userData, WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> response)
+    static void deviceNameChangeMultipleCallback(const void* userData, void* response)
     {
-        printf("Received a new event from deviceNameChangeMultipleCallback: %s\n", response->Value().c_str());
+        WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
+        printf("Received a new event from deviceNameChangeMultipleCallback: %s\n", jsonResponse->Value().c_str());
         if (userData != nullptr) {
             printf("userData = %s\n", (const char*)userData);
         }
+        jsonResponse.Release();
         eventMultiEventNotTriggered = false;
     }
 
     /* static */ uint32_t Tests::SubscribeEventWithMultipleCallback()
     {
-        const string eventName = _T("device.onNameChanged");
+        const string eventName = _T("device.Name");
         const char* test = "deviceNameChangeCallback";
         const void* userdata = test;
         uint32_t id1 = 0, id2 = 0;
@@ -212,7 +216,7 @@ namespace FireboltSDK {
         eventNotTriggered = true;
         eventMultiEventNotTriggered = true;
 
-        uint32_t status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id1);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id1);
 
         EXPECT_EQ(status, Error::None);
         if (status != Error::None) {
@@ -223,7 +227,7 @@ namespace FireboltSDK {
         test = "deviceNameChangeMultipleCallback";
         userdata = test;
 
-        status = Properties::Register<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, userdata, id2);
+        status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, userdata, id2);
 
         EXPECT_EQ(status, Error::None);
         if (status != Error::None) {
@@ -236,8 +240,8 @@ namespace FireboltSDK {
             do {
             }  while(eventNotTriggered || eventMultiEventNotTriggered);
         }
-        EXPECT_EQ(Properties::Unregister(eventName, id1), Error::None);
-        EXPECT_EQ(Properties::Unregister(eventName, id2), Error::None);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, id1), Error::None);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, id2), Error::None);
 
         return status;
     }
@@ -321,12 +325,15 @@ uint32_t test_properties_set()
 }
 
 bool eventNotTriggeredFromC = true;
-static void deviceNameChangeCallbackForC(const void* userData, WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> response)
+static void deviceNameChangeCallbackForC(const void* userData, void* response)
 {
-    printf("Received a new event--->: %s\n", response->Value().c_str());
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
+    printf("Received a new event--->: %s\n", jsonResponse->Value().c_str());
     if (userData != nullptr) {
         printf("userData = %s\n", (const char*)userData);
     }
+    jsonResponse.Release();
+
     eventNotTriggeredFromC = false;
 }
 
@@ -334,13 +341,13 @@ uint32_t test_eventregister()
 {
     JsonObject parameters;
 
-    const string eventName = _T("device.onNameChanged");
+    const string eventName = _T("device.Name");
     const char* test = "deviceNameChangeCallbackForC";
     const void* userdata = test;
     uint32_t id = 0;
 
     eventNotTriggeredFromC = true;
-    uint32_t status = FireboltSDK::Properties::Register<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallbackForC, userdata, id);
+    uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallbackForC, userdata, id);
 
     EXPECT_EQ(status, FireboltSDK::Error::None);
     if (status != FireboltSDK::Error::None) {
@@ -349,18 +356,18 @@ uint32_t test_eventregister()
         printf("%s Yes registered successfully\n", __func__);
     }
 
-/*    if (status == FireboltSDK::Error::None) {
+    if (status == FireboltSDK::Error::None) {
         do {
         }  while(eventNotTriggeredFromC);
-    }*/
-    EXPECT_EQ(FireboltSDK::Properties::Unregister(eventName, id), FireboltSDK::Error::None);
+    }
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDK::Error::None);
 
     return status;
 }
 
 uint32_t test_eventregister_by_providing_callback()
 {
-    const string eventName = _T("device.onNameChanged");
+    const string eventName = _T("device.Name");
     const char* test = "deviceNameChangeCallbackForCWithCallbackParam";
     const void* userdata = test;
     uint32_t id = 0;
@@ -375,11 +382,11 @@ uint32_t test_eventregister_by_providing_callback()
         printf("%s Yes registered successfully\n", __func__);
     }
 
-    /*if (status == FireboltSDK::Error::None) {
+    if (status == FireboltSDK::Error::None) {
         do {
         }  while(eventNotTriggeredFromC);
-    }*/
-    EXPECT_EQ(FireboltSDK::Properties::Unregister(eventName, id), FireboltSDK::Error::None);
+    }
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDK::Error::None);
 }
 
 }

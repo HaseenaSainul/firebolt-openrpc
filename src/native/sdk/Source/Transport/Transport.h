@@ -551,7 +551,7 @@ namespace FireboltSDK {
         }
 
         template <typename RESPONSE>
-        uint32_t Register(const string& eventName, const string& parameters, RESPONSE& response)
+        uint32_t Subscribe(const string& eventName, const string& parameters, RESPONSE& response)
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
@@ -569,14 +569,13 @@ namespace FireboltSDK {
             return (FireboltErrorValue(result));
         }
 
-        uint32_t Unregister(const string& eventName, const string& parameters)
+        uint32_t Unsubscribe(const string& eventName, const string& parameters)
         {
             Revoke(eventName);
-	    Entry slot;
+            Entry slot;
             uint32_t id = _channel->Sequence();
             uint32_t result = Send(eventName, parameters, id);
 
-//            ::SleepMs(_waitTime);
             return (FireboltErrorValue(result));
         }
 
@@ -593,15 +592,6 @@ namespace FireboltSDK {
             }
             _adminLock.Unlock();
             return (eventName.empty() != true);
-        }
-
-        inline string EventNameForRegister(const string& eventName)
-        {
-            string eventNameForRegister = eventName;
-            eventNameForRegister.erase(
-                std::remove(eventNameForRegister.begin(), eventNameForRegister.end(), '.'),
-                eventNameForRegister.end());
-            return eventNameForRegister;
         }
         uint64_t Timed()
         {

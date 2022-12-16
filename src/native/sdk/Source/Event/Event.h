@@ -83,7 +83,7 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename CALLBACK>
-        uint32_t Register(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
+        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
         {
             uint32_t status = Error::Unavailable;
             if (_transport != nullptr) {
@@ -92,7 +92,7 @@ namespace FireboltSDK {
                 if (status == Error::None) {
                     const string parameters("{\"listen\":true}");
                     Response response;
-                    status = _transport->Register(eventName, parameters, response);
+                    status = _transport->Subscribe(eventName, parameters, response);
 
                     if (status != Error::None) {
                         Revoke(eventName, id);
@@ -100,7 +100,7 @@ namespace FireboltSDK {
                               (response.Listening.Value() == true)) {
                         status = Error::None;
                     } else {
-                        status = Error::NotRegistered;
+                        status = Error::NotSubscribeed;
                     }
                 }
             }
@@ -108,7 +108,7 @@ namespace FireboltSDK {
             return ((status == Error::InUse) ? Error::None: status);
         }
 
-        uint32_t Unregister(const string& eventName, const uint32_t id)
+        uint32_t Unsubscribe(const string& eventName, const uint32_t id)
         {
             uint32_t status = Revoke(eventName, id); 
 
@@ -117,7 +117,7 @@ namespace FireboltSDK {
  
                     const string parameters("{\"listen\":false}");
 
-                    status = _transport->Unregister(eventName, parameters);
+                    status = _transport->Unsubscribe(eventName, parameters);
                 }
             }
 
@@ -156,12 +156,12 @@ namespace FireboltSDK {
         {
             uint32_t status = Error::None;
             id = Id();
-            std::function<void(const void* userdata, WPEFramework::Core::ProxyType<PARAMETERS> parameters)> actualCallback = callback;
+            std::function<void(const void* userdata, void* parameters)> actualCallback = callback;
             InvokeFunction implementation = [actualCallback](const void* userdata, const string& parameters) -> uint32_t {
 
                 WPEFramework::Core::ProxyType<PARAMETERS> inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
                 inbound->FromString(parameters);
-                actualCallback(userdata, inbound);
+                actualCallback(userdata, static_cast<void*>(&inbound));
                 return (Error::None);
             };
             CallbackData callbackData = {implementation, userdata};
@@ -196,7 +196,7 @@ namespace FireboltSDK {
             return result;
         }
 
-uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
+        uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
         {
             string response = jsonResponse->Result.Value();
             _adminLock.Lock();

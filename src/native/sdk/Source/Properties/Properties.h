@@ -53,14 +53,20 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename CALLBACK>
-        static uint32_t Register(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
+        static uint32_t Subscribe(const string& propertyName, const CALLBACK& callback, const void* userdata, uint32_t& id)
         {
-            return Event::Instance().Register<PARAMETERS, CALLBACK>(eventName, callback, userdata, id);
+            return Event::Instance().Subscribe<PARAMETERS, CALLBACK>(EventName(propertyName), callback, userdata, id);
         }
 
-        static uint32_t Unregister(const string& eventName, const uint32_t id)
+        static uint32_t Unsubscribe(const string& propertyName, const uint32_t id)
         {
-            return Event::Instance().Unregister(eventName, id);
+            return Event::Instance().Unsubscribe(EventName(propertyName), id);
+        }
+
+    private:
+        static inline string EventName(const string& propertyName) {
+            size_t pos = propertyName.find_first_of('.');
+            return string(propertyName.substr(0, pos + 1) + "on" + propertyName.substr(pos + 1) + "Changed");
         }
     };
 }
