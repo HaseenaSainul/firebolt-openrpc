@@ -16,10 +16,8 @@ int main()
     EXECUTE("test_properties_get_device_id", test_properties_get_device_id);
     EXECUTE("test_properties_get_policy", test_properties_get_policy);
     EXECUTE("test_properties_set", test_properties_set);
-
     EXECUTE("test_eventregister", test_eventregister);
     EXECUTE("test_eventregister_by_providing_callback", test_eventregister_by_providing_callback);
-
     test_firebolt_dispose_instance();
 
     printf("TOTAL: %i tests; %i PASSED, %i FAILED\n", TotalTests, TotalTestsPassed, (TotalTests - TotalTestsPassed));

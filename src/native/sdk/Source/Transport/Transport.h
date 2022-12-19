@@ -445,7 +445,7 @@ namespace FireboltSDK {
     class IEventHandler {
     public:
         virtual uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) = 0;
-        virtual uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) = 0;
+        virtual uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) = 0;
     };
 
     template<typename INTERFACE>
@@ -674,7 +674,7 @@ namespace FireboltSDK {
 
                     string eventName;
                     if (IsEvent(inbound->Id.Value(), eventName)) {
-                        _eventHandler->Invoke(eventName, inbound);
+                        _eventHandler->Dispatch(eventName, inbound);
                     }
 
                 }

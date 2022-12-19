@@ -7,7 +7,7 @@ namespace FireboltSDK {
         General = 1,
         Unavailable = 2,
         Timedout = 3,
-        NotSubscribeed = 4,
+        NotSubscribed = 4,
         Unknown = 5,
         InUse = 6,
     } Error;

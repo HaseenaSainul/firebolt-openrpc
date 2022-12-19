@@ -7,11 +7,18 @@ namespace FireboltSDK {
 
     class Event : public IEventHandler {
     public:
-        typedef std::function<uint32_t(const void*, const string& parameters)> InvokeFunction;
+        typedef std::function<uint32_t(const void*, const string& parameters)> DispatchFunction;
     private:
+        enum State : uint8_t {
+            IDLE,
+            EXECUTING,
+            REVOKED
+        };
+
         struct CallbackData {
-            const InvokeFunction lambda;
+            const DispatchFunction lambda;
             const void* userdata;
+            State state;
         };
         using IdMap = std::map<uint32_t, CallbackData>;
         using EventMap = std::map<string, IdMap>;
@@ -100,7 +107,7 @@ namespace FireboltSDK {
                               (response.Listening.Value() == true)) {
                         status = Error::None;
                     } else {
-                        status = Error::NotSubscribeed;
+                        status = Error::NotSubscribed;
                     }
                 }
             }
@@ -137,8 +144,12 @@ namespace FireboltSDK {
             EventMap::iterator eventIndex = _eventMap.find(eventName);
             if (eventIndex != _eventMap.end()) {
                 IdMap::iterator idIndex = eventIndex->second.find(id);
-                if (idIndex != eventIndex->second.end()) {
-                    eventIndex->second.erase(idIndex);
+                if (idIndex->second.state != State::EXECUTING) {
+                    if (idIndex != eventIndex->second.end()) {
+                        eventIndex->second.erase(idIndex);
+                    }
+                } else {
+                    idIndex->second.state = State::REVOKED;
                 }
                 if (eventIndex->second.size() == 0) {
                     _eventMap.erase(eventIndex);
@@ -157,14 +168,14 @@ namespace FireboltSDK {
             uint32_t status = Error::None;
             id = Id();
             std::function<void(const void* userdata, void* parameters)> actualCallback = callback;
-            InvokeFunction implementation = [actualCallback](const void* userdata, const string& parameters) -> uint32_t {
+            DispatchFunction implementation = [actualCallback](const void* userdata, const string& parameters) -> uint32_t {
 
                 WPEFramework::Core::ProxyType<PARAMETERS> inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
                 inbound->FromString(parameters);
                 actualCallback(userdata, static_cast<void*>(&inbound));
                 return (Error::None);
             };
-            CallbackData callbackData = {implementation, userdata};
+            CallbackData callbackData = {implementation, userdata, State::IDLE};
 
             _adminLock.Lock();
             EventMap::iterator eventIndex = _eventMap.find(eventName);
@@ -196,17 +207,33 @@ namespace FireboltSDK {
             return result;
         }
 
-        uint32_t Invoke(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
+        uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
         {
             string response = jsonResponse->Result.Value();
             _adminLock.Lock();
             EventMap::iterator eventIndex = _eventMap.find(eventName);
             if (eventIndex != _eventMap.end()) {
                 IdMap::iterator idIndex = eventIndex->second.begin();
-
                 while(idIndex != eventIndex->second.end()) {
-                     idIndex->second.lambda(idIndex->second.userdata, (jsonResponse->Result.Value()));
-                     idIndex++;
+                    State state;
+                    if (idIndex->second.state != State::REVOKED) {
+                        idIndex->second.state = State::EXECUTING;
+                    }
+                    state = idIndex->second.state;
+                    _adminLock.Unlock();
+                    if (state == State::EXECUTING) {
+                        idIndex->second.lambda(idIndex->second.userdata, (jsonResponse->Result.Value()));
+                    }
+                    _adminLock.Lock();
+                    if (idIndex->second.state == State::REVOKED) {
+                        idIndex = eventIndex->second.erase(idIndex);
+                        if (eventIndex->second.size() == 0) {
+                            _eventMap.erase(eventIndex);
+                        }
+                    } else {
+                        idIndex->second.state = State::IDLE;
+                        idIndex++;
+                    }
                 }
             }
             _adminLock.Unlock();

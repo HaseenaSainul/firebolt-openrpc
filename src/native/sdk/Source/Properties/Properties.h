@@ -62,7 +62,6 @@ namespace FireboltSDK {
         {
             return Event::Instance().Unsubscribe(EventName(propertyName), id);
         }
-
     private:
         static inline string EventName(const string& propertyName) {
             size_t pos = propertyName.find_first_of('.');
