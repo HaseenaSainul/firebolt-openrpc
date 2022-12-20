@@ -30,17 +30,30 @@
 
 import helpers from 'crocks/helpers/index.js'
 const { compose, getPathOr } = helpers
+import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
-const { filter, reduce } = pointfree
+const { chain, filter, reduce, option, map } = pointfree
 import logic from 'crocks/logic/index.js'
 const { not } = logic
+import safe from 'crocks/Maybe/safe.js'
+import predicates from 'crocks/predicates/index.js'
+const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
+import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose, getIncludeGuardClose, getSchemaShape} from '../../../shared/nativehelpers.mjs'
 
-import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose, getIncludeGuardClose, getDefinitions, getSchemaShape} from '../../../shared/nativehelpers.mjs'
-
+// Maybe an array of <key, value> from the schema
+const getDefinitions = compose(
+  option([]),
+  chain(safe(isArray)),
+  map(Object.entries), // Maybe Array<Array<key, value>>
+  chain(safe(isObject)), // Maybe Object
+  getPath(['definitions']) // Maybe any
+)
 
 const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   const code = []
+
+  console.log(Object.keys(schemas))
 
   code.push(getHeaderText())
   code.push(getIncludeGuardOpen(obj))

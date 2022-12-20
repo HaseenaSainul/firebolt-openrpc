@@ -56,13 +56,15 @@ const generateHeaders = ({
   return fsMkDirP(headerDir)
     .tap(_ => logSuccess(`Created folder: ${trimPath(headerDir)}`))
     .flatMap(_ => combinedSchemas
-      .map(schemas => Object.values(schemas))
-      .flatten()
-      .filter(schema => schema.title != 'FireboltOpenRPC')
-      .map(schema =>  ({title : schema.title, contents : generateHeaderForDefinitions(schema, combinedSchemas)}))
-      .map(fileContent => {
-          fsWriteFile(path.join(headerDir, `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(headerDir, `${fileContent.title}.h`)} written`))
-        })
+      .flatMap(schemas => combinedSchemas.observe()
+        .flatMap(schs => Object.values(schs))
+        .flatten()
+        .filter(module => module.title != 'FireboltOpenRPC')
+        .map(schema =>  ({title : schema.title, contents : generateHeaderForDefinitions(schema, schemas)}))
+        .map(fileContent => {
+            fsWriteFile(path.join(headerDir, `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(headerDir, `${fileContent.title}.h`)} written`))
+          })
+      )
       )
 }
 

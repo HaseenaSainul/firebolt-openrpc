@@ -19,18 +19,14 @@
 import helpers from 'crocks/helpers/index.js'
 const { compose, getPathOr } = helpers
 import safe from 'crocks/Maybe/safe.js'
-import find from 'crocks/Maybe/find.js'
-import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map } = pointfree
-import logic from 'crocks/logic/index.js'
-import isEmpty from 'crocks/core/isEmpty.js'
-const { and, not } = logic
-import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getSchema, isNull, localizeDependencies } from './json-schema.mjs'
-import { str } from 'ajv'
-import def from 'ajv/dist/vocabularies/applicator/additionalItems.js'
+import { getPath, getSchema } from './json-schema.mjs'
+import deepmerge from 'deepmerge'
+//import merg from 'deepmerge-json'
+
+
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
@@ -86,15 +82,6 @@ const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
 
-// Maybe an array of <key, value> from the schema
-const getDefinitions = compose(
-  option([]),
-  chain(safe(isArray)),
-  map(Object.entries), // Maybe Array<Array<key, value>>
-  chain(safe(isObject)), // Maybe Object
-  getPath(['definitions']) // Maybe any
-)
-
 const getNativeType = json => {
     let type
 
@@ -143,7 +130,7 @@ const getPropertyAccessors = (objName, propertyName, propertyType,  options = {l
   let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle);` + '\n'
 
   if(!options.readonly) {
-    result += `${Indent.repeat(options.level)}void ${propertyType} ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()});` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()});` + '\n'
   }
 
   if(options.optional === true) {
@@ -160,8 +147,8 @@ const getMapAccessors = (typeName, nativeType,  level=0) => {
 
   res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}Handle handle);` + '\n'
   res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${nativeType} value);` + '\n'
-  res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}Handle handle, char* key;` + '\n'
-  res += `${Indent.repeat(level)}${nativeType} ${typeName}_FindKey(${typeName}Handle handle, char* key;` + '\n'
+  res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}Handle handle, char* key);` + '\n'
+  res += `${Indent.repeat(level)}${nativeType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
 
   return res
 }
@@ -176,7 +163,7 @@ const getTypeName = (moduleName, varName, upperCase = false) => {
 
 const getArrayAccessors = (arrayName, valueType) => {
 
-  let res = `${arrayName}_Size(${arrayName}Handle handle);` + '\n'
+  let res = `uint32_t ${arrayName}_Size(${arrayName}Handle handle);` + '\n'
   res += `${valueType} ${arrayName}_Get(${arrayName}Handle handle, uint32_t index);` + '\n'
   res += `${arrayName}_Add(${arrayName}Handle handle, ${valueType} value);` + '\n'
   res += `${arrayName}_Clear(${arrayName}Handle handle);` + '\n'
@@ -201,7 +188,8 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-function getSchemaType(module, json, name = '', schemas = {}, options = {level: 0, descriptions: true}) {
+//function getSchemaType(module, json, schemas = {}, options = { link: false, title: false, code: false, asPath: false, baseUrl: '' })
+function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true}) {
   if (json.schema) {
     json = json.schema
   }
@@ -216,23 +204,22 @@ function getSchemaType(module, json, name = '', schemas = {}, options = {level: 
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
       //Get Path to ref in this module and getSchemaType
-      res = getSchemaType(module, getPath(json['$ref'], module, schemas), json, schemas, {descriptions: descriptions, level: level+1})
+      const res = getSchemaType(module, getPath(json['$ref'], module, schemas), name, schemas, {descriptions: options.descriptions, level: options.level+1})
       structure.deps = res.deps
       structure.type = res.type
       return structure
     }
     else {
-      // External dependency. Return only type
+      // External dependency.
       // e.g, "https://meta.comcast.com/firebolt/entertainment#/definitions/ProgramType"
 
       //Get the module of this definition
       const schema = getSchema(json['$ref'].split('#')[0], schemas) || module
 
       //Get the schema of the definition
-      const definition = getPath(json['$ref'], schema, schemas)
-      const name = definition.title || json['$ref'].split('/').pop()
-
-      res = getSchemaType(schema, definition, json, schemas, {descriptions: descriptions, level: level+1})
+      const definition = getPath(json['$ref'], module, schemas)
+      let tName = definition.title || json['$ref'].split('/').pop()
+      const res = getSchemaType(schema, definition, tName, schemas, {descriptions: options.descriptions, level: options.level+1})
       //We are only interested in the type definition for external modules
       structure.type = res.type
       return structure
@@ -248,6 +235,7 @@ function getSchemaType(module, json, name = '', schemas = {}, options = {level: 
   }
   else if (json.type === 'string' && json.enum) {
     //Enum
+    console.log(`name - ${name} title - ${json.title}`)
     let typeName = getTypeName(getModuleName(module), name || json.title) 
     structure.deps.add(generateEnum(json, typeName))
     structure.type.push(typeName)
@@ -295,21 +283,25 @@ function getSchemaType(module, json, name = '', schemas = {}, options = {level: 
             "description": "List of audio track languages available on the WayToWatch. The first is considered the primary language. Languages are expressed as ISO 639 1/2 codes."
           }
     */ 
+   let res
     if (Array.isArray(json.items)) {
       //TODO
       const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      let res = getSchemaType(module, json.items[0],schemas)
+      res = getSchemaType(module, json.items[0],schemas)
     }
     else {
       // grab the type for the non-array schema
-      let res = getSchemaType(module, json.items, name, schemas)
+      res = getSchemaType(module, json.items, name, schemas)
     }
     structure.deps = res.deps
     let n = getTypeName(getModuleName(module), name || json.title) 
-    let def = getObjectHandleManagement(n + 'Array')
+    let def
+    if (options.level === 0) {
+      def = getObjectHandleManagement(n + 'Array') + '\n'
+    }
     def += getArrayAccessors(n + 'Array', res.type)
     structure.deps.add(def)
     structure.type.push(n + '_ArrayHandle')
@@ -327,6 +319,9 @@ function getSchemaType(module, json, name = '', schemas = {}, options = {level: 
     //TODO
   }
   else if (json.type === 'object' && json.title) {
+    console.log(`name - ${name}, title - ${json.title}`)
+    structure.deps = getSchemaShape(module, json, schemas, name || json.title,{descriptions: options.descriptions, level: options.level}).deps
+    structure.type = getTypeName(getModuleName(module), name || json.title) + 'Handle'
     return structure
     //TODO
   }
@@ -339,8 +334,7 @@ function getSchemaType(module, json, name = '', schemas = {}, options = {level: 
 
 const isOptional = (prop, json) => (!json.required || !json.required.includes(prop)) 
 
-
-function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name, options = {level: 0, descriptions: true}) {
+function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
     let level = options.level 
     let descriptions = options.descriptions
@@ -349,7 +343,10 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name, options 
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
 
-    console.log(`name - ${name}, schema - ${JSON.stringify(json, null, 4)}`)
+    const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
+
+
+    console.log(`name - ${name}, json - ${JSON.stringify(json, null, 4)}`)
 
     if (json['$ref']) {
       if (json['$ref'][0] === '#') {
@@ -357,8 +354,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name, options 
         //Get Path to ref in this module and getSchemaType
         
         schema = getPath(json['$ref'], module, schemas)
-        const name = schema.title || json['$ref'].split('/').pop()
-        res = getSchemaType(module, getPath(json['$ref'], module, schemas), json, schemas, name, {descriptions: descriptions, level: level+1})
+        const tname = schema.title || json['$ref'].split('/').pop()
+        res = getSchemaShape(module, schema, schemas, tname, {descriptions: descriptions, level: level})
         structure.deps = res.deps
         structure.type = res.type
       }
@@ -381,18 +378,41 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name, options 
     //If the schema is a const, 
     else if (json.hasOwnProperty('const')) { 
       if (level > 0) {
-        typeName = getTypeName(getModuleName(module), name)
+        typeName = getTypeName(getModuleName(moduleJson), name)
         structure.type.push(getPropertyAccessors(typeName, capitalize(name), typeof json.const, {level: level, readonly:true, optional:false}))
       }
     }
     else if (json.type === 'object') {
 
+      //json = localizeDependencies(json, {}, schemas)
+
       if (json.properties) {
         let tName = getTypeName(getModuleName(moduleJson), name)
-        structure.type.push(getObjectHandleManagement(tName) + '\n')
+        structure.type.push(description(name, json.description))
+        structure.type.push(getObjectHandleManagement(tName))
         Object.entries(json.properties).forEach(([pname, prop]) => {
-          const res = getSchemaType(moduleJson, prop, schemas, pname, {descriptions: descriptions, level: level, title: true})
-          structure.type.push(getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)}))
+          structure.type.push(description(pname, prop.description))
+          let res
+          if(prop.type === 'array') {
+            if (Array.isArray(prop.items)) {
+              //TODO
+              const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+              if (!IsHomogenous(prop.items)) {
+                throw 'Heterogenous Arrays not supported yet'
+              }
+              res = getSchemaType(moduleJson, prop.items[0],pname, schemas)
+            }
+            else {
+              // grab the type for the non-array schema
+              res = getSchemaType(moduleJson, prop.items, pname, schemas)
+            }
+            let n = tName + '_' + capitalize(pname || prop.title) 
+            let def = getArrayAccessors(n + 'Array', res.type)
+            structure.type.push(def)
+          } else {
+            res = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
+            structure.type.push(getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)}))
+          }
           structure.deps = new Set([...structure.deps, ...res.deps])
         })
       }
@@ -405,6 +425,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name, options 
         let type = getSchemaType(moduleJson, json.additionalProperties, schemas)
         let tName = getTypeName(getModuleName(moduleJson), name)
         structure.deps = type.deps
+        structure.type.push(description(name, json.description))
         let res = getObjectHandleManagement(tName) + '\n'
         res += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type,{descriptions: descriptions, level: level})
         structure.deps.add(res)
@@ -415,19 +436,27 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name, options 
       }
     }
     else if (json.anyOf) {
-      //return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.anyOf.map(s => getSchemaType(moduleJson, s, schemas, options)).join(' | ')
+     /* let union = json.anyOf.reduce((acc,x) => { 
+          acc =  merge (acc, x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)
+          return acc
+      }, {})
+
+      console.log(`Union - ${JSON.stringify(union, null, 4)}`)
+      process.exit(0)*/
+
     }
     else if (json.oneOf) {
-      //return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.oneOf.map(s => getSchemaType(moduleJson, s, schemas, options)).join(' | ')
+      
+
     }
     else if (json.allOf) {
-      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x), options])
+      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
       if (json.title) {
         union.title = json.title
       }
       delete union['$ref']
-
       return getSchemaShape(moduleJson, union, schemas, name, options)
+
     }
     else if (json.type === 'array') {
       const isArrayWithSchemaForItems = json.type === 'array' && json.items && !Array.isArray(json.items)
@@ -454,7 +483,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name, options 
     getStyleGuardOpen,
     getStyleGuardClose,
     getIncludeGuardClose,
-    getDefinitions,
     getNativeType,
     getSchemaType,
     getSchemaShape
