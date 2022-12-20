@@ -14,9 +14,8 @@ uint32_t test_properties_get_policy();
 uint32_t test_properties_set();
 uint32_t test_eventregister();
 uint32_t test_eventregister_by_providing_callback();
-#if 0
-uint32_t test_eventregister_with_multiple_callback();
-#endif
+uint32_t test_enum_get_value();
+uint32_t test_enum_set_value();
 
 #ifdef __cplusplus
 }

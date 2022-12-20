@@ -2,6 +2,65 @@
 #include <stdint.h>
 #include<stdbool.h>
 
+namespace Firebolt {
+    class EnumType {
+    public:
+        EnumType()
+            : _name()
+            , _value(~0)
+        {
+        }
+        EnumType(int32_t value, string name)
+            : _name(name)
+            , _value(value)
+        {
+        }
+        EnumType(const EnumType& copy)
+            : _name(copy._name)
+            , _value(copy._value)
+        {
+            
+        }
+        inline ~EnumType() = default;
+        EnumType& operator=(const EnumType& RHS)
+        {
+            _value = RHS._value;
+            _name = RHS._name;
+            return (*this);
+        }
+
+    public:
+        bool IsSet()
+        {
+            return (_name.empty() != true);
+        }
+        void Clear()
+        {
+            _name.clear();
+            _value = (~0);
+        }
+        string Data() const
+        {
+            return _name;
+        }
+        void Data(const string& name)
+        {
+            _name = name;
+        }
+        int32_t Value() const
+        {
+            return _value;
+        }
+        void Value(const int32_t value)
+        {
+            _value = value;
+        }
+
+    private:
+        string _name;
+        int32_t _value;
+    };
+}
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,8 +78,8 @@ typedef void* FireboltTypes_Int8Handle;
 void FireboltTypes_Int8Handle_Addref(FireboltTypes_Int8Handle handle);
 void FireboltTypes_Int8Handle_Release(FireboltTypes_Int8Handle handle);
 bool FireboltTypes_Int8Handle_IsValid(FireboltTypes_Int8Handle handle);
-const uint8_t FireboltTypes_Int8(FireboltTypes_Int8Handle handle);
-void FireboltTypes_int8_SetValue(FireboltTypes_Int8Handle handle, const uint8_t value);
+const int8_t FireboltTypes_Int8(FireboltTypes_Int8Handle handle);
+void FireboltTypes_int8_SetValue(FireboltTypes_Int8Handle handle, const int8_t value);
 bool FireboltTypes_Int8_HasValue(FireboltTypes_Int8Handle handle);
 void FireboltTypes_Int38_ClearValue(FireboltTypes_Int8Handle handle);
 
@@ -37,8 +96,8 @@ typedef void* FireboltTypes_Int16Handle;
 void FireboltTypes_Int16Handle_Addref(FireboltTypes_Int16Handle handle);
 void FireboltTypes_Int16Handle_Release(FireboltTypes_Int16Handle handle);
 bool FireboltTypes_Int16Handle_IsValid(FireboltTypes_Int16Handle handle);
-const uint16_t FireboltTypes_Int16(FireboltTypes_Int16Handle handle);
-void FireboltTypes_Int16_SetValue(FireboltTypes_Int16Handle handle, const uint16_t value);
+const int16_t FireboltTypes_Int16(FireboltTypes_Int16Handle handle);
+void FireboltTypes_Int16_SetValue(FireboltTypes_Int16Handle handle, const int16_t value);
 bool FireboltTypes_Int16_HasValue(FireboltTypes_Int16Handle handle);
 void FireboltTypes_Int16_ClearValue(FireboltTypes_Int16Handle handle);
 
@@ -55,8 +114,8 @@ typedef void* FireboltTypes_Int32Handle;
 void FireboltTypes_Int32Handle_Addref(FireboltTypes_Int32Handle handle);
 void FireboltTypes_Int32Handle_Release(FireboltTypes_Int32Handle handle);
 bool FireboltTypes_Int32Handle_IsValid(FireboltTypes_Int32Handle handle);
-const uint32_t FireboltTypes_Int32(FireboltTypes_Int32Handle handle);
-void FireboltTypes_Int32_SetValue(FireboltTypes_Int32Handle handle, const uint32_t value);
+const int32_t FireboltTypes_Int32(FireboltTypes_Int32Handle handle);
+void FireboltTypes_Int32_SetValue(FireboltTypes_Int32Handle handle, const int32_t value);
 bool FireboltTypes_Int32_HasValue(FireboltTypes_Int32Handle handle);
 void FireboltTypes_Int32_ClearValue(FireboltTypes_Int32Handle handle);
 
@@ -65,7 +124,7 @@ void FireboltTypes_Uint64Handle_Addref(FireboltTypes_Uint64Handle handle);
 void FireboltTypes_Uint64Handle_Release(FireboltTypes_Uint64Handle handle);
 bool FireboltTypes_Uint64Handle_IsValid(FireboltTypes_Uint64Handle handle);
 const uint64_t FireboltTypes_Uint64(FireboltTypes_Uint64Handle handle);
-void FireboltTypes_Uint64_SetValue(FireboltTypes_Uint64Handle handle, const uint32_t value);
+void FireboltTypes_Uint64_SetValue(FireboltTypes_Uint64Handle handle, const uint64_t value);
 bool FireboltTypes_Uint64_HasValue(FireboltTypes_Uint64Handle handle);
 void FireboltTypes_Uint64_ClearValue(FireboltTypes_Uint64Handle handle);
 
@@ -73,8 +132,8 @@ typedef void* FireboltTypes_Int64Handle;
 void FireboltTypes_Int64Handle_Addref(FireboltTypes_Int64Handle handle);
 void FireboltTypes_Int64Handle_Release(FireboltTypes_Int64Handle handle);
 bool FireboltTypes_Int64Handle_IsValid(FireboltTypes_Int64Handle handle);
-const uint64_t FireboltTypes_Int64(FireboltTypes_Int64Handle handle);
-void FireboltTypes_Int64_SetValue(FireboltTypes_Int64Handle handle, const uint64_t value);
+const int64_t FireboltTypes_Int64(FireboltTypes_Int64Handle handle);
+void FireboltTypes_Int64_SetValue(FireboltTypes_Int64Handle handle, const int64_t value);
 bool FireboltTypes_Int64_HasValue(FireboltTypes_Int64Handle handle);
 void FireboltTypes_Int64_ClearValue(FireboltTypes_Int64Handle handle);
 
@@ -114,64 +173,14 @@ void FireboltTypes_String_SetValue(FireboltTypes_StringHandle handle, const char
 bool FireboltTypes_String_HasValue(FireboltTypes_StringHandle handle);
 void FireboltTypes_String_ClearValue(FireboltTypes_StringHandle handle);
 
-typedef struct
-{
-    int32_t Value;
-    char*   Name;
-} FireboltTypes_EnumDatum;
-
-char *FireboltTypes_EnumDatum_GetName(FireboltTypes_EnumDatum *datum, const int value)
-{
-   while (datum->Name != NULL)
-   {
-      if (datum->Value == value)
-         return datum->Name;
-      datum++;
-   }
-   return NULL;
-}
-int32_t FireboltTypes_EnumDatum_GetValue(FireboltTypes_EnumDatum *datum, const char* name)
-{
-   while (datum->Name != NULL)
-   {
-      if (strncmp(datum->Name, name, strlen(name)) == 0)
-         return datum->Value;
-      datum++;
-   }
-   return (~0);
-}
-
-/* Sample usage */
-/*
-typedef enum {
-    property = 0, property_readonly = 1, property_immutable = 2, property_cnt
-} PropertyNames;
-
-FireboltTypes_EnumDatum PropertyNames_Datum[] = 
-{
-    { property, "property" },
-    { property_readonly, "property:readonly" },
-    { property_immutable, "property:immutable" },
-    { property_cnt, NULL }
-};
-char *GetPropertyName(PropertyNames value)
-{
-    return FireboltTypes_EnumDatum_GetName(PropertyNames_Datum, value);
-}
-PropertyNames *GetPropertyValue(const char* name)
-{
-    return FireboltTypes_EnumDatum_GetValue(PropertyNames_Datum, name);
-}
-*/
-typedef void* FireboltTypes_EnumDatumHandle;
-void FireboltTypes_EnumDatumHandle_Addref(FireboltTypes_EnumDatumHandle handle);
-void FireboltTypes_EnumDatumHandle_Release(FireboltTypes_EnumDatumHandle handle);
-void FireboltTypes_EnumDatumHandle_IsValid(FireboltTypes_EnumDatumHandle handle);
-const char* FireboltTypes_EnumDatum_Name(FireboltTypes_EnumDatumHandle handle);
-const int32_t FireboltTypes_EnumDatum_Value(FireboltTypes_EnumDatumHandle handle);
-void FireboltTypes_EnumDatumHandle_SetValue(FireboltTypes_EnumDatumHandle handle, FireboltTypes_EnumDatum* datum, const int32_t value);
-bool FireboltTypes_EnumDatumHandle_HasValue(FireboltTypes_EnumDatumHandle handle);
-void FireboltTypes_EnumDatumHandle_ClearValue(FireboltTypes_EnumDatumHandle handle);
+typedef void* FireboltTypes_EnumHandle;
+void FireboltTypes_EnumHandle_Addref(FireboltTypes_EnumHandle handle);
+void FireboltTypes_EnumHandle_Release(FireboltTypes_EnumHandle handle);
+bool FireboltTypes_EnumHandle_IsValid(FireboltTypes_EnumHandle handle);
+const char* FireboltTypes_Enum(FireboltTypes_EnumHandle handle);
+void FireboltTypes_EnumHandle_SetValue(FireboltTypes_EnumHandle handle, const char* value);
+bool FireboltTypes_EnumHandle_HasValue(FireboltTypes_EnumHandle handle);
+void FireboltTypes_EnumHandle_ClearValue(FireboltTypes_EnumHandle handle);
 
 #ifdef __cplusplus
 }

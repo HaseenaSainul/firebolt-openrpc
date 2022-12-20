@@ -3,6 +3,12 @@
 #include "Firebolt.h"
 #include "FireboltSDKTests.h"
 
+enum TestingEnum {
+    Test1,
+    Test2,
+    Test3
+};
+
 namespace WPEFramework {
 
 ENUM_CONVERSION_BEGIN(::JsonValue::type)
@@ -13,6 +19,12 @@ ENUM_CONVERSION_BEGIN(::JsonValue::type)
     { JsonValue::type::STRING, _TXT("string") },
 
 ENUM_CONVERSION_END(::JsonValue::type)
+
+ENUM_CONVERSION_BEGIN(TestingEnum)
+    { TestingEnum::Test1, _TXT("test1") },
+    { TestingEnum::Test2, _TXT("test2") },
+    { TestingEnum::Test3, _TXT("test3") },
+ENUM_CONVERSION_END(TestingEnum);
 
 }
 namespace FireboltSDK {
@@ -259,7 +271,10 @@ namespace FireboltSDK {
     }
 
 }
+
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 uint32_t test_firebolt_create_instance()
 {
@@ -287,8 +302,7 @@ uint32_t test_properties_get_device_id()
     } else {
         printf("\nGet %s status = %d\n", method.c_str(), status);
     }
-
-    return status;
+   return status;
 }
 
 uint32_t test_properties_get_policy()
@@ -389,4 +403,54 @@ uint32_t test_eventregister_by_providing_callback()
     EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDK::Error::None);
 }
 
+uint32_t test_enum_get_value()
+{
+    uint32_t status = FireboltSDK::Error::None;
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>> enumTest = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>>::Create();
+    *enumTest = TestingEnum::Test2;
+    WPEFramework::Core::ProxyType<Firebolt::EnumType> enumType = WPEFramework::Core::ProxyType<Firebolt::EnumType>::Create(enumTest->Value(), enumTest->Data());
+    enumTest.Release();
+    
+    void* handle = static_cast<void*>(&enumType);
+    const char* name = FireboltTypes_Enum(handle);
+    EXPECT_EQ(strncmp(name, enumType->Data().c_str(), enumType->Data().length()), 0);
+    printf("\n ---> type value = %d\n", enumType->Value());
+    printf("\n ---> type name = %s\n", enumType->Data().c_str());
+
+    enumType.Release();
+    return status;
 }
+
+uint32_t test_enum_set_value()
+{
+    uint32_t status = FireboltSDK::Error::None;
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>> enumTest = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>>::Create();
+    *enumTest = TestingEnum::Test2;
+    WPEFramework::Core::ProxyType<Firebolt::EnumType> enumType = WPEFramework::Core::ProxyType<Firebolt::EnumType>::Create(enumTest->Value(), enumTest->Data());
+    printf("\n ---> Firebolt::EnumType name = %s\n", enumType->Data().c_str());
+    printf("\n ---> TestingEnum name = %s\n", enumTest->Data());
+    void* handle = static_cast<void*>(&enumType);
+    const char* name = FireboltTypes_Enum(handle);
+    printf("\n ---> Firebolt::EnumType FireboltTypes_Enum = %s\n", name);
+    EXPECT_EQ(strncmp(name, enumType->Data().c_str(), strlen(name)), 0);
+    enumTest.Release();
+    
+    *enumTest = TestingEnum::Test2;
+    FireboltTypes_EnumHandle_SetValue(handle, enumTest->Data());
+    name = FireboltTypes_Enum(handle);
+    EXPECT_EQ(strncmp(name, enumType->Data().c_str(), enumType->Data().length()), 0);
+    printf("\n ---> Firebolt::EnumType value = %d\n", enumType->Value());
+    printf("\n ---> Firebolt::EnumType name = %s\n", enumType->Data().c_str());
+
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>> enumTestFromFirebolt = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>>::Create();
+    *enumTestFromFirebolt = WPEFramework::Core::EnumerateType<TestingEnum>(name).Value();
+    printf("\n ---> TestingEnum name = %s\n", enumTestFromFirebolt->Data());
+    EXPECT_EQ(strncmp(name, enumTestFromFirebolt->Data(), strlen(name)), 0);
+    enumTestFromFirebolt.Release();
+    enumType.Release();
+    return status;
+}
+
+#ifdef __cplusplus
+}
+#endif

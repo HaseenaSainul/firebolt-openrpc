@@ -6,10 +6,11 @@ set(TARGET ${PROJECT_NAME})
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 add_library(${TARGET} SHARED
+    Types.cpp
+    Module.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp
-    Event/Event.cpp
-    Module.cpp)
+    Event/Event.cpp)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
