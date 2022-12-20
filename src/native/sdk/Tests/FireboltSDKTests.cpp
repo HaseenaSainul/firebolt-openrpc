@@ -1,7 +1,7 @@
 
 #include "Module.h"
+#include "Firebolt.h"
 #include "FireboltSDKTests.h"
-#include "SDKHeaders.h"
 
 namespace WPEFramework {
 

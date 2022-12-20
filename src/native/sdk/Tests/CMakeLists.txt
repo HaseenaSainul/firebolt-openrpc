@@ -20,7 +20,7 @@ target_link_libraries(${TARGET}
 
 target_include_directories(${TARGET}
     PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../Source>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Source>
 )
 
 set_target_properties(${TARGET} PROPERTIES
