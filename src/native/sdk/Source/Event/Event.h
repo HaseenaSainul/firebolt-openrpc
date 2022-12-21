@@ -52,7 +52,6 @@ namespace FireboltSDK {
             , _transport(nullptr)
         {
             ASSERT(_singleton == nullptr);
-            _singleton = this;
         }
 
         virtual ~Event() {

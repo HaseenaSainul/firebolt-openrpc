@@ -7,24 +7,20 @@ namespace Firebolt {
     public:
         EnumType()
             : _name()
-            , _value(~0)
         {
         }
-        EnumType(int32_t value, string name)
+        EnumType(const string& name)
             : _name(name)
-            , _value(value)
         {
         }
         EnumType(const EnumType& copy)
             : _name(copy._name)
-            , _value(copy._value)
         {
             
         }
         inline ~EnumType() = default;
         EnumType& operator=(const EnumType& RHS)
         {
-            _value = RHS._value;
             _name = RHS._name;
             return (*this);
         }
@@ -37,9 +33,8 @@ namespace Firebolt {
         void Clear()
         {
             _name.clear();
-            _value = (~0);
         }
-        string Data() const
+        const string& Data() const
         {
             return _name;
         }
@@ -47,18 +42,9 @@ namespace Firebolt {
         {
             _name = name;
         }
-        int32_t Value() const
-        {
-            return _value;
-        }
-        void Value(const int32_t value)
-        {
-            _value = value;
-        }
 
     private:
         string _name;
-        int32_t _value;
     };
 }
 #ifdef __cplusplus
