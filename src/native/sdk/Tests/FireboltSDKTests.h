@@ -36,6 +36,32 @@ namespace FireboltSDK {
     };
 
     class Tests {
+    public:
+        class EventControl {
+        public:
+            EventControl()
+               : _event(false, true)
+            {
+            }
+            ~EventControl() = default;
+
+        public:
+            void NotifyEvent()
+            {
+                _event.SetEvent();
+            }
+            uint32_t WaitForEvent(uint32_t waitTime)
+            {
+                return _event.Lock(waitTime);
+            }
+            void ResetEvent()
+            {
+                _event.ResetEvent();
+            }
+        private:
+            WPEFramework::Core::Event _event;
+        };
+
     private:
         typedef std::unordered_map<std::string, Func> TestFunctionMap;
 
@@ -62,6 +88,7 @@ namespace FireboltSDK {
 
         template <typename CALLBACK>
         static uint32_t SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* userdata, uint32_t& id);
+
     private:
         static void PrintJsonObject(const JsonObject::Iterator& iterator);
 

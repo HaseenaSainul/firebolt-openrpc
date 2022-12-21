@@ -40,54 +40,19 @@ namespace FireboltSDK {
                 Add(_T("listening"), &Listening);
             }
             ~Response() override = default;
+
         public:
             WPEFramework::Core::JSON::Boolean Listening;
         };
 
     public:
-        Event()
-            : _id(0)
-            , _eventMap()
-            , _adminLock()
-            , _transport(nullptr)
-        {
-            ASSERT(_singleton == nullptr);
-        }
-
-        virtual ~Event() {
-            _transport->SetEventHandler(nullptr);
-            _transport = nullptr;
-
-            ASSERT(_singleton!=nullptr);
-            _singleton = nullptr;
-        }
+        Event();
+        ~Event() override;
+        static Event& Instance();
+        static void Dispose();
+        void Configure(Transport<WPEFramework::Core::JSON::IElement>* transport);
 
     public:
-        static Event& Instance()
-        {
-            if (_singleton == nullptr) {
-                _singleton = new Event;
-            }
-            ASSERT(_singleton != nullptr);
-            return *_singleton;
-        }
-
-        static void Dispose()
-        {
-            ASSERT(_singleton != nullptr);
-
-            if (_singleton != nullptr) {
-                delete _singleton;
-                _singleton = nullptr;
-            }
-        }
-
-        void Configure(Transport<WPEFramework::Core::JSON::IElement>* transport)
-        {
-            _transport = transport;
-            _transport->SetEventHandler(this);
-        }
-
         template <typename PARAMETERS, typename CALLBACK>
         uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
         {
@@ -114,53 +79,9 @@ namespace FireboltSDK {
             return ((status == Error::InUse) ? Error::None: status);
         }
 
-        uint32_t Unsubscribe(const string& eventName, const uint32_t id)
-        {
-            uint32_t status = Revoke(eventName, id); 
-
-            if (status == Error::None) {
-                if (_transport != nullptr) {
- 
-                    const string parameters("{\"listen\":false}");
-
-                    status = _transport->Unsubscribe(eventName, parameters);
-                }
-            }
-
-            return ((status == Error::InUse) ? Error::None: status);
-        }
+        uint32_t Unsubscribe(const string& eventName, const uint32_t id);
 
     private:
-        uint32_t Id() const
-        {
-            return (++_id);
-        }
-
-        uint32_t Revoke(const string& eventName, const uint32_t id)
-        {
-            uint32_t status = Error::None;
-            _adminLock.Lock();
-            EventMap::iterator eventIndex = _eventMap.find(eventName);
-            if (eventIndex != _eventMap.end()) {
-                IdMap::iterator idIndex = eventIndex->second.find(id);
-                if (idIndex->second.state != State::EXECUTING) {
-                    if (idIndex != eventIndex->second.end()) {
-                        eventIndex->second.erase(idIndex);
-                    }
-                } else {
-                    idIndex->second.state = State::REVOKED;
-                }
-                if (eventIndex->second.size() == 0) {
-                    _eventMap.erase(eventIndex);
-                } else {
-                    status = Error::InUse;
-                }
-            }
-            _adminLock.Unlock();
-
-            return status;
-        }
-
         template <typename PARAMETERS, typename CALLBACK>
         uint32_t Assign(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
         {
@@ -193,54 +114,16 @@ namespace FireboltSDK {
             _adminLock.Unlock();
             return status;
         }
+        uint32_t Revoke(const string& eventName, const uint32_t id);
 
-        uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override
+    private:
+        uint32_t Id() const
         {
-            uint32_t result = Error::General;
-            Response response;
-            _transport->FromMessage((WPEFramework::Core::JSON::IElement*)&response, *jsonResponse);
-            if (response.Listening.IsSet() == true) {
-                result = Error::None;
-                enabled = response.Listening.Value();
-            }
-            return result;
+            return (++_id);
         }
-
-        uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse)
-        {
-            string response = jsonResponse->Result.Value();
-            _adminLock.Lock();
-            EventMap::iterator eventIndex = _eventMap.find(eventName);
-            if (eventIndex != _eventMap.end()) {
-                IdMap::iterator idIndex = eventIndex->second.begin();
-                while(idIndex != eventIndex->second.end()) {
-                    State state;
-                    if (idIndex->second.state != State::REVOKED) {
-                        idIndex->second.state = State::EXECUTING;
-                    }
-                    state = idIndex->second.state;
-                    _adminLock.Unlock();
-                    if (state == State::EXECUTING) {
-                        idIndex->second.lambda(idIndex->second.userdata, (jsonResponse->Result.Value()));
-                    }
-                    _adminLock.Lock();
-                    if (idIndex->second.state == State::REVOKED) {
-                        idIndex = eventIndex->second.erase(idIndex);
-                        if (eventIndex->second.size() == 0) {
-                            _eventMap.erase(eventIndex);
-                        }
-                    } else {
-                        idIndex->second.state = State::IDLE;
-                        idIndex++;
-                    }
-                }
-            }
-            _adminLock.Unlock();
-
-            return Error::None;;
-        }
-
-
+        uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override;
+        uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) override;
+ 
     private:
         mutable std::atomic<uint32_t> _id;
         EventMap _eventMap;

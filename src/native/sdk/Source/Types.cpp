@@ -5,6 +5,12 @@
 extern "C" {
 #endif
 
+// Unsigned Integer8 Type Handler Interfaces
+FireboltTypes_Uint8Handle FireboltTypes_Uint8Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt8> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt8>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Uint8Handle_Addref(FireboltTypes_Uint8Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt8>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt8>*>(handle));
@@ -29,7 +35,6 @@ void FireboltTypes_Uint8_SetValue(FireboltTypes_Uint8Handle handle, const uint8_
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt8>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt8>*>(handle));
     *type = value;
-
 }
 bool FireboltTypes_Uint8_HasValue(FireboltTypes_Uint8Handle handle)
 {
@@ -42,6 +47,12 @@ void FireboltTypes_Uint8_ClearValue(FireboltTypes_Uint8Handle handle)
     type->Clear();
 }
 
+// Signed Integer8 Type Handler Interfaces
+FireboltTypes_Int8Handle FireboltTypes_Int8Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Int8Handle_Addref(FireboltTypes_Int8Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8>*>(handle));
@@ -72,12 +83,18 @@ bool FireboltTypes_Int8_HasValue(FireboltTypes_Int8Handle handle)
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8>*>(handle));
     return (type->IsSet());
 }
-void FireboltTypes_Int38_ClearValue(FireboltTypes_Int8Handle handle)
+void FireboltTypes_Int8_ClearValue(FireboltTypes_Int8Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt8>*>(handle));
     type->Clear();
 }
 
+// Unsigned Integer16 Type Handler Interfaces
+FireboltTypes_Uint16Handle FireboltTypes_Uint16Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt16> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt16>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Uint16Handle_Addref(FireboltTypes_Uint16Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt16>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt16>*>(handle));
@@ -114,6 +131,12 @@ void FireboltTypes_Uint16_ClearValue(FireboltTypes_Uint16Handle handle)
     type->Clear();
 }
 
+// Signed Integer16 Type Handler Interfaces
+FireboltTypes_Int16Handle FireboltTypes_Int16Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt16> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt16>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Int16Handle_Addref(FireboltTypes_Int16Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt16>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt16>*>(handle));
@@ -150,6 +173,12 @@ void FireboltTypes_Int16_ClearValue(FireboltTypes_Int16Handle handle)
     type->Clear();
 }
 
+// Unsigned Integer32 Type Handler Interfaces
+FireboltTypes_Uint32Handle FireboltTypes_Uint32Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt32> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt32>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Uint32Handle_Addref(FireboltTypes_Uint32Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt32>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt32>*>(handle));
@@ -186,6 +215,12 @@ void FireboltTypes_Uint32_ClearValue(FireboltTypes_Uint32Handle handle)
     type->Clear();
 }
 
+// Signed Integer32 Type Handler Interfaces
+FireboltTypes_Int32Handle FireboltTypes_Int32Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt32> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt32>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Int32Handle_Addref(FireboltTypes_Int32Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt32>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt32>*>(handle));
@@ -222,6 +257,12 @@ void FireboltTypes_Int32_ClearValue(FireboltTypes_Int32Handle handle)
     type->Clear();
 }
 
+// Unsigned Integer64 Type Handler Interfaces
+FireboltTypes_Uint64Handle FireboltTypes_Uint64Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt64> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt64>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Uint64Handle_Addref(FireboltTypes_Uint64Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt64>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecUInt64>*>(handle));
@@ -258,6 +299,12 @@ void FireboltTypes_Uint64_ClearValue(FireboltTypes_Uint64Handle handle)
     type->Clear();
 }
 
+// Signed Integer64 Type Handler Interfaces
+FireboltTypes_Int64Handle FireboltTypes_Int64Handle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt64> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt64>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_Int64Handle_Addref(FireboltTypes_Int64Handle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt64>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::DecSInt64>*>(handle));
@@ -294,6 +341,12 @@ void FireboltTypes_Int64_ClearValue(FireboltTypes_Int64Handle handle)
     type->Clear();
 }
 
+// Float Type Handler Interfaces
+FireboltTypes_FloatHandle FireboltTypes_FloatHandle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Float> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Float>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_FloatHandle_Addref(FireboltTypes_FloatHandle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Float>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Float>*>(handle));
@@ -330,6 +383,12 @@ void FireboltTypes_Float_ClearValue(FireboltTypes_FloatHandle handle)
     type->Clear();
 }
 
+// Double Type Handler Interfaces
+FireboltTypes_DoubleHandle FireboltTypes_DoubleHandle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Float> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Float>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_DoubleHandle_Addref(FireboltTypes_DoubleHandle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Double>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Double>*>(handle));
@@ -366,6 +425,12 @@ void FireboltTypes_Double_ClearValue(FireboltTypes_DoubleHandle handle)
     type->Clear();
 }
 
+// Boolean Type Handler Interfaces
+FireboltTypes_BoolHandle FireboltTypes_BoolHandle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Boolean> type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Boolean>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_BoolHandle_Addref(FireboltTypes_BoolHandle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Boolean>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::Boolean>*>(handle));
@@ -402,6 +467,13 @@ void FireboltTypes_Bool_ClearValue(FireboltTypes_BoolHandle handle)
     type->Clear();
 }
 
+// String Type Handler Interfaces
+FireboltTypes_StringHandle FireboltTypes_StringHandle_Create(void)
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>* type = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>();
+    *type = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>::Create();
+    return (static_cast<void*>(type));
+}
 void FireboltTypes_StringHandle_Addref(FireboltTypes_StringHandle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(handle));
@@ -420,7 +492,9 @@ bool FireboltTypes_StringHandle_IsValid(FireboltTypes_StringHandle handle)
 const char* FireboltTypes_String(FireboltTypes_StringHandle handle)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& type = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(handle));
-    return (type->Value().c_str());
+    char* value = static_cast<char*>(::malloc(type->Value().length()));
+    strncpy(value, type->Value().c_str(), type->Value().length());
+    return (value);
 }
 void FireboltTypes_String_SetValue(FireboltTypes_StringHandle handle, const char* value)
 {
@@ -438,6 +512,12 @@ void FireboltTypes_String_ClearValue(FireboltTypes_StringHandle handle)
     type->Clear();
 }
 
+// Enum Type Handler Interfaces
+FireboltTypes_EnumHandle FireboltTypes_EnumHandle_Create(void)
+{
+    WPEFramework::Core::ProxyType<Firebolt::EnumType> type = WPEFramework::Core::ProxyType<Firebolt::EnumType>::Create();
+    return (static_cast<void*>(&type));
+}
 void FireboltTypes_EnumHandle_Addref(FireboltTypes_EnumHandle handle)
 {
     WPEFramework::Core::ProxyType<Firebolt::EnumType>& type = *(static_cast<WPEFramework::Core::ProxyType<Firebolt::EnumType>*>(handle));

@@ -221,8 +221,7 @@ namespace FireboltSDK {
         public:
             static FactoryImpl& Instance()
             {
-                static FactoryImpl& _singleton = WPEFramework::Core::SingletonType<FactoryImpl>::Instance();
-                return (_singleton);
+                return (WPEFramework::Core::SingletonType<FactoryImpl>::Instance());
             }
 
             ~FactoryImpl()
@@ -260,11 +259,10 @@ namespace FireboltSDK {
                   , _parent(*parent)
             {
             }
-
             ~ChannelImpl() override = default;
 
         public:
-            virtual void Received(WPEFramework::Core::ProxyType<INTERFACE>& response) override
+            void Received(WPEFramework::Core::ProxyType<INTERFACE>& response) override
             {
                 WPEFramework::Core::ProxyType<MESSAGETYPE> inbound(response);
 
@@ -273,7 +271,7 @@ namespace FireboltSDK {
                     _parent.Inbound(inbound);
                 }
             }
-            virtual void Send(WPEFramework::Core::ProxyType<INTERFACE>& msg) override
+            void Send(WPEFramework::Core::ProxyType<INTERFACE>& msg) override
             {
 #ifdef __DEBUG__
                 string message;
@@ -281,11 +279,11 @@ namespace FireboltSDK {
                 TRACE_L1("Message: %s send", message.c_str());
 #endif
             }
-            virtual void StateChange() override
+            void StateChange() override
             {
                 _parent.StateChange();
             }
-            virtual bool IsIdle() const
+            bool IsIdle() const override
             {
                 return (true);
             }
@@ -326,7 +324,7 @@ namespace FireboltSDK {
         }
 
     public:
-        virtual ~CommunicationChannel() = default;
+        ~CommunicationChannel() = default;
         static WPEFramework::Core::ProxyType<CommunicationChannel> Instance(const WPEFramework::Core::NodeId& remoteNode, const string& path, const string& query, const bool mask = true)
         {
             static WPEFramework::Core::ProxyMapType<string, CommunicationChannel> channelMap;
@@ -446,6 +444,7 @@ namespace FireboltSDK {
     public:
         virtual uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) = 0;
         virtual uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) = 0;
+        virtual ~IEventHandler() = default;
     };
 
     template<typename INTERFACE>

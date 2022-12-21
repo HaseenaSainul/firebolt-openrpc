@@ -9,6 +9,7 @@ namespace FireboltSDK {
         , _workerPool()
         , _transport(nullptr)
     {
+        _singleton = this;
         Config config;
         LoadConfigs(config);
         printf("%s:%s:%d URL = %s \n", __FILE__, __func__, __LINE__, config.Url.Value().c_str());
@@ -26,6 +27,7 @@ namespace FireboltSDK {
         DestroyEventHandler();
         WPEFramework::Core::IWorkerPool::Assign(nullptr);
         _workerPool->Stop();
+        _singleton = nullptr;
     }
 
     void Accessor::LoadConfigs(Config& config)

@@ -23,11 +23,9 @@ namespace FireboltSDK {
 
         static Accessor& Instance()
         {
-            if (_singleton == nullptr) {
-                _singleton = new Accessor;
-            }
-            ASSERT(_singleton != nullptr);
-            return *_singleton;
+            static Accessor *instance = new Accessor();
+            ASSERT(instance != nullptr);
+            return *instance;
         }
 
         static void Dispose()
@@ -36,9 +34,9 @@ namespace FireboltSDK {
 
             if (_singleton != nullptr) {
                 delete _singleton;
-                _singleton = nullptr;
             }
         }
+
         uint32_t CreateEventHandler();
         uint32_t DestroyEventHandler();
         Event& GetEventManager();
