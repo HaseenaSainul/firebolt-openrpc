@@ -25,8 +25,8 @@
     "thunder:setup": "cd thunder && sh scripts/setup.sh && cd -",
     "native:configure": "cmake-js reconfigure --directory src/native/sdk --CDTHUNDER_INSTALL_PATH=${SYSROOT_INSTALL_PATH} --CDCMAKE_PREFIX_PATH=${SYSROOT_INSTALL_PATH}/usr/lib/cmake --CDCMAKE_INSTALL_PREFIX=${SYSROOT_INSTALL_PATH}/usr --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
     "native:compile": "cmake-js build --directory src/native/sdk",
-    "native:install": "NODE_INSTALL_PATH=firebolt NATIVE_LIB_NAME=FireboltSDK NATIVE_LIB_VERSION=1.0.0 node src/native/sdk/scripts/install.js",
-    "native:setup": "npm run native:configure && npm run native:compile && npm run native:install"
+    "native:setup": "npm run native:configure && npm run native:compile",
+    "native:install": "NODE_INSTALL_PATH=${SYSROOT_INSTALL_PATH} TARGET_NAME=FireboltSDK node src/native/sdk/Scripts/install.js"
   },
   "repository": {
     "type": "git",
@@ -45,7 +45,6 @@
     "@semantic-release/npm": "^9.0.1",
     "husky": "^8.0.1",
     "jest": "^27.3.1",
-    "mkdirp": "^1.0.4",
     "semantic-release": "^19.0.5"
   },
   "keywords": [

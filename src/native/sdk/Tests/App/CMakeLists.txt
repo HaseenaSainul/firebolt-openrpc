@@ -23,3 +23,13 @@ target_include_directories(${TARGET}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../>
 )
+
+add_custom_command(
+    TARGET ${TARGET}
+    POST_BUILD
+    COMMENT "=================== Installing TestApp ======================"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/FireboltSDK/usr/bin
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${CMAKE_BINARY_DIR}/FireboltSDK/usr/bin
+)
+
+
