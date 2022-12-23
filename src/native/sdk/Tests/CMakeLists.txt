@@ -15,7 +15,7 @@ add_library(${TARGET} STATIC FireboltSDKTests.cpp)
 target_link_libraries(${TARGET}
     PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
-        FireboltSDK
+        ${FIREBOLT_NAMESPACE}SDK
 )
 
 target_include_directories(${TARGET}
@@ -29,5 +29,41 @@ set_target_properties(${TARGET} PROPERTIES
     LINK_WHAT_YOU_USE TRUE
     FRAMEWORK FALSE
 )
+
+install(
+    TARGETS ${TARGET} EXPORT ${TARGET}Targets
+    LIBRARY DESTINATION lib COMPONENT libs
+     PUBLIC_HEADER DESTINATION include/${FIREBOLT_NAMESPACE} COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE} # headers
+)
+
+InstallCMakeConfig(TARGETS ${TARGET})
+
+add_custom_command(
+    TARGET ${TARGET}
+    POST_BUILD
+    COMMENT "=================== Installing Headers ======================"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltSDK
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltSDK
+)
+
+add_custom_command(
+    TARGET ${TARGET}
+    POST_BUILD
+    COMMENT "=================== Installing CMakeConfigs ======================"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}Config*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/Export/lib/cmake/${TARGET}/${TARGET}Targets*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/pkgconfig
+)
+
+add_custom_command(
+    TARGET ${TARGET}
+    POST_BUILD
+    COMMENT "=================== Installing Libraries ======================"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/lib${FIREBOLT_NAMESPACE}SDKTests.a ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib
+)
+
 
 add_subdirectory(App)

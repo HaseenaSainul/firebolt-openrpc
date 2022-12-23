@@ -18,8 +18,6 @@ int main()
     EXECUTE("test_properties_set", test_properties_set);
     EXECUTE("test_eventregister_by_providing_callback", test_eventregister_by_providing_callback);
     EXECUTE("test_eventregister", test_eventregister);
-    EXECUTE("test_enum_get_value", test_enum_get_value);
-    EXECUTE("test_enum_set_value", test_enum_set_value);
     EXECUTE("test_string_set_get_value", test_string_set_get_value);
 
     test_firebolt_dispose_instance();

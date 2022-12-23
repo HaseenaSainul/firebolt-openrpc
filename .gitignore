@@ -8,3 +8,4 @@ src/native/sdk/build
 firebolt
 thunder/build/
 thunder/src/
+package-lock.json

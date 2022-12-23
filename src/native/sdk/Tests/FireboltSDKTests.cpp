@@ -212,12 +212,12 @@ namespace FireboltSDK {
 
     /* static */ uint32_t Tests::SubscribeEventWithMultipleCallback()
     {
-        FireboltSDK::Tests::EventControl* eventControl = new FireboltSDK::Tests::EventControl();
+        FireboltSDK::Tests::EventControl* eventControl1 = new FireboltSDK::Tests::EventControl();
         const string eventName = _T("device.Name");
-        const void* userdata = static_cast<void*>(eventControl);
+        const void* userdata = static_cast<void*>(eventControl1);
         uint32_t id1 = 0, id2 = 0;
 
-        eventControl->ResetEvent();
+        eventControl1->ResetEvent();
         uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id1);
 
         EXPECT_EQ(status, Error::None);
@@ -225,23 +225,28 @@ namespace FireboltSDK {
             printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
         } else {
             printf("%s Yes registered successfully\n", __func__);
-            eventControl->WaitForEvent(WPEFramework::Core::infinite);
         }
 
-        status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, userdata, id2);
+	if (status == Error::None) {
+            FireboltSDK::Tests::EventControl* eventControl2 = new FireboltSDK::Tests::EventControl();
+            userdata = static_cast<void*>(eventControl2);
 
-        EXPECT_EQ(status, Error::None);
-        if (status != Error::None) {
-            printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
-        } else {
-            printf("%s Yes registered second callback also successfully\n", __func__);
-            eventControl->WaitForEvent(WPEFramework::Core::infinite);
+            status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, userdata, id2);
+
+            EXPECT_EQ(status, Error::None);
+            if (status != Error::None) {
+                printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
+            } else {
+                printf("%s Yes registered second callback also successfully\n", __func__);
+                eventControl1->WaitForEvent(WPEFramework::Core::infinite);
+                eventControl2->WaitForEvent(WPEFramework::Core::infinite);
+            }
+            EXPECT_EQ(Properties::Unsubscribe(eventName, id1), Error::None);
+            delete eventControl2;
         }
-
-        EXPECT_EQ(Properties::Unsubscribe(eventName, id1), Error::None);
         EXPECT_EQ(Properties::Unsubscribe(eventName, id2), Error::None);
 
-        delete eventControl;
+        delete eventControl1;
         return status;
     }
 
@@ -386,83 +391,20 @@ uint32_t test_eventregister_by_providing_callback()
     EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDK::Error::None);
 }
 
-uint32_t test_enum_get_value()
-{
-    uint32_t status = FireboltSDK::Error::None;
-    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>> enumTest = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>>::Create();
-    *enumTest = TestingEnum::Test2;
-    WPEFramework::Core::ProxyType<Firebolt::EnumType> enumType = WPEFramework::Core::ProxyType<Firebolt::EnumType>::Create(enumTest->Data());
-    enumTest.Release();
-    
-    void* handle = static_cast<void*>(&enumType);
-    const char* name = FireboltTypes_Enum(handle);
-    EXPECT_EQ(strncmp(name, enumType->Data().c_str(), enumType->Data().length()), 0);
-    printf("\n ---> type name = %s\n", enumType->Data().c_str());
-
-    enumType.Release();
-    return status;
-}
-
-uint32_t test_enum_set_value()
-{
-    uint32_t status = FireboltSDK::Error::None;
-    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>> enumTest = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>>::Create();
-    *enumTest = TestingEnum::Test3;
-    WPEFramework::Core::ProxyType<Firebolt::EnumType> enumType = WPEFramework::Core::ProxyType<Firebolt::EnumType>::Create(enumTest->Data());
-    void* handle = static_cast<void*>(&enumType);
-    const char* name = FireboltTypes_Enum(handle);
-    printf("\n ---> TestingEnum Name = %s\n", enumTest->Data());
-    printf("\n ---> FireboltTypes_Enum = %s \n", name);
-    printf("\n ---> Firebolt::EnumType name = %s\n", enumType->Data().c_str());
-
-    EXPECT_EQ(strncmp(name, enumType->Data().c_str(), enumType->Data().length()), 0);
-
-    *enumTest = TestingEnum::Test2;
-    FireboltTypes_EnumHandle_SetValue(handle, enumTest->Data());
-    enumTest.Release();
-
-    name = FireboltTypes_Enum(handle);
-    EXPECT_EQ(strncmp(name, enumType->Data().c_str(), enumType->Data().length()), 0);
-    printf("\n ---> Firebolt::EnumType name = %s\n", enumType->Data().c_str());
-
-    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>> enumTestFromFirebolt = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::EnumType<TestingEnum>>::Create();
-    *enumTestFromFirebolt = WPEFramework::Core::EnumerateType<TestingEnum>(name).Value();
-    printf("\n ---> TestingEnum Name = %s\n", enumTestFromFirebolt->Data());
-    printf("\n ---> TestingEnum Value = %d\n", enumTestFromFirebolt->Value());
-    EXPECT_EQ(strncmp(name, enumTestFromFirebolt->Data(), strlen(name)), 0);
-
-    enumTestFromFirebolt.Release();
-    enumType.Release();
-
-    return status;
-}
-
 uint32_t test_string_set_get_value()
 {
     uint32_t status = FireboltSDK::Error::None;
-    FireboltTypes_StringHandle handle = FireboltTypes_StringHandle_Create();
-    printf("%s:%s:%d handle = %p\n", __FILE__, __func__, __LINE__, handle);
-    FireboltTypes_StringHandle_Addref(handle);
+    FireboltSDK::String* str = new FireboltSDK::String("testString");
+    void* handle = static_cast<void*>(str);
 
-    const char* testString = "NewStringToJsonStringTesting";
-    EXPECT_EQ(FireboltTypes_StringHandle_IsValid(handle), true);
-    EXPECT_EQ(FireboltTypes_String_HasValue(handle), false);
-
-    FireboltTypes_String_SetValue(handle, testString);
-    EXPECT_EQ(FireboltTypes_StringHandle_IsValid(handle), true);
-    EXPECT_EQ(FireboltTypes_String_HasValue(handle), true);
     const char* value = FireboltTypes_String(handle);
-    EXPECT_EQ(strncmp(value,testString, strlen(testString)), 0);
-    printf("\n ---> type name = %s %s\n", testString, value);
-
-    FireboltTypes_String_ClearValue(handle);
-    EXPECT_EQ(FireboltTypes_StringHandle_IsValid(handle), true);
-    EXPECT_EQ(FireboltTypes_String_HasValue(handle), false);
+    EXPECT_EQ(strncmp(value, str->Value().c_str(), str->Value().length()), 0);
+    printf("\n ---> type name = %s %s\n", str->Value().c_str(), value);
 
     FireboltTypes_StringHandle_Release(handle);
-    EXPECT_EQ(FireboltTypes_StringHandle_IsValid(handle), false);
     return status;
 }
+
 #ifdef __cplusplus
 }
 #endif

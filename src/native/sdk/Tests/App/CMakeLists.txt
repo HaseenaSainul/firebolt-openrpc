@@ -15,7 +15,7 @@ target_link_libraries(${TARGET}
        FireboltSDKTests
     PUBLIC
        ${NAMESPACE}Core::${NAMESPACE}Core
-       FireboltSDK
+       ${FIREBOLT_NAMESPACE}SDK
 )
 
 target_include_directories(${TARGET}
@@ -28,8 +28,7 @@ add_custom_command(
     TARGET ${TARGET}
     POST_BUILD
     COMMENT "=================== Installing TestApp ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/FireboltSDK/usr/bin
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${CMAKE_BINARY_DIR}/FireboltSDK/usr/bin
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/bin
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/bin
 )
-
 

@@ -15,8 +15,6 @@ uint32_t test_properties_get_policy();
 uint32_t test_properties_set();
 uint32_t test_eventregister();
 uint32_t test_eventregister_by_providing_callback();
-uint32_t test_enum_get_value();
-uint32_t test_enum_set_value();
 uint32_t test_string_set_get_value();
 
 #ifdef __cplusplus

@@ -23,10 +23,10 @@
     "thunder:clean": "cd thunder && sh scripts/clean.sh && cd -",
     "thunder:prepare": "npm run thunder:clean && cd thunder && sh scripts/prepare.sh && cd -",
     "thunder:setup": "cd thunder && sh scripts/setup.sh && cd -",
-    "native:configure": "cmake-js reconfigure --directory src/native/sdk --CDTHUNDER_INSTALL_PATH=${SYSROOT_INSTALL_PATH} --CDCMAKE_PREFIX_PATH=${SYSROOT_INSTALL_PATH}/usr/lib/cmake --CDCMAKE_INSTALL_PREFIX=${SYSROOT_INSTALL_PATH}/usr --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
+    "native:configure": "cmake-js reconfigure --directory src/native/sdk --CDSYSROOT_PATH=${SYSROOT_PATH} --CDCMAKE_INSTALL_PREFIX=${SYSROOT_PATH}/usr --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
     "native:compile": "cmake-js build --directory src/native/sdk",
     "native:setup": "npm run native:configure && npm run native:compile",
-    "native:install": "NODE_INSTALL_PATH=${SYSROOT_INSTALL_PATH} TARGET_NAME=FireboltSDK node src/native/sdk/Scripts/install.js"
+    "native:install": "NODE_INSTALL_PATH=${SYSROOT_PATH} TARGET_NAME=Firebolt node src/native/sdk/Scripts/install.js"
   },
   "repository": {
     "type": "git",
