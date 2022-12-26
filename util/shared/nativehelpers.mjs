@@ -87,7 +87,7 @@ const getNativeType = json => {
 
     if(json.const) {
       if(typeof json.const === 'string') {
-        type = 'char *'
+        type = 'char*'
       }
       else if(typeof json.const === 'number') {
         type = 'uint32_t'
@@ -97,8 +97,8 @@ const getNativeType = json => {
         type = 'bool'
       }
     }
-    if(json.type === 'string') {
-        type = 'char *'
+    else if(json.type === 'string') {
+        type = 'char*'
     }
     else if (json.type === 'number' || json.type === 'integer') { //Lets keep it simple for now
         type = 'uint32_t'
@@ -188,13 +188,16 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
+const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
+
 //function getSchemaType(module, json, schemas = {}, options = { link: false, title: false, code: false, asPath: false, baseUrl: '' })
-function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true}) {
+function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {
   if (json.schema) {
     json = json.schema
   }
 
-  console.log(`name - ${name}, schema - ${JSON.stringify(json, null, 4)}`)
+
+  console.log(`name - ${name}, schema - ${JSON.stringify(json, null, 4)}, title - ${options.title}`)
 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
@@ -235,9 +238,9 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   }
   else if (json.type === 'string' && json.enum) {
     //Enum
-    console.log(`name - ${name} title - ${json.title}`)
     let typeName = getTypeName(getModuleName(module), name || json.title) 
-    structure.deps.add(generateEnum(json, typeName))
+    let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
+    structure.deps.add(res)
     structure.type.push(typeName)
     return structure
   }
@@ -290,12 +293,13 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getSchemaType(module, json.items[0],schemas)
+      res = getSchemaType(module, json.items[0],'',schemas)
     }
     else {
       // grab the type for the non-array schema
-      res = getSchemaType(module, json.items, name, schemas)
+      res = getSchemaType(module, json.items, '', schemas)
     }
+
     structure.deps = res.deps
     let n = getTypeName(getModuleName(module), name || json.title) 
     let def
@@ -318,10 +322,11 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     return structure
     //TODO
   }
-  else if (json.type === 'object' && json.title) {
-    console.log(`name - ${name}, title - ${json.title}`)
-    structure.deps = getSchemaShape(module, json, schemas, name || json.title,{descriptions: options.descriptions, level: options.level}).deps
-    structure.type = getTypeName(getModuleName(module), name || json.title) + 'Handle'
+  else if (json.type === 'object' && json.title) { 
+    let res = getSchemaShape(module, json, schemas, json.title,{descriptions: options.descriptions, level: 0})
+    structure.deps = res.deps
+    structure.deps.add(res.type.join('\n'))
+    structure.type = getTypeName(getModuleName(module), json.title) + 'Handle'
     return structure
     //TODO
   }
@@ -342,9 +347,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
-
-    const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
-
 
     console.log(`name - ${name}, json - ${JSON.stringify(json, null, 4)}`)
 
@@ -378,6 +380,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     //If the schema is a const, 
     else if (json.hasOwnProperty('const')) { 
       if (level > 0) {
+        structure.type.push(description(name, json.description))
         typeName = getTypeName(getModuleName(moduleJson), name)
         structure.type.push(getPropertyAccessors(typeName, capitalize(name), typeof json.const, {level: level, readonly:true, optional:false}))
       }
@@ -400,11 +403,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               if (!IsHomogenous(prop.items)) {
                 throw 'Heterogenous Arrays not supported yet'
               }
-              res = getSchemaType(moduleJson, prop.items[0],pname, schemas)
+              res = getSchemaType(moduleJson, prop.items[0],pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
             }
             else {
               // grab the type for the non-array schema
-              res = getSchemaType(moduleJson, prop.items, pname, schemas)
+              res = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
             }
             let n = tName + '_' + capitalize(pname || prop.title) 
             let def = getArrayAccessors(n + 'Array', res.type)
@@ -429,7 +432,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         let res = getObjectHandleManagement(tName) + '\n'
         res += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type,{descriptions: descriptions, level: level})
         structure.deps.add(res)
-
       }
       else if (json.patternProperties) {
         throw "patternProperties are not supported by Firebolt"
@@ -485,5 +487,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     getIncludeGuardClose,
     getNativeType,
     getSchemaType,
-    getSchemaShape
+    getSchemaShape,
+    getModuleName
   }

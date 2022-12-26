@@ -40,6 +40,7 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose, getIncludeGuardClose, getSchemaShape} from '../../../shared/nativehelpers.mjs'
+import { getSchemas } from '../../../shared/modules.mjs'
 
 // Maybe an array of <key, value> from the schema
 const getDefinitions = compose(
@@ -59,7 +60,7 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   code.push(getIncludeGuardOpen(obj))
   //code.push(getIncludeDefinitions(obj, schemas)) //Todo
   code.push(getStyleGuardOpen(obj))
-  const shape = generateTypesForDefitions(obj, schemas)
+  const shape = generateTypesForDefinitions(obj, schemas)
   console.log(`Deps - ${JSON.stringify(shape.deps)}`)
   code.push([...shape.deps].join('\n'))
   code.join('\n')
@@ -70,22 +71,48 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   return code
 }
 
+const generateHeaderForModules = (obj = {}, schemas = {}) => {
+  const code = []
+
+  console.log(Object.keys(schemas))
+
+  code.push(getHeaderText())
+  code.push(getIncludeGuardOpen(obj))
+  //code.push(getIncludeDefinitions(obj, schemas)) //Todo
+  code.push(getStyleGuardOpen(obj))
+  const shape = generateTypesForModules(obj, schemas)
+  console.log(`Deps - ${JSON.stringify(shape.deps)}`)
+  code.push([...shape.deps].join('\n'))
+  code.join('\n')
+  code.push(shape.type.join('\n'))
+  code.push(getStyleGuardClose())
+  code.push(getIncludeGuardClose())
+  code.join('\n')
+  return code
+}
 //For each schema object, 
-const generateTypesForDefitions = (json, schemas = {}) => compose(
+const generateTypesForDefinitions = (json, schemas = {}) => compose(
   reduce((acc, val) => {
-
-    
     const shape = getSchemaShape(json, val[1], schemas, val[0])
-
     acc.type.push(shape.type.join('\n'))
     acc.deps = new Set([...acc.deps, ...shape.deps])
-
     return acc
   }, {type: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
 
+const generateTypesForModules = (json,  schemas = {}) => compose(
+  reduce((acc, val) => {
+    const shape = getSchemaShape(json, val[1], schemas, val[0])
+    acc.type.push(shape.type.join('\n'))
+    acc.deps = new Set([...acc.deps, ...shape.deps])
+    return acc
+  }, {type: [], deps: new Set()}),
+  getSchemas //Get schema under Definitions
+)(json)
+
 
 export {
-  generateHeaderForDefinitions
+  generateHeaderForDefinitions,
+  generateHeaderForModules
 }
