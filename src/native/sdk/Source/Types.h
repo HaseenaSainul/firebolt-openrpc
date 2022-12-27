@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include<stdbool.h>
+#include <string>
 
 namespace FireboltSDK {
 class String {
@@ -9,7 +9,7 @@ class String {
             : _value()
         {
         }
-        String(const string& value)
+        String(const std::string& value)
             : _value(value)
         {
         }
@@ -26,13 +26,13 @@ class String {
         }
 
     public:
-        const string& Value() const
+        const std::string& Value() const
         {
             return _value;
         }
 
     private:
-        string _value;
+        std::string _value;
     };
 }
 

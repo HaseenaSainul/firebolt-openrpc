@@ -10,6 +10,7 @@ namespace FireboltSDK {
         NotSubscribed = 4,
         Unknown = 5,
         InUse = 6,
+        NotSupported = 7
     } Error;
 }
 

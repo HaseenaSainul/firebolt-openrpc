@@ -38,7 +38,7 @@ namespace FireboltSDK {
 
     public:
         Tests();
-        ~Tests();
+        virtual ~Tests() = default;
 
         inline TestFunctionMap& TestList()
         {

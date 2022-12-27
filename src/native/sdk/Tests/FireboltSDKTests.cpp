@@ -34,9 +34,6 @@ namespace FireboltSDK {
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get Device Id"),
                              std::forward_as_tuple(&GetDeviceId));
     }
-    Tests::~Tests()
-    {
-    }
 
     /* static */ void Tests::PrintJsonObject(const JsonObject::Iterator& iterator)
     {
@@ -162,10 +159,7 @@ namespace FireboltSDK {
     template <typename CALLBACK>
     /* static */ uint32_t Tests::SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* userdata, uint32_t& id)
     {
-        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, callbackFunc, userdata, id);
-
-        printf("%s:%s:%d \n", __FILE__, __func__, __LINE__, status);
-        return status;
+        return Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, callbackFunc, userdata, id);;
     }
 
     static void deviceNameChangeMultipleCallback(const void* userData, void* response)
