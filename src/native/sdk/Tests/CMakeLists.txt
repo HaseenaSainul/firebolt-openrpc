@@ -33,8 +33,8 @@ set_target_properties(${TARGET} PROPERTIES
 install(
     TARGETS ${TARGET} EXPORT ${TARGET}Targets
     LIBRARY DESTINATION lib COMPONENT libs
-     PUBLIC_HEADER DESTINATION include/${FIREBOLT_NAMESPACE} COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE} # headers
+     PUBLIC_HEADER DESTINATION include/${FIREBOLT_NAMESPACE}Test COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE}Test # headers
 )
 
 InstallCMakeConfig(TARGETS ${TARGET})
@@ -43,8 +43,8 @@ add_custom_command(
     TARGET ${TARGET}
     POST_BUILD
     COMMENT "=================== Installing Headers ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltSDK
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltSDK
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltTest
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltTest
 )
 
 add_custom_command(

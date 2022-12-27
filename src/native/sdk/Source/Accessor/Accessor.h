@@ -9,7 +9,7 @@ namespace FireboltSDK {
     class Accessor {
     private:
         static constexpr uint8_t JSONVersion = 2;
-        static constexpr const TCHAR* ConfigFile = _T("/etc/FireboltSDK/config.json");
+        static constexpr const TCHAR* ConfigFile = _T("/etc/Firebolt/config.json");
         static constexpr uint32_t DefaultWaitTime = 1000;
         static constexpr uint8_t DefaultQueueSize = 8;
         static constexpr uint8_t DefaultThreadCount = 3;

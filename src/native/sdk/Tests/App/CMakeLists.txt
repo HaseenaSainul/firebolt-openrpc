@@ -6,16 +6,12 @@ project_version(1.0.0)
 set(TARGET ${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
-find_package(${NAMESPACE}Core CONFIG REQUIRED)
 
 add_executable(${TARGET} FireboltSDKTestsMain.c Module.cpp)
 
 target_link_libraries(${TARGET}
     PRIVATE
        FireboltSDKTests
-    PUBLIC
-       ${NAMESPACE}Core::${NAMESPACE}Core
-       ${FIREBOLT_NAMESPACE}SDK
 )
 
 target_include_directories(${TARGET}

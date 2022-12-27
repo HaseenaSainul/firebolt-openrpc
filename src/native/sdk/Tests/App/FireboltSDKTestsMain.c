@@ -14,7 +14,6 @@ int main()
     // Calling C function sequences
     printf("%s:%s:%d Calling C function tests\n", __FILE__, __func__, __LINE__);
     EXECUTE("test_properties_get_device_id", test_properties_get_device_id);
-    EXECUTE("test_properties_get_policy", test_properties_get_policy);
     EXECUTE("test_properties_set", test_properties_set);
     EXECUTE("test_eventregister_by_providing_callback", test_eventregister_by_providing_callback);
     EXECUTE("test_eventregister", test_eventregister);

@@ -1,13 +1,6 @@
 
 #include "Module.h"
-#include "Firebolt.h"
 #include "FireboltSDKTests.h"
-
-enum TestingEnum {
-    Test1,
-    Test2,
-    Test3
-};
 
 namespace WPEFramework {
 
@@ -19,12 +12,6 @@ ENUM_CONVERSION_BEGIN(::JsonValue::type)
     { JsonValue::type::STRING, _TXT("string") },
 
 ENUM_CONVERSION_END(::JsonValue::type)
-
-ENUM_CONVERSION_BEGIN(TestingEnum)
-    { TestingEnum::Test1, _TXT("test1") },
-    { TestingEnum::Test2, _TXT("test2") },
-    { TestingEnum::Test3, _TXT("test3") },
-ENUM_CONVERSION_END(TestingEnum);
 
 }
 namespace FireboltSDK {
@@ -42,8 +29,6 @@ namespace FireboltSDK {
 
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get UnKnown Method"),
                              std::forward_as_tuple(&GetUnKnownMethod));
-        _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get Discovery Policy"),
-                             std::forward_as_tuple(&GetDiscoveryPolicy));
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get Device Version"),
                              std::forward_as_tuple(&GetDeviceVersion));
         _functionMap.emplace(std::piecewise_construct, std::forward_as_tuple("Get Device Id"),
@@ -92,24 +77,6 @@ namespace FireboltSDK {
             PrintJsonObject(response->Variants());
         } else {
             printf("\nGet %s status = %d", method.c_str(), status);
-        }
-
-        return status;
-    }
-
-    /* static */ uint32_t Tests::GetDiscoveryPolicy()
-    {
-        const string method = _T("discovery.policy");
-        WPEFramework::Core::ProxyType<Policy> response;
-        uint32_t status = FireboltSDK::Properties::Get(method, response);
-
-        EXPECT_EQ(status, Error::None);
-        if (status == Error::None) {
-            printf("\nEnableRecommendations : %d", response->EnableRecommendations.Value());
-            printf("\nShareWatchHistory : %d", response->ShareWatchHistory.Value());
-            printf("\nRememberWatchedPrograms : %d", response->RememberWatchedPrograms.Value());
-        } else {
-            printf("\nGet %s status = %d\n", method.c_str(), status);
         }
 
         return status;
@@ -250,18 +217,6 @@ namespace FireboltSDK {
         return status;
     }
 
-    uint32_t Tests::Main()
-    {
-        FireboltSDK::Tests fireboltSDKTest;
-        for (auto i = fireboltSDKTest.TestList().begin(); i != fireboltSDKTest.TestList().end(); i++) {
-            EXECUTE(i->first.c_str(), i->second);
-        }
-
-        printf("TOTAL: %i tests; %i PASSED, %i FAILED\n", TotalTests, TotalTestsPassed, (TotalTests - TotalTestsPassed));
-
-        return 0;
-    }
-
 }
 
 #ifdef __cplusplus
@@ -280,7 +235,7 @@ uint32_t test_firebolt_dispose_instance()
 
 uint32_t test_firebolt_main()
 {
-    return FireboltSDK::Tests::Main();
+    return FireboltSDK::Tests::Main<FireboltSDK::Tests>();
 }
 
 uint32_t test_properties_get_device_id()
@@ -292,24 +247,6 @@ uint32_t test_properties_get_device_id()
     EXPECT_EQ(status, FireboltSDK::Error::None);
     if (status == FireboltSDK::Error::None) {
         printf("\nDeviceId : %s", response->Value().c_str());
-    } else {
-        printf("\nGet %s status = %d\n", method.c_str(), status);
-    }
-
-    return status;
-}
-
-uint32_t test_properties_get_policy()
-{
-    const string method = _T("discovery.policy");
-    WPEFramework::Core::ProxyType<FireboltSDK::Policy> response;
-    uint32_t status = FireboltSDK::Properties::Get(method, response);
-
-    EXPECT_EQ(status, FireboltSDK::Error::None);
-    if (status == FireboltSDK::Error::None) {
-        printf("\nEnableRecommendations : %d", response->EnableRecommendations.Value());
-        printf("\nShareWatchHistory : %d", response->ShareWatchHistory.Value());
-        printf("\nRememberWatchedPrograms : %d", response->RememberWatchedPrograms.Value());
     } else {
         printf("\nGet %s status = %d\n", method.c_str(), status);
     }
