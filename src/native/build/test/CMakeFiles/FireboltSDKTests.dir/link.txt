@@ -1,0 +1,2 @@
+/usr/bin/ar qc libFireboltSDKTests.a  CMakeFiles/FireboltSDKTests.dir/FireboltSDKTests.cpp.o
+/usr/bin/ranlib libFireboltSDKTests.a

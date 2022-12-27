@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../test/Tests.h
+stdio.h
+-
+stdbool.h
+-
+stdint.h
+-
+
+../test/fireboltsdktest.h
+Tests.h
+../test/Tests.h
+
+/home/haseenasainul/thunder-repos/firebolt/firebolt-openrpc/src/native/test/App/FireboltSDKTestsMain.c
+fireboltsdktest.h
+/home/haseenasainul/thunder-repos/firebolt/firebolt-openrpc/src/native/test/App/fireboltsdktest.h
+

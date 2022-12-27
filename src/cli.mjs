@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import sdk from '../util/sdk/index.mjs'
+import {javascript, native, generateHeaders} from '../util/sdk/index.js'
 import docs from '../util/docs/index.mjs'
 import validate from '../util/validate/index.mjs'
 import openrpc from '../util/openrpc/index.mjs'
@@ -10,6 +10,7 @@ import path from 'path'
 
 const knownOpts = {
   'task': [String, null],
+  'lang': String,
   'source': [path],
   'template': [path],
   'output': [path],
@@ -19,6 +20,7 @@ const knownOpts = {
 }
 const shortHands = {
   't': '--task',
+  'l': '--lang',
   's': '--source',
   'tm': '--template',
   'tm': '--template',
@@ -34,7 +36,12 @@ const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;2
 const util = parsedArgs.task
 
 if (util === 'sdk') {
-    sdk(parsedArgs).done(signOff)
+  if(parsedArgs.lang === 'javascript') {
+    javascript(parsedArgs).done(signOff)
+  }
+  else if (parsedArgs.lang === 'native') {
+    generateHeaders(parsedArgs).done(signOff)
+  }
 }
 else if (util === 'docs') {
     docs(parsedArgs).done(signOff)

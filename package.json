@@ -14,19 +14,21 @@
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
     "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
     "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
-    "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas test/sharedSchemas",
+    "build:jssdk": "node ./src/cli.mjs --task sdk --lang javascript --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas test/sharedSchemas",
     "build:d": "node ./src/cli.mjs --task declarations --source ./src/ --output ./dist/lib/sdk.d.ts --shared-schemas src/schemas",
     "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
     "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/wiki --shared-schemas test/sharedSchemas",
-    "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test",
+    "dist": "npm run validate && npm run build:jssdk && npm run build:nativesdk && npm run build:docs && npm run test",
     "prepare": "husky install",
     "thunder:clean": "cd thunder && sh scripts/clean.sh && cd -",
     "thunder:prepare": "npm run thunder:clean && cd thunder && sh scripts/prepare.sh && cd -",
     "thunder:setup": "cd thunder && sh scripts/setup.sh && cd -",
-    "native:configure": "cmake-js reconfigure --directory src/native/sdk --CDSYSROOT_PATH=${SYSROOT_PATH} --CDCMAKE_INSTALL_PREFIX=${SYSROOT_PATH}/usr --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
-    "native:compile": "cmake-js build --directory src/native/sdk",
+    "native:prepare":"node ./src/cli.mjs --task sdk --lang native --source ./src/ --output ./build/sdk/native/ --shared-schemas test/sharedSchemas",
+    "native:configure": "cmake-js reconfigure --directory src/native --CDSYSROOT_PATH=${SYSROOT_PATH} --CDGENERATED_CODE_PATH=./build/sdk/native --CDCMAKE_INSTALL_PREFIX=${SYSROOT_PATH}/usr --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
+    "native:compile": "cmake-js build --directory src/native",
     "native:setup": "npm run native:configure && npm run native:compile",
-    "native:install": "NODE_INSTALL_PATH=${SYSROOT_PATH} TARGET_NAME=Firebolt node src/native/sdk/Scripts/install.js"
+    "native:install": "NODE_INSTALL_PATH=${SYSROOT_PATH} TARGET_NAME=Firebolt node src/native/scripts/install.js",
+    "build:nativesdk":"npm run native:prepare && npm run native:setup && npm run native:install"
   },
   "repository": {
     "type": "git",
@@ -36,7 +38,7 @@
   "bugs": {
     "url": "https://github.com/rdkcentral/firebolt-openrpc/issues"
   },
-  "homepage": "https://github.com/rdkcentral/firebolt-openrpc#readme",
+  "homepage": "https::wq//github.com/rdkcentral/firebolt-openrpc#readme",
   "devDependencies": {
     "@commitlint/cli": "^17.1.2",
     "@commitlint/config-conventional": "^17.1.0",
