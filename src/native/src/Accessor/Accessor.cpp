@@ -12,7 +12,9 @@ namespace FireboltSDK {
         _singleton = this;
         Config config;
         LoadConfigs(config);
-        printf("%s:%s:%d URL = %s \n", __FILE__, __func__, __LINE__, config.Url.Value().c_str());
+
+        Logger::SetLogLevel(WPEFramework::Core::EnumerateType<Logger::LogLevel>(config.LogLevel.Value().c_str()).Value());
+        FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Url = %s", config.Url.Value().c_str());
         CreateTransport(config.Url.Value(), config.WaitTime.Value());
         CreateEventHandler();
 
@@ -37,13 +39,12 @@ namespace FireboltSDK {
         string configFilePath = (prefixPath.empty() != true) ?
                                 (prefixPath + '/' + Accessor::ConfigFile) : Accessor::ConfigFile;
         WPEFramework::Core::File configFile(configFilePath);
-        printf("%s:%s:%d ConfigFile = %s\n", __FILE__, __func__, __LINE__, configFilePath.c_str());
 
         if (configFile.Open(true) == true) {
             WPEFramework::Core::OptionalType<WPEFramework::Core::JSON::Error> error;
             config.IElement::FromFile(configFile, error);
             if (error.IsSet() == true) {
-                printf("Error in reading config\n");
+                FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Error in reading config");
             }
         }
     }

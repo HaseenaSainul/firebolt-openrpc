@@ -4,6 +4,7 @@
 #include "WorkerPool.h"
 #include "Transport/Transport.h"
 #include "Event/Event.h"
+#include "Logger/Logger.h"
 
 namespace FireboltSDK {
     class Accessor {

@@ -31,7 +31,7 @@ namespace FireboltSDK {
                     (*response) = responseType;
                 }
             } else {
-                printf("%s:%s:%d Error in getting Transport err = %d \n", __FILE__, __func__, __LINE__, status);
+                FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Error in getting Transport err = %d", status);
             }
  
             return status;
@@ -46,7 +46,7 @@ namespace FireboltSDK {
                 JsonObject responseType;
                 status = transport->Invoke(propertyName, parameters, responseType);
             } else {
-                printf("%s:%s:%d Error in getting Transport err = %d \n", __FILE__, __func__, __LINE__, status);
+                FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Error in getting Transport err = %d", status);
             }
 
             return status;

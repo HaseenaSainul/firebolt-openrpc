@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.3)
 project(Firebolt)
 
 set(FIREBOLT_TRANSPORT_WAITTIME 1000 CACHE STRING "Maximum time to wait for Transport layer to get response")
+set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
+
 option(ENABLE_TESTS "Build openrpc native test" OFF)
 
 list(APPEND CMAKE_MODULE_PATH

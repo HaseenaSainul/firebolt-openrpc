@@ -8,6 +8,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 add_library(${TARGET} SHARED
     Types.cpp
     Module.cpp
+    Logger/Logger.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp
     Event/Event.cpp)
