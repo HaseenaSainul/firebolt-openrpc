@@ -38,32 +38,8 @@ install(
 )
 
 InstallCMakeConfig(TARGETS ${TARGET})
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing Headers ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltTest
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/FireboltTest
-)
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing CMakeConfigs ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}Config*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/Export/lib/cmake/${TARGET}/${TARGET}Targets*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/pkgconfig
-)
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing Libraries ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/lib${FIREBOLT_NAMESPACE}SDKTests.a ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib
-)
-
+InstallCMakeConfigs(TARGET ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
+InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTINATION FireboltTest)
+InstallLibraries(TARGET ${TARGET} LIBRARIES ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
 
 add_subdirectory(App)

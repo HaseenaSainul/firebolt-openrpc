@@ -8,8 +8,10 @@ set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
 option(ENABLE_TESTS "Build openrpc native test" OFF)
 
 list(APPEND CMAKE_MODULE_PATH
-	"${SYSROOT_PATH}/usr/lib/cmake"
-	"${SYSROOT_PATH}/tools/cmake")
+        "${CMAKE_SOURCE_DIR}/cmake"
+        "${SYSROOT_PATH}/usr/lib/cmake"
+        "${SYSROOT_PATH}/tools/cmake")
+include(HelperFunctions)
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH ${SYSROOT_PATH}/usr/lib/cmake CACHE INTERNAL "" FORCE)
@@ -27,7 +29,7 @@ endif()
 
 # make sure others can make use cmake settings of Firebolt OpenRPC
 configure_file( "${CMAKE_SOURCE_DIR}/cmake/project.cmake.in"
-	"${CMAKE_CURRENT_BINARY_DIR}/${FIREBOLT_NAMESPACE}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${FIREBOLT_NAMESPACE}Config.cmake"
     @ONLY)
 
 

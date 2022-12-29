@@ -45,45 +45,25 @@ install(
         INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE} # headers
 )
 
+set(PUBLIC_HEADERS
+    .
+    Accessor
+    Event
+    Logger
+    Properties
+    Transport
+)
+
+InstallHeaders(
+    TARGET ${TARGET}
+    HEADERS ${PUBLIC_HEADERS}
+    NAMESPACE ${FIREBOLT_NAMESPACE}
+    DESTINATION ${FIREBOLT_NAMESPACE}
+)
+InstallLibraries(TARGET ${TARGET} SHARED LIBRARIES ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
 InstallCMakeConfig(TARGETS ${TARGET})
 InstallPackageConfig(TARGETS ${TARGET} DESCRIPTION "Firebolt SDK Library")
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing Headers ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Accessor
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/Accessor/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Accessor
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Transport
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/Transport/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Transport
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Event
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/Event/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Event
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Properties
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/Properties/*.h ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/include/${FIREBOLT_NAMESPACE}/Properties
-)
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing Libraries ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Release/lib${TARGET}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib
-    COMMAND ${CMAKE_COMMAND} -D "LIBRARY=${CMAKE_BINARY_DIR}/Release/lib${TARGET}.so.${PROJECT_VERSION_MAJOR}" -D "DESTINATION=${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib" -P ${CMAKE_SOURCE_DIR}/cmake/CopySymlink.cmake
-    COMMAND ${CMAKE_COMMAND} -D "LIBRARY=${CMAKE_BINARY_DIR}/Release/lib${TARGET}.so" -D "DESTINATION=${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib" -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CopySymlink.cmake
-...
-)
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing CMakeConfigs ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}Config*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/Export/lib/cmake/${TARGET}/${TARGET}Targets*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${TARGET}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/pkgconfig
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.pc ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/pkgconfig
-)
+InstallCMakeConfigs(TARGET ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
 
 add_custom_command(
     TARGET ${TARGET}
@@ -96,10 +76,10 @@ add_custom_command(
 add_custom_command(
     TARGET ${TARGET}
     POST_BUILD
-    COMMENT "=================== Installing FireboltConfig ======================"
+    COMMENT "=================== Installing FireboltConfig & Helper CMakes ======================"
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}Config.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/cmake/*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
 )
-
 
 include(Config.cmake)
