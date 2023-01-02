@@ -39,7 +39,7 @@ import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose, getIncludeGuardClose, getSchemaShape} from '../../../shared/nativehelpers.mjs'
+import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose, getIncludeGuardClose, getSchemaShape} from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 
 // Maybe an array of <key, value> from the schema
@@ -54,14 +54,12 @@ const getDefinitions = compose(
 const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   const code = []
 
-  console.log(Object.keys(schemas))
-
   code.push(getHeaderText())
   code.push(getIncludeGuardOpen(obj))
-  //code.push(getIncludeDefinitions(obj, schemas)) //Todo
+  const i = getIncludeDefinitions(obj)
+  code.push(i && i.join('\n'))
   code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForDefinitions(obj, schemas)
-  console.log(`Deps - ${JSON.stringify(shape.deps)}`)
   code.push([...shape.deps].join('\n'))
   code.join('\n')
   code.push(shape.type.join('\n'))
@@ -74,14 +72,12 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
 const generateHeaderForModules = (obj = {}, schemas = {}) => {
   const code = []
 
-  console.log(Object.keys(schemas))
-
   code.push(getHeaderText())
   code.push(getIncludeGuardOpen(obj))
-  //code.push(getIncludeDefinitions(obj, schemas)) //Todo
+  const i = getIncludeDefinitions(obj)
+  code.push(i && i.join('\n'))
   code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForModules(obj, schemas)
-  console.log(`Deps - ${JSON.stringify(shape.deps)}`)
   code.push([...shape.deps].join('\n'))
   code.join('\n')
   code.push(shape.type.join('\n'))
