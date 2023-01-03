@@ -35,7 +35,7 @@ const generateHeaders = ({
   const sharedSchemasFolder = sharedSchemasFolderArg
   const modulesFolder = path.join(source, 'modules')
   const headerDir = path.join(outputFolderArg, 'include')
-  const allModules = localModules(modulesFolder, null)
+  const allModules = localModules(modulesFolder, null, true)
 
   logHeader(`Generating C Headers in: ${trimPath(headerDir)}`)
 
