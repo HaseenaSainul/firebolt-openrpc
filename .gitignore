@@ -4,8 +4,10 @@ node_modules/*
 .DS_Store
 .DS_Store
 coverage
-src/native/sdk/build
+src/native/build
 firebolt
 thunder/build/
 thunder/src/
 package-lock.json
+build.sh
+run.sh

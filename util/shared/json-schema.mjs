@@ -171,8 +171,7 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
 // grab a schema from another file in this project
 const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true) => {
   const [mainPath, subPath] = uri.split('#')
-  const json = schemas[mainPath] || schemas[mainPath + '/'] 
-  
+  const json = schemas[mainPath] || schemas[mainPath + '/']
   // copy to avoid side effects
   let result
 
@@ -196,6 +195,7 @@ const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true
 }
 
 const getSchema = (uri, schemas) => {
+
   return getExternalPath(uri, schemas, false, false)
 }
 
@@ -219,6 +219,7 @@ function getSchemaConstraints(json, module, schemas = {}, options = { delimiter:
 
     typeof json.format === 'string'   ? constraints.push(`format: ${json.format}`) : null
     typeof json.minLength === 'number' ? constraints.push(`minLength: ${json.minLength}`) : null
+    typeof json.maxLength === 'number' ? constraints.push(`maxLength: ${json.maxLength}`) : null
     typeof json.maxLength === 'number' ? constraints.push(`maxLength: ${json.maxLength}`) : null
     typeof json.pattern === 'string'   ? constraints.push(`pattern: ${json.pattern}`) : null
 
@@ -439,6 +440,14 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
   return (refs.length > 0)
 }
 
+const getExternalRefs = (moduleJson = {}) => {
+  return objectPaths(moduleJson)
+                .filter(x => /\/\$ref$/.test(x))
+                .map(refToPath)
+                .map(x => getPathOr(null, x, moduleJson))
+                .filter(x => x[0] !== '#' && x.includes('definitions'))
+}
+
 export {
   getExternalMarkdownPaths,
   getSchema,
@@ -454,5 +463,6 @@ export {
   replaceUri,
   replaceRef,
   flattenSchemas,
-  removeIgnoredAdditionalItems
+  removeIgnoredAdditionalItems,
+  getExternalRefs
 }
