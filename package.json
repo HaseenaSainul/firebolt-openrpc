@@ -11,7 +11,7 @@
     "prepack": "npm run prepare:setup && npm run dist",
     "prepare:setup": "npx mkdirp ./dist/docs ./build/docs/markdown ./build/docs/wiki ./build/sdk/javascript/src",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles",
-    "build": "npm run validate && npm run build:docs && npm run build:sdk",
+    "build": "npm run validate && npm run build:docs && npm run build:jssdk && npm run build:nativesdk",
     "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
     "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
     "build:jssdk": "node ./src/cli.mjs --task sdk --lang javascript --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas test/sharedSchemas",
@@ -23,13 +23,13 @@
     "thunder:clean": "cd thunder && sh scripts/clean.sh && cd -",
     "thunder:prepare": "npm run thunder:clean && cd thunder && sh scripts/prepare.sh && cd -",
     "thunder:setup": "cd thunder && sh scripts/setup.sh && cd -",
-    "build:csdk":"node ./src/cli.mjs --task sdk --lang native-c --source ./src/ --output ./build/sdk/native-c/ --shared-schemas test/sharedSchemas",
-    "nativesdk:prepare":"npm run build:csdk",
-    "nativesdk:configure": "cmake-js reconfigure --directory src/native --CDSYSROOT_PATH=${SYSROOT_PATH} --CDGENERATED_CODE_PATH=./build/sdk/native-c --CDCMAKE_INSTALL_PREFIX=${SYSROOT_PATH}/usr --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
+    "build:csdk": "node ./src/cli.mjs --task sdk --lang native-c --source ./src/ --output ./build/sdk/native-c/ --shared-schemas test/sharedSchemas",
+    "nativesdk:prepare": "npm run build:csdk",
+    "nativesdk:configure": "cmake-js reconfigure --directory src/native --CDSYSROOT_PATH=${SYSROOT_PATH} --CDGENERATED_CODE_PATH=${PWD}/build/sdk/native-c --CDCMAKE_INSTALL_PREFIX=${SYSROOT_PATH}/usr --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
     "nativesdk:compile": "cmake-js build --directory src/native",
     "nativesdk:setup": "npm run nativesdk:configure && npm run nativesdk:compile",
     "nativesdk:install": "NODE_INSTALL_PATH=${SYSROOT_PATH} TARGET_NAME=Firebolt node src/native/scripts/install.js",
-    "build:nativesdk":"npm run nativesdk:prepare && npm run nativesdk:setup && npm run nativesdk:install"
+    "build:nativesdk": "npm run nativesdk:prepare && npm run nativesdk:setup && npm run nativesdk:install"
   },
   "repository": {
     "type": "git",
@@ -57,6 +57,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
+    "@firebolt-js/openrpc": "^1.8.1",
     "ajv": "^8.3.0",
     "ajv-formats": "^2.1.0",
     "array.prototype.groupby": "^1.1.0",

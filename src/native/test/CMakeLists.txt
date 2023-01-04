@@ -19,27 +19,27 @@ cmake_minimum_required(VERSION 3.3)
 project(FireboltSDKTests)
 project_version(1.0.0)
 
-set(TARGET ${PROJECT_NAME})
+set(TESTLIB ${PROJECT_NAME})
 
-message("Setup ${TARGET} v${PROJECT_VERSION}")
+message("Setup ${TESTLIB} v${PROJECT_VERSION}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 
-add_library(${TARGET} STATIC FireboltSDKTests.cpp)
+add_library(${TESTLIB} STATIC FireboltSDKTests.cpp)
 
-target_link_libraries(${TARGET}
+target_link_libraries(${TESTLIB}
     PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${FIREBOLT_NAMESPACE}SDK
 )
 
-target_include_directories(${TARGET}
+target_include_directories(${TESTLIB}
     PRIVATE
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
 )
 
-set_target_properties(${TARGET} PROPERTIES
+set_target_properties(${TESTLIB} PROPERTIES
     CXX_STANDARD 11
     CXX_STANDARD_REQUIRED YES
     LINK_WHAT_YOU_USE TRUE
@@ -47,16 +47,16 @@ set_target_properties(${TARGET} PROPERTIES
 )
 
 install(
-    TARGETS ${TARGET} EXPORT ${TARGET}Targets
+    TARGETS ${TESTLIB} EXPORT ${TESTLIB}Targets
     LIBRARY DESTINATION lib COMPONENT libs
      PUBLIC_HEADER DESTINATION include/${FIREBOLT_NAMESPACE}Test COMPONENT devel   # headers for mac (note the different component -> different package)
         INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE}Test # headers
 )
 
-InstallCMakeConfig(TARGETS ${TARGET})
-InstallCMakeConfigs(TARGET ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
-InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTINATION FireboltTest)
-InstallLibraries(TARGET ${TARGET} LIBRARIES ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
+InstallCMakeConfig(TARGETS ${TESTLIB})
+InstallCMakeConfigs(TARGET ${TESTLIB} DESTINATION ${FIREBOLT_NAMESPACE})
+InstallHeaders(TARGET ${TESTLIB} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTINATION FireboltTest)
+InstallLibraries(TARGET ${TESTLIB} LIBRARIES ${TESTLIB} DESTINATION ${FIREBOLT_NAMESPACE})
 
 set(TESTAPP "FireboltSDKTestApp")
 
@@ -66,7 +66,7 @@ add_executable(${TESTAPP} FireboltSDKTestsMain.c)
 
 target_link_libraries(${TESTAPP}
     PRIVATE
-       FireboltSDKTests
+       ${TESTLIB}
 )
 
 target_include_directories(${TESTAPP}
@@ -83,4 +83,3 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TESTAPP} ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/bin
 )
 
-#add_subdirectory(App)
