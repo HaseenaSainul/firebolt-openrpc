@@ -20,6 +20,7 @@ set("${FIREBOLT_NAMESPACE}_FOUND" TRUE CACHE INTERNAL "" FORCE)
 list(APPEND CMAKE_MODULE_PATH
         "${CMAKE_SOURCE_DIR}/cmake"
         "${SYSROOT_PATH}/usr/lib/cmake"
+        "${SYSROOT_PATH}/usr/lib/cmake/Firebolt"
         "${SYSROOT_PATH}/tools/cmake")
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
