@@ -39,7 +39,9 @@ import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose, getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature} from '../../../shared/nativehelpers.mjs'
+import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose,
+         getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
+         getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 
 // Maybe an array of <key, value> from the schema
@@ -130,7 +132,8 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')
 
     if(event(property)) {
-      //Event
+      sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
+      sig.type.push(getPropertyEventSignature(property, json, res.type) + ';\n')
     }
     else if(setter(property)) {
       sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')
