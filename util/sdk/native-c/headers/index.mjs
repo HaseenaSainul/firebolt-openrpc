@@ -39,7 +39,7 @@ import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose, getIncludeGuardClose, getSchemaShape} from '../../../shared/nativehelpers.mjs'
+import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose, getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature} from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 
 // Maybe an array of <key, value> from the schema
@@ -57,7 +57,7 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   code.push(getHeaderText())
   code.push(getIncludeGuardOpen(obj))
   const i = getIncludeDefinitions(obj)
-  code.push(i && i.join('\n'))
+  code.push(i.join('\n'))
   code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForDefinitions(obj, schemas)
   code.push([...shape.deps].join('\n'))
@@ -75,12 +75,15 @@ const generateHeaderForModules = (obj = {}, schemas = {}) => {
   code.push(getHeaderText())
   code.push(getIncludeGuardOpen(obj))
   const i = getIncludeDefinitions(obj)
-  code.push(i && i.join('\n'))
+  code.push(i.join('\n'))
   code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForModules(obj, schemas)
+  const m = generateMethodPrototypes(obj, schemas)
+  m.deps.forEach(dep => shape.deps.add(dep))
+  shape.type.forEach(type => shape.deps.add(type))
   code.push([...shape.deps].join('\n'))
   code.join('\n')
-  code.push(shape.type.join('\n'))
+  code.push(m.type && m.type.join('\n'))
   code.push(getStyleGuardClose())
   code.push(getIncludeGuardClose())
   code.join('\n')
@@ -91,7 +94,7 @@ const generateTypesForDefinitions = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getSchemaShape(json, val[1], schemas, val[0])
     acc.type.push(shape.type.join('\n'))
-    acc.deps = new Set([...acc.deps, ...shape.deps])
+    shape.deps.forEach(dep => acc.deps.add(dep))
     return acc
   }, {type: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
@@ -101,11 +104,41 @@ const generateTypesForModules = (json,  schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getSchemaShape(json, val[1], schemas, val[0])
     acc.type.push(shape.type.join('\n'))
-    acc.deps = new Set([...acc.deps, ...shape.deps])
+    shape.deps.forEach(dep => acc.deps.add(dep))
     return acc
   }, {type: [], deps: new Set()}),
   getSchemas //Get schema under Definitions
 )(json)
+
+const generateMethodPrototypes = (json, schemas = {}) => {
+  
+  let sig = {type: [], deps: new Set()}
+
+  const properties = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('property'))) || []
+  
+  properties.forEach(property => {
+ //   console.log(`Method - ${JSON.stringify(property,null,4)}`)
+    const event = m => m.tags.find(t => t.name === 'property:readonly' || t.name === 'property')
+    const setter = m => m.tags.find(t => t.name === 'property')
+    
+    let res = getSchemaType(json, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
+ //   console.log(`Type - ${res.type}`)
+ //   console.log(`Deps - `)
+ //   res.deps.forEach((dep, index) => console.log(`Item# - ${dep}`))
+    res.deps.forEach(dep => sig.deps.add(dep))
+
+    sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')
+
+    if(event(property)) {
+      //Event
+    }
+    else if(setter(property)) {
+      sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')
+    }
+  })
+
+  return sig
+}
 
 
 export {
