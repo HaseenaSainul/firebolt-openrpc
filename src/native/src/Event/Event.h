@@ -75,27 +75,27 @@ namespace FireboltSDK {
         template <typename PARAMETERS, typename CALLBACK>
         uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
         {
-            uint32_t status = Error::Unavailable;
+            uint32_t status = FireboltSDKErrorUnavailable;
             if (_transport != nullptr) {
 
                 status = Assign<PARAMETERS, CALLBACK>(eventName, callback, userdata, id);
-                if (status == Error::None) {
+                if (status == FireboltSDKErrorNone) {
                     const string parameters("{\"listen\":true}");
                     Response response;
                     status = _transport->Subscribe(eventName, parameters, response);
 
-                    if (status != Error::None) {
+                    if (status != FireboltSDKErrorNone) {
                         Revoke(eventName, id);
                     } else if ((response.Listening.IsSet() == true) &&
                               (response.Listening.Value() == true)) {
-                        status = Error::None;
+                        status = FireboltSDKErrorNone;
                     } else {
-                        status = Error::NotSubscribed;
+                        status = FireboltSDKErrorNotSubscribed;
                     }
                 }
             }
 
-            return ((status == Error::InUse) ? Error::None: status);
+            return ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone: status);
         }
 
         uint32_t Unsubscribe(const string& eventName, const uint32_t id);
@@ -104,7 +104,7 @@ namespace FireboltSDK {
         template <typename PARAMETERS, typename CALLBACK>
         uint32_t Assign(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
         {
-            uint32_t status = Error::None;
+            uint32_t status = FireboltSDKErrorNone;
             id = Id();
             std::function<void(const void* userdata, void* parameters)> actualCallback = callback;
             DispatchFunction implementation = [actualCallback](const void* userdata, const string& parameters) -> uint32_t {
@@ -112,7 +112,7 @@ namespace FireboltSDK {
                 WPEFramework::Core::ProxyType<PARAMETERS> inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
                 inbound->FromString(parameters);
                 actualCallback(userdata, static_cast<void*>(&inbound));
-                return (Error::None);
+                return (FireboltSDKErrorNone);
             };
             CallbackData callbackData = {implementation, userdata, State::IDLE};
 
@@ -120,7 +120,7 @@ namespace FireboltSDK {
             EventMap::iterator eventIndex = _eventMap.find(eventName);
             if (eventIndex != _eventMap.end()) {
                 // Already registered, no need to register again;
-                status = Error::InUse;
+                status = FireboltSDKErrorInUse;
                 eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(callbackData));
             } else {
 

@@ -65,23 +65,23 @@ namespace FireboltSDK {
     {
         uint32_t status = Revoke(eventName, id);
 
-        if (status == Error::None) {
+        if (status == FireboltSDKErrorNone) {
             if (_transport != nullptr) {
 
                 const string parameters("{\"listen\":false}");
                 status = _transport->Unsubscribe(eventName, parameters);
             }
         }
-        return ((status == Error::InUse) ? Error::None: status);
+        return ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone: status);
     }
 
     uint32_t Event::ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) /* override */
     {
-        uint32_t result = Error::General;
+        uint32_t result = FireboltSDKErrorGeneral;
         Response response;
         _transport->FromMessage((WPEFramework::Core::JSON::IElement*)&response, *jsonResponse);
         if (response.Listening.IsSet() == true) {
-            result = Error::None;
+            result = FireboltSDKErrorNone;
             enabled = response.Listening.Value();
         }
         return result;
@@ -118,12 +118,12 @@ namespace FireboltSDK {
         }
         _adminLock.Unlock();
 
-        return Error::None;;
+        return FireboltSDKErrorNone;;
     }
 
     uint32_t Event::Revoke(const string& eventName, const uint32_t id)
     {
-        uint32_t status = Error::None;
+        uint32_t status = FireboltSDKErrorNone;
         _adminLock.Lock();
         EventMap::iterator eventIndex = _eventMap.find(eventName);
         if (eventIndex != _eventMap.end()) {
@@ -138,7 +138,7 @@ namespace FireboltSDK {
             if (eventIndex->second.size() == 0) {
                 _eventMap.erase(eventIndex);
             } else {
-                status = Error::InUse;
+                status = FireboltSDKErrorInUse;
             }
         }
         _adminLock.Unlock();

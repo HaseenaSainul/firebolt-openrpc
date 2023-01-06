@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "fireboltsdktest.h"
+#include "OpenRPCCTests.h"
 
 int __cnt = 0;
 int __pass = 0;

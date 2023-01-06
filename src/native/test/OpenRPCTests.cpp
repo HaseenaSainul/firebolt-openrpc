@@ -17,7 +17,8 @@
  */
 
 #include "Module.h"
-#include "FireboltSDKTests.h"
+#include "OpenRPCTests.h"
+#include "OpenRPCCTests.h"
 
 namespace WPEFramework {
 
@@ -56,7 +57,8 @@ namespace FireboltSDK {
     {
         JsonObject::Iterator index = iterator;
         while (index.Next() == true) {
-            printf("Element [%s]: <%s> = \"%s\"\n",
+            FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
+            "Element [%s]: <%s> = \"%s\"\n",
             index.Label(),
             WPEFramework::Core::EnumerateType<JsonValue::type>(index.Current().Content()).Data(),
             index.Current().Value().c_str());
@@ -69,11 +71,11 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> response;
         uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-        EXPECT_EQ(status, Error::None);
-        if (status == Error::None) {
-            printf("\nDeviceId : %s", response->Value().c_str());
+        EXPECT_EQ(status, FireboltSDKErrorNone);
+        if (status == FireboltSDKErrorNone) {
+            FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(), "DeviceId : %s", response->Value().c_str());
         } else {
-            printf("\nGet %s status = %d\n", method.c_str(), status);
+            FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Get %s status = %d\n", method.c_str(), status);
         }
 
         return status;
@@ -85,12 +87,12 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<JsonObject> response;
         uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-        EXPECT_EQ(status, Error::None);
-        if (status == Error::None) {
-            printf("\nDeviceVersion :\n");
+        EXPECT_EQ(status, FireboltSDKErrorNone);
+        if (status == FireboltSDKErrorNone) {
+            FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(), "DeviceVersion");
             PrintJsonObject(response->Variants());
         } else {
-            printf("\nGet %s status = %d", method.c_str(), status);
+            FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Get %s status = %d", method.c_str(), status);
         }
 
         return status;
@@ -102,9 +104,9 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<JsonObject> response;
         uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-        EXPECT_NE(status, Error::None);
-        if (status != Error::None) {
-            printf("\n Get %s status = %d\n", method.c_str(), status);
+        EXPECT_NE(status, FireboltSDKErrorNone);
+        if (status != FireboltSDKErrorNone) {
+            FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Get %s status = %d\n", method.c_str(), status);
         }
 
         return status;
@@ -117,9 +119,9 @@ namespace FireboltSDK {
         parameters["reason"] = "remoteButton";
         uint32_t status = FireboltSDK::Properties::Set(method, parameters);
 
-        EXPECT_EQ(status, Error::None);
-        if (status != Error::None) {
-            printf("\n Set %s status = %d\n", method.c_str(), status);
+        EXPECT_EQ(status, FireboltSDKErrorNone);
+        if (status != FireboltSDKErrorNone) {
+            FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Set %s status = %d\n", method.c_str(), status);
         }
 
         return status;
@@ -131,9 +133,9 @@ namespace FireboltSDK {
         JsonObject parameters;
         uint32_t status = FireboltSDK::Properties::Set(method, parameters);
 
-        EXPECT_NE(status, Error::None);
-        if (status != Error::None) {
-            printf("\n Set %s status = %d\n", method.c_str(), status);
+        EXPECT_NE(status, FireboltSDKErrorNone);
+        if (status != FireboltSDKErrorNone) {
+            FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Set %s status = %d", method.c_str(), status);
         }
 
         return status;
@@ -142,7 +144,7 @@ namespace FireboltSDK {
     static void deviceNameChangeCallback(const void* userData, void* response)
     {
         WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
-        printf("Received a new event: %s\n", jsonResponse->Value().c_str());
+        FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Received a new event: %s", jsonResponse->Value().c_str());
         jsonResponse.Release();
         FireboltSDK::Tests::EventControl* eventControl = reinterpret_cast<FireboltSDK::Tests::EventControl*>(const_cast<void*>(userData));
         eventControl->NotifyEvent();
@@ -159,15 +161,17 @@ namespace FireboltSDK {
         eventControl->ResetEvent();
         uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id);
 
-        EXPECT_EQ(status, Error::None);
-        if (status != Error::None) {
-            printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
+        EXPECT_EQ(status, FireboltSDKErrorNone);
+        if (status != FireboltSDKErrorNone) {
+            FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(),
+            "Set %s status = %d", eventName.c_str(), status);
         } else {
-            printf("%s Yes registered successfully\n", __func__);
+            FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
+            "%s Yes registered successfully", __func__);
             eventControl->WaitForEvent(WPEFramework::Core::infinite);
         }
 
-        EXPECT_EQ(Properties::Unsubscribe(eventName, id), Error::None);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, id), FireboltSDKErrorNone);
         delete eventControl;
 
         return status;
@@ -182,7 +186,8 @@ namespace FireboltSDK {
     static void deviceNameChangeMultipleCallback(const void* userData, void* response)
     {
         WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
-        printf("Received a new event from deviceNameChangeMultipleCallback: %s\n", jsonResponse->Value().c_str());
+        FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
+        "Received a new event from deviceNameChangeMultipleCallback: %s", jsonResponse->Value().c_str());
         jsonResponse.Release();
         FireboltSDK::Tests::EventControl* eventControl = reinterpret_cast<FireboltSDK::Tests::EventControl*>(const_cast<void*>(userData));
         eventControl->NotifyEvent();
@@ -198,31 +203,34 @@ namespace FireboltSDK {
         eventControl1->ResetEvent();
         uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, userdata, id1);
 
-        EXPECT_EQ(status, Error::None);
-        if (status != Error::None) {
-            printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
+        EXPECT_EQ(status, FireboltSDKErrorNone);
+        if (status != FireboltSDKErrorNone) {
+            FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(),
+            "Set %s status = %d", eventName.c_str(), status);
         } else {
-            printf("%s Yes registered successfully\n", __func__);
+            FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
+            "%s Yes registered successfully", __func__);
         }
 
-	if (status == Error::None) {
+        if (status == FireboltSDKErrorNone) {
             FireboltSDK::Tests::EventControl* eventControl2 = new FireboltSDK::Tests::EventControl();
             userdata = static_cast<void*>(eventControl2);
 
             status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, userdata, id2);
 
-            EXPECT_EQ(status, Error::None);
-            if (status != Error::None) {
-                printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
+            EXPECT_EQ(status, FireboltSDKErrorNone);
+            if (status != FireboltSDKErrorNone) {
+                FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Set %s status = %d", eventName.c_str(), status);
             } else {
-                printf("%s Yes registered second callback also successfully\n", __func__);
+                FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
+                "%s Yes registered second callback also successfully", __func__);
                 eventControl1->WaitForEvent(WPEFramework::Core::infinite);
                 eventControl2->WaitForEvent(WPEFramework::Core::infinite);
             }
-            EXPECT_EQ(Properties::Unsubscribe(eventName, id1), Error::None);
+            EXPECT_EQ(Properties::Unsubscribe(eventName, id1), FireboltSDKErrorNone);
             delete eventControl2;
         }
-        EXPECT_EQ(Properties::Unsubscribe(eventName, id2), Error::None);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, id2), FireboltSDKErrorNone);
 
         delete eventControl1;
         return status;
@@ -255,11 +263,13 @@ uint32_t test_properties_get_device_id()
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String> response;
     uint32_t status = FireboltSDK::Properties::Get(method, response);
 
-    EXPECT_EQ(status, FireboltSDK::Error::None);
-    if (status == FireboltSDK::Error::None) {
-        printf("\nDeviceId : %s", response->Value().c_str());
+    EXPECT_EQ(status, FireboltSDKErrorNone);
+    if (status == FireboltSDKErrorNone) {
+        FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+        "DeviceId : %s", response->Value().c_str());
     } else {
-        printf("\nGet %s status = %d\n", method.c_str(), status);
+        FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+        "Get %s status = %d", method.c_str(), status);
     }
 
     return status;
@@ -272,9 +282,10 @@ uint32_t test_properties_set()
     parameters["reason"] = "remoteButton";
     uint32_t status = FireboltSDK::Properties::Set(method, parameters);
 
-    EXPECT_EQ(status, FireboltSDK::Error::None);
-    if (status != FireboltSDK::Error::None) {
-        printf("\n Set %s status = %d\n", method.c_str(), status);
+    EXPECT_EQ(status, FireboltSDKErrorNone);
+    if (status != FireboltSDKErrorNone) {
+        FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+        "Set %s status = %d", method.c_str(), status);
     }
 
     return status;
@@ -283,7 +294,8 @@ uint32_t test_properties_set()
 static void deviceNameChangeCallbackForC(const void* userData, void* response)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
-    printf("Received a new event--->: %s\n", jsonResponse->Value().c_str());
+    FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+    "Received a new event--->: %s", jsonResponse->Value().c_str());
     jsonResponse.Release();
 
     FireboltSDK::Tests::EventControl* eventControl = reinterpret_cast<FireboltSDK::Tests::EventControl*>(const_cast<void*>(userData));
@@ -302,16 +314,18 @@ uint32_t test_eventregister()
     eventControl->ResetEvent();
     uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallbackForC, userdata, id);
 
-    EXPECT_EQ(status, FireboltSDK::Error::None);
-    if (status != FireboltSDK::Error::None) {
-        printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
+    EXPECT_EQ(status, FireboltSDKErrorNone);
+    if (status != FireboltSDKErrorNone) {
+        FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+        "%s Set %s status = %d", __func__, eventName.c_str(), status);
     } else {
-        printf("%s Yes registered successfully\n", __func__);
+        FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+        "%s Yes registered successfully", __func__);
         eventControl->WaitForEvent(WPEFramework::Core::infinite);
     }
 
     delete eventControl;
-    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDK::Error::None);
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDKErrorNone);
 
     return status;
 }
@@ -327,27 +341,31 @@ uint32_t test_eventregister_by_providing_callback()
     eventControl->ResetEvent();
     uint32_t status = FireboltSDK::Tests::SubscribeEventForC(eventName, deviceNameChangeCallbackForC, userdata, id);
 
-    EXPECT_EQ(status, FireboltSDK::Error::None);
-    if (status != FireboltSDK::Error::None) {
-        printf("\n%s Set %s status = %d\n", __func__, eventName.c_str(), status);
+    EXPECT_EQ(status, FireboltSDKErrorNone);
+    if (status != FireboltSDKErrorNone) {
+        FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+        "%s Set %s status = %d", __func__, eventName.c_str(), status);
     } else {
-        printf("%s Yes registered successfully\n", __func__);
+        FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+        "%s Yes registered successfully", __func__);
         eventControl->WaitForEvent(WPEFramework::Core::infinite);
     }
 
     delete eventControl;
-    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDK::Error::None);
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDKErrorNone);
 }
 
+#include "TypesPriv.h"
 uint32_t test_string_set_get_value()
 {
-    uint32_t status = FireboltSDK::Error::None;
+    uint32_t status = FireboltSDKErrorNone;
     FireboltSDK::String* str = new FireboltSDK::String("testString");
     void* handle = static_cast<void*>(str);
 
     const char* value = FireboltTypes_String(handle);
     EXPECT_EQ(strncmp(value, str->Value().c_str(), str->Value().length()), 0);
-    printf("\n ---> type name = %s %s\n", str->Value().c_str(), value);
+    FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+    " ---> type name = %s %s", str->Value().c_str(), value);
 
     FireboltTypes_StringHandle_Release(handle);
     return status;

@@ -35,13 +35,13 @@ namespace FireboltSDK {
         template <typename RESPONSETYPE>
         static uint32_t Get(const string& propertyName, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
         {
-            uint32_t status = Error::Unavailable;
+            uint32_t status = FireboltSDKErrorUnavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject parameters;
                 RESPONSETYPE responseType;
                 status = transport->Invoke(propertyName, parameters, responseType);
-                if (status == Error::None) {
+                if (status == FireboltSDKErrorNone) {
                     ASSERT(response.IsValid() == false);
                     if (response.IsValid() == true) {
                         response.Release();
@@ -59,7 +59,7 @@ namespace FireboltSDK {
         template <typename PARAMETERS>
         static uint32_t Set(const string& propertyName, const PARAMETERS& parameters)
         {
-            uint32_t status = Error::Unavailable;
+            uint32_t status = FireboltSDKErrorUnavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject responseType;

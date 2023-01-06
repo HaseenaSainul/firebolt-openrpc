@@ -863,19 +863,19 @@ namespace FireboltSDK {
         uint32_t FireboltErrorValue(const uint32_t error)
         {
 
-            uint32_t fireboltError = Error::Unknown;
+            uint32_t fireboltError = FireboltSDKErrorUnknown;
             switch (error) {
             case WPEFramework::Core::ERROR_NONE:
-                fireboltError = Error::None;
+                fireboltError = FireboltSDKErrorNone;
                 break;
             case WPEFramework::Core::ERROR_GENERAL:
-                fireboltError = Error::General;
+                fireboltError = FireboltSDKErrorGeneral;
                 break;
             case WPEFramework::Core::ERROR_UNAVAILABLE:
-                fireboltError = Error::Unavailable;
+                fireboltError = FireboltSDKErrorUnavailable;
                 break;
             case WPEFramework::Core::ERROR_TIMEDOUT:
-                fireboltError = Error::Timedout;
+                fireboltError = FireboltSDKErrorTimedout;
                 break;
             default:
                 break;

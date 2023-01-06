@@ -47,5 +47,3 @@ endif()
 configure_file( "${CMAKE_SOURCE_DIR}/cmake/project.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/${FIREBOLT_NAMESPACE}Config.cmake"
     @ONLY)
-
-

@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <string>
 
 namespace FireboltSDK {
@@ -54,13 +53,3 @@ class String {
         std::string _value;
     };
 }
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef void* FireboltTypes_StringHandle;
-const char* FireboltTypes_String(FireboltTypes_StringHandle handle);
-void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle);
-#ifdef __cplusplus
-}
-#endif

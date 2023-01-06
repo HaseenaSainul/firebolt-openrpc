@@ -48,13 +48,13 @@ namespace FireboltSDK {
     uint32_t Logger::SetLogLevel(Logger::LogLevel logLevel)
     {
         ASSERT(logLevel < Logger::LogLevel::MaxLevel);
-	uint32_t status = Error::NotSupported;
-	if (logLevel < Logger::LogLevel::MaxLevel) {
+        uint32_t status = FireboltSDKErrorNotSupported;
+        if (logLevel < Logger::LogLevel::MaxLevel) {
             _logLevel = logLevel;
-            status = Error::None;
-	}
+            status = FireboltSDKErrorNone;
+        }
         printf("logLevel = %d _logLevel = %d\n", logLevel, _logLevel);
-	return status;
+        return status;
     }
 
     void Logger::Log(LogLevel logLevel, Category category, const std::string& module, const std::string file, const std::string function, const uint16_t line, const std::string& format, ...)
@@ -67,16 +67,16 @@ namespace FireboltSDK {
             va_end(arg);
 
             uint32_t position = (length >= Logger::MaxBufSize) ? (Logger::MaxBufSize - 1) : length;
-	    msg[position] = '\0';
+            msg[position] = '\0';
 
             char formattedMsg[Logger::MaxBufSize];
             const string time = WPEFramework::Core::Time::Now().ToTimeOnly(true);
             const string categoryName =  WPEFramework::Core::EnumerateType<Logger::Category>(category).Data();
             if (categoryName.empty() != true) {
                 sprintf(formattedMsg, "--->\033[1;32m[%s]:[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\n", time.c_str(), categoryName.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
-	    } else {
+            } else {
                 sprintf(formattedMsg, "--->\033[1;32m[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\n", time.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
-	    }
+            }
             LOG_MESSAGE(formattedMsg);
         }
     }

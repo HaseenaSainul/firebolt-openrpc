@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _TEST_UTILS_H
+#define _TEST_UTILS_H
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -33,3 +34,5 @@ extern int TotalTestsPassed;
 #ifdef __cplusplus
 }
 #endif
+
+#endif // _TEST_UTILS_H

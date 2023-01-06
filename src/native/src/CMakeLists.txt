@@ -41,7 +41,8 @@ target_link_libraries(${TARGET}
 
 target_include_directories(${TARGET}
     PRIVATE
-        $<BUILD_INTERFACE:${GENERATED_CODE_PATH}/include/
+        $<BUILD_INTERFACE:${GENERATED_CODE_PATH}/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
 )
 
@@ -57,25 +58,16 @@ set_target_properties(${TARGET} PROPERTIES
 install(
     TARGETS ${TARGET} EXPORT ${TARGET}Targets
     LIBRARY DESTINATION lib COMPONENT libs
-     PUBLIC_HEADER DESTINATION include/${FIREBOLT_NAMESPACE} COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE} # headers
+     PUBLIC_HEADER DESTINATION include/${TARGET} COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/${TARGET} # headers
 )
 
-InstallHeaders(
-    TARGET ${TARGET}
-    HEADERS .
-    NAMESPACE ${FIREBOLT_NAMESPACE}
-    DESTINATION ${FIREBOLT_NAMESPACE}
-)
+InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTINATION ${FIREBOLT_NAMESPACE}SDK)
+InstallHeaders(TARGET ${TARGET} EXCLUDE_ROOT_DIR HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE}
+    SOURCE ${GENERATED_CODE_PATH}/include DESTINATION ${FIREBOLT_NAMESPACE}/generated)
+InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE}
+    SOURCE ${CMAKE_SOURCE_DIR}/include DESTINATION ${FIREBOLT_NAMESPACE})
 
-InstallHeaders(
-    TARGET ${TARGET}
-    EXCLUDE_ROOT_DIR
-    HEADERS .
-    NAMESPACE ${FIREBOLT_NAMESPACE}
-    SOURCE ${GENERATED_CODE_PATH}/include
-    DESTINATION ${FIREBOLT_NAMESPACE}/generated
-)
 InstallLibraries(TARGET ${TARGET} SHARED LIBRARIES ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
 InstallCMakeConfig(TARGETS ${TARGET})
 InstallPackageConfig(TARGETS ${TARGET} DESCRIPTION "Firebolt SDK Library")

@@ -18,9 +18,8 @@
 
 #pragma once
 
-#include "Tests.h"
+#include "TestUtils.h"
 #include "Firebolt.h"
-#include "fireboltsdktest.h"
 
 namespace FireboltSDK {
     typedef uint32_t (*Func)();

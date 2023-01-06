@@ -16,9 +16,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#pragma once
+#ifndef _OPENRPC_C_TESTS_H
+#define _OPENRPC_C_TESTS_H
 
-#include "Tests.h"
+#include "TestUtils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,3 +38,5 @@ uint32_t test_string_set_get_value();
 #ifdef __cplusplus
 }
 #endif
+
+#endif // _OPENRPC_C_TESTS_H

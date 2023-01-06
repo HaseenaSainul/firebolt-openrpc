@@ -16,19 +16,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#pragma once
+#ifndef _FIREBOLT_TYPES_H
+#define _FIREBOLT_TYPES_H
 
-namespace FireboltSDK {
+#include <stdint.h>
 
-    typedef enum {
-        None = 0,
-        General = 1,
-        Unavailable = 2,
-        Timedout = 3,
-        NotSubscribed = 4,
-        Unknown = 5,
-        InUse = 6,
-        NotSupported = 7
-    } Error;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef void* FireboltTypes_StringHandle;
+const char* FireboltTypes_String(FireboltTypes_StringHandle handle);
+void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle);
+
+#ifdef __cplusplus
 }
+#endif
 
+#endif // _FIREBOLT_TYPES_H

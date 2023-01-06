@@ -26,7 +26,7 @@ message("Setup ${TESTLIB} v${PROJECT_VERSION}")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 
-add_library(${TESTLIB} STATIC FireboltSDKTests.cpp)
+add_library(${TESTLIB} STATIC OpenRPCTests.cpp)
 
 target_link_libraries(${TESTLIB}
     PUBLIC
@@ -37,6 +37,7 @@ target_link_libraries(${TESTLIB}
 target_include_directories(${TESTLIB}
     PRIVATE
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
 )
 
 set_target_properties(${TESTLIB} PROPERTIES
@@ -62,7 +63,7 @@ set(TESTAPP "FireboltSDKTestApp")
 
 message("Setup ${TESTAPP}")
 
-add_executable(${TESTAPP} FireboltSDKTestsMain.c)
+add_executable(${TESTAPP} Main.c)
 
 target_link_libraries(${TESTAPP}
     PRIVATE

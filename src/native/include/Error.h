@@ -16,26 +16,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Module.h"
-#include "Types.h"
-#include "TypesPriv.h"
+#ifndef _FIREBOLT_ERROR_H
+#define _FIREBOLT_ERROR_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// String Type Handler Interfaces
-const char* FireboltTypes_String(FireboltTypes_StringHandle handle)
-{
-    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
-    return (str->Value().c_str());
-}
-void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle)
-{
-    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
-    delete str;
-}
+typedef enum FireboltSDKError {
+    FireboltSDKErrorNone = 0,
+    FireboltSDKErrorGeneral = 1,
+    FireboltSDKErrorUnavailable = 2,
+    FireboltSDKErrorTimedout = 3,
+    FireboltSDKErrorNotSubscribed = 4,
+    FireboltSDKErrorUnknown = 5,
+    FireboltSDKErrorInUse = 6,
+    FireboltSDKErrorNotSupported = 7
+} FireboltSDKError_t;
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif // _FIREBOLT_ERROR_H
