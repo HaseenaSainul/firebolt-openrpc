@@ -31,6 +31,12 @@ ENUM_CONVERSION_BEGIN(::JsonValue::type)
 
 ENUM_CONVERSION_END(::JsonValue::type)
 
+ENUM_CONVERSION_BEGIN(TestEnum)
+    { TestEnum::Test1, _TXT("Test1ValueCheck") },
+    { TestEnum::Test2, _TXT("Test2ValueCheck") },
+    { TestEnum::Test3, _TXT("Test3ValueCheck") },
+    { TestEnum::Test4, _TXT("Test4ValueCheck") },
+ENUM_CONVERSION_END(TestEnum)
 }
 namespace FireboltSDK {
     Tests::Tests()
@@ -367,6 +373,9 @@ uint32_t test_string_set_get_value()
     FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
     " ---> type name = %s %s", str->Value().c_str(), value);
 
+    WPEFramework::Core::JSON::EnumType<::TestEnum> testEnum = Test4;
+    FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
+    " EnumTest = %d %s", testEnum.Value(), testEnum.Data());
     FireboltTypes_StringHandle_Release(handle);
     return status;
 }

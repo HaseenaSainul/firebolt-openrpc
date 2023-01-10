@@ -25,6 +25,13 @@
 extern "C" {
 #endif
 
+typedef enum {
+    Test1,
+    Test2,
+    Test3,
+    Test4
+} TestEnum;
+
 typedef void* FireboltTypes_StringHandle;
 const char* FireboltTypes_String(FireboltTypes_StringHandle handle);
 void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle);
