@@ -43,6 +43,8 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefini
          getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
          getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
+import { getJsonDefinition } from '../../../shared/cpphelpers.mjs'
+
 
 // Maybe an array of <key, value> from the schema
 const getDefinitions = compose(
@@ -56,18 +58,20 @@ const getDefinitions = compose(
 const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   const code = []
 
-  code.push(getHeaderText())
-  code.push(getIncludeGuardOpen(obj))
-  const i = getIncludeDefinitions(obj)
-  code.push(i.join('\n'))
-  code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForDefinitions(obj, schemas)
-  code.push([...shape.deps].join('\n'))
-  code.join('\n')
-  code.push(shape.type.join('\n'))
-  code.push(getStyleGuardClose())
-  code.push(getIncludeGuardClose())
-  code.join('\n')
+  if (shape.deps.size > 0 || shape.type.length > 0) {
+    code.push(getHeaderText())
+    code.push(getIncludeGuardOpen(obj))
+    const i = getIncludeDefinitions(obj)
+    code.push(i.join('\n'))
+    code.push(getStyleGuardOpen(obj))
+    code.push([...shape.deps].join('\n'))
+    code.join('\n')
+    code.push(shape.type.join('\n'))
+    code.push(getStyleGuardClose())
+    code.push(getIncludeGuardClose())
+    code.join('\n')
+  }
   return code
 }
 
@@ -91,6 +95,22 @@ const generateHeaderForModules = (obj = {}, schemas = {}) => {
   code.join('\n')
   return code
 }
+const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
+  const code = []
+  const shape = generateJsonTypesForDefinitons(obj, schemas)
+  if (shape.deps.size > 0 || shape.type.length > 0) {
+    code.push(getHeaderText())
+    code.push('#pragma once')
+    const i = getIncludeDefinitions(obj)
+    code.push(i.join('\n'))
+    code.push([...shape.deps].join('\n'))
+    code.join('\n')
+    code.push(shape.type && shape.type.join('\n'))
+    code.join('\n')
+  }
+  return code
+}
+
 //For each schema object, 
 const generateTypesForDefinitions = (json, schemas = {}) => compose(
   reduce((acc, val) => {
@@ -111,6 +131,17 @@ const generateTypesForModules = (json,  schemas = {}) => compose(
   }, {type: [], deps: new Set()}),
   getSchemas //Get schema under Definitions
 )(json)
+
+const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
+  reduce((acc, val) => {
+    const shape = getJsonDefinition(json, val[1], schemas, val[0])
+    acc.type.push(shape.type.join('\n'))
+    shape.deps.forEach(dep => acc.deps.add(dep))
+    return acc
+  }, {type: [], deps: new Set()}),
+  getDefinitions //Get schema under Definitions
+)(json)
+
 
 const generateMethodPrototypes = (json, schemas = {}) => {
   
@@ -146,5 +177,6 @@ const generateMethodPrototypes = (json, schemas = {}) => {
 
 export {
   generateHeaderForDefinitions,
-  generateHeaderForModules
+  generateHeaderForModules,
+  generateJsonDataHeaderForDefinitions
 }
