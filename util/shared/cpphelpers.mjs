@@ -382,34 +382,53 @@ bool ${varName}Handle_IsValid(${varName}Handle handle) {
   return result
 }
 
-const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propertyType,  options = {readonly:false, optional:false}) => {
+const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
 
   let result = `${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
-    return static_cast<propertyType>(*(*var));
+    if (json.type === 'string') {
+     result += `
+    return static_cast<propertyType>(*(*var)->${propertyType}.Value().c_str());` + '\n'
+    else if (json.type === 'object') {
+      //WPEFramework::Core::ProxyType<${propertyType}>* object;
     
+    else {
+     result += `
+    return static_cast<propertyType>(*(*var))->${propertyType}.Value();` + '\n'
+   }
+
+result += `
 }` + '\n'
+
   if (!options.readonly) {
     result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()}) {
    ASSERT(handle != NULL);
    WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
-   ASSERT(var->IsValid());
-   (*(*var)) = ${propertyName.toLowerCase()};
+   ASSERT(var->IsValid());` + '\n'
+   if (json.type === 'object') {
+     result += `
+    WPEFramework::Core::ProxyType<${propertyType}>* object = static_cast<WPEFramework::Core::ProxyType<${propertyType}>*>(propertyName);
+    (*(*var))->${propertyName} = *object;` + '\n'
+   }
+   else {
+     result += `(*(*var))->${propertyName} = static_cast<propertyType>(${propertyName.toLowerCase()});
 }` + '\n'
+   }
+
   if (options.optional === true) {
     result += `${Indent.repeat(options.level)}bool ${objName}_has_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
-    return ((*var)->IsSet());
+    return ((*var)->${propertyName}.IsSet());
 }` + '\n'
     result += `${Indent.repeat(options.level)}void ${objName}_clear_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
-    ((*var)->Clear());
+    ((*var)->${propertyName}.Clear());
 }` + '\n'
   }
 `
