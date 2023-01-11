@@ -351,8 +351,7 @@ unction getSchemaType(module = {}, json = {}, name = '', schemas = {}, options =
 
 const getObjectHandleImpl = (varName, jsonDataName) => {
 
-  let result
-  result += `
+  let result = `
 ${varName}Handle ${varName}Handle_Create(void) {
     WPEFramework::Core::ProxyType<${jsonDataName}>* type = new WPEFramework::Core::ProxyType<${jsonDataName}>();
     *type = WPEFramework::Core::ProxyType<${jsonDataName}>::Create();
@@ -380,6 +379,28 @@ bool ${varName}Handle_IsValid(${varName}Handle handle) {
     return var->IsValid();
 }
 `
+  return result
+}
+
+const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propertyType,  options = {readonly:false, optional:false}) => {
+
+  let result = `${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
+    ASSERT(var->IsValid());
+    
+}
+`
+
+  if(!options.readonly) {
+    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()});` + '\n'
+  }
+
+  if(options.optional === true) {
+    result += `${Indent.repeat(options.level)}bool ${objName}_has_${propertyName}(${objName}Handle handle);` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_clear_${propertyName}(${objName}Handle handle);` + '\n'
+  }
+
   return result
 }
 
