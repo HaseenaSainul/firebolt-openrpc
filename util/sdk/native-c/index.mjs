@@ -21,9 +21,8 @@
 import h from 'highland'
 import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher,clearDirectory, localModules, trimPath, fsReadFile } from '../../shared/helpers.mjs'
 import path from 'path'
-import { generateHeaderForDefinitions, generateHeaderForModules} from './headers/index.mjs'
+import { generateHeaderForDefinitions, generateHeaderForModules, generateJsonDataHeaderForDefinitions} from './headers/index.mjs'
 import {getModuleName} from '../../shared/nativehelpers.mjs'
-import fs from 'fs'
 
 const generateHeaders = ({
   source,
@@ -34,14 +33,17 @@ const generateHeaders = ({
   const schemasFolder = path.join(source, 'schemas')
   const sharedSchemasFolder = sharedSchemasFolderArg
   const modulesFolder = path.join(source, 'modules')
-  const headerDir = path.join(outputFolderArg, 'include')
   const allModules = localModules(modulesFolder, null, true)
+  const headerDir = path.join(outputFolderArg, 'include')  
+  const srcDir = path.join(outputFolderArg, 'src')
+  const commonIncludeDir = path.join(headerDir, 'Common')
+
 
   logHeader(`Generating C Headers in: ${trimPath(headerDir)}`)
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   //Generate headers for Common schemas under 'include/common' directory
-  fsMkDirP(path.join(headerDir, 'Common'))
+  fsMkDirP(commonIncludeDir)
     .tap(_ => logSuccess(`Created folder: ${trimPath(headerDir)}`))
     .flatMap(_ => combinedSchemas
       .flatMap(schemas => combinedSchemas.observe()
@@ -50,11 +52,28 @@ const generateHeaders = ({
         .filter(module => getModuleName(module) !== 'FireboltOpenRPC')
         .map(schema =>  ({title : schema.title, contents : generateHeaderForDefinitions(schema, schemas)}))
         .map(fileContent => {
-            fsWriteFile(path.join(headerDir, 'Common', `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(headerDir,'Common', `${fileContent.title}.h`)} written`))
+          (fileContent.contents.length > 0) && fsWriteFile(path.join(commonIncludeDir, `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(commonIncludeDir, `${fileContent.title}.h`)} written`))
           })
       )
     )
     .done(() => console.log('\nDone Generating Schema Headers by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
+    {
+      const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
+
+      fsMkDirP(srcDir)
+      .flatMap(_ => combinedSchemas
+        .flatMap(schemas => combinedSchemas.observe()
+          .flatMap(schs => Object.values(schs))
+          .flatten()
+          .filter(module => getModuleName(module) !== 'FireboltOpenRPC')
+          .map(schema =>  ({title : schema.title, contents : generateJsonDataHeaderForDefinitions(schema, schemas)}))
+          .map(fileContent => {
+            (fileContent.contents.length > 0) && fsWriteFile(path.join(srcDir, `JsonData_${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(srcDir, `JsonData_${fileContent.title}.h`)} written`))
+            })
+        )
+      )
+      .done(() => console.log('\nDone Generating JsonData Headers by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
+      }
 
   //Generate the Module headers under 'include/' directory
   return combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
@@ -63,12 +82,43 @@ const generateHeaders = ({
       .flatten()
       .map(module => ({title : getModuleName(module), contents : generateHeaderForModules(module, schemas)}))
       .map(fileContent => {
-        fsWriteFile(path.join(headerDir, `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(headerDir, `${fileContent.title}.h`)} written`))
+        (fileContent.contents.length > 0) && fsWriteFile(path.join(headerDir, `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(headerDir, `${fileContent.title}.h`)} written`))
       })
       )
 }
 
 
+const generateCppFiles = ({
+  source,
+  'shared-schemas': sharedSchemasFolderArg,
+  output: outputFolderArg,
+}) => {
+  // Important file/directory locations
+  const schemasFolder = path.join(source, 'schemas')
+  const sharedSchemasFolder = sharedSchemasFolderArg
+  const modulesFolder = path.join(source, 'modules')
+  const allModules = localModules(modulesFolder, null, true)
+  const headerDir = path.join(outputFolderArg, 'include')  
+  const srcDir = path.join(outputFolderArg, 'src')
+  const commonIncludeDir = path.join(headerDir, 'Common')
+
+  //Generate headers for Common schemas under 'include/common' directory
+  fsMkDirP(srcDir)
+    .flatMap(_ => combinedSchemas
+      .flatMap(schemas => combinedSchemas.observe()
+        .flatMap(schs => Object.values(schs))
+        .flatten()
+        .filter(module => getModuleName(module) !== 'FireboltOpenRPC')
+        .map(schema =>  ({title : schema.title, contents : generateCppForDefinitions(schema, schemas)}))
+        .map(fileContent => {
+          (fileContent.contents.length > 0) && fsWriteFile(path.join(srcDir, `${fileContent.title}_Common.cpp`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(srcDir, `${fileContent.title}_Common.cpp`)} written`))
+          })
+      )
+    )
+    .done(() => console.log('\nDone Generating Schema CPP by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
+
+}
 export {
-  generateHeaders
+  generateHeaders,
+  generateCppFiles
 }

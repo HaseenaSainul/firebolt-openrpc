@@ -170,7 +170,7 @@ const getArrayAccessors = (arrayName, valueType) => {
 }
 
 const enumValue = (val,prefix) => {
-  const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+  const keyName = val.replace(/[\.\-:]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
   return `    ${prefix.toUpperCase()}_${keyName.toUpperCase()}`
 }
 
@@ -186,11 +186,15 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-const getIncludeDefinitions = (json = {}) => {
+const getIncludeDefinitions = (json = {}, jsonData = false) => {
   return getExternalRefs(json)
     .map(ref => {
       const mod = ref.split('#')[0].split('/').pop()
-      return `#include "Common/${capitalize(mod)}.h"`
+      let i = `#include "Common/${capitalize(mod)}.h"`
+      if(jsonData === true) {
+        i += '\n' + `#include "JsonData_${capitalize(mod)}.h"`
+      }
+      return i
     })
     .filter((item, index, arr) => arr.indexOf(item) === index)
     .concat([`#include "Firebolt/Types.h"`])
@@ -237,6 +241,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     return structure
   }
   else if (json['x-method']) {
+    console.log(`WARNING UNHANDLED: x-method in ${name}`)
     return structure
     //throw "x-methods not supported yet"
   }
@@ -479,5 +484,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     getPropertyGetterSignature,
     getPropertySetterSignature,
     getPropertyEventCallbackSignature,
-    getPropertyEventSignature
+    getPropertyEventSignature,
+    capitalize,
+    description,
+    getTypeName
   }
