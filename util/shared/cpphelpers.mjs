@@ -7,7 +7,7 @@ const getJsonNativeType = json => {
     let type
     let jsonType = json.const ? typeof json.const : json.type
 
-    if(jsonType === 'string') {
+    if (jsonType === 'string') {
         type = 'Core::JSON::String'
     }
     else if (jsonType === 'number' || json.type === 'integer') { //Lets keep it simple for now
@@ -390,13 +390,16 @@ const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propert
     ASSERT(var->IsValid());
     if (json.type === 'string') {
      result += `
-    return static_cast<propertyType>(*(*var)->${propertyType}.Value().c_str());` + '\n'
+    return static_cast<${propertyType}>((*var)->${propertyName}.Value().c_str());` + '\n'
     else if (json.type === 'object') {
-      //WPEFramework::Core::ProxyType<${propertyType}>* object;
-    
+    WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>* object = new WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>();
+    *object = WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>::Create();
+    *(*object) = (*var)->${propertyName};
+    return (static_cast<${propertyType}>(object));` + '\n'
+
     else {
      result += `
-    return static_cast<propertyType>(*(*var))->${propertyType}.Value();` + '\n'
+    return static_cast<${propertyType}>((*var)->${propertyName}.Value());` + '\n'
    }
 
 result += `
@@ -409,11 +412,11 @@ result += `
    ASSERT(var->IsValid());` + '\n'
    if (json.type === 'object') {
      result += `
-    WPEFramework::Core::ProxyType<${propertyType}>* object = static_cast<WPEFramework::Core::ProxyType<${propertyType}>*>(propertyName);
-    (*(*var))->${propertyName} = *object;` + '\n'
+    WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>* object = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>*>(${propertyName.toLowerCase()});
+    (*var)->${propertyName} = *(*object);` + '\n'
    }
    else {
-     result += `(*(*var))->${propertyName} = static_cast<propertyType>(${propertyName.toLowerCase()});
+     result += `(*var)->${propertyName} = static_cast<${propertyType}>(${propertyName.toLowerCase()});
 }` + '\n'
    }
 
