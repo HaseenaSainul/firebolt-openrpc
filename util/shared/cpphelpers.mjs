@@ -274,29 +274,34 @@ bool ${varName}Handle_IsValid(${varName}Handle handle) {
   return result
 }
 
-/*
 const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
 
   let result = `${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
-    ASSERT(var->IsValid());`
+    ASSERT(var->IsValid());` + '\n'
     if (json.type === 'string') {
-      result += `
+     result += `
     return static_cast<${propertyType}>((*var)->${propertyName}.Value().c_str());` + '\n'
-    }
-    else if (json.type === 'object') {
-    result += `WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>* object = new WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>();
-    *object = WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>::Create();
+    } else if (json.type === 'object') {
+     result += `
+    WPEFramework::Core::ProxyType<${objName}::${propertyName}>* object = new WPEFramework::Core::ProxyType<${objName}::${propertyName}>();
+    *object = WPEFramework::Core::ProxyType<${objName}::${propertyName}>::Create();
     *(*object) = (*var)->${propertyName};
     return (static_cast<${propertyType}>(object));` + '\n'
-    }
-    else {
+
+    } else if (json.type === 'array') {
+      result += `
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>* object = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>();
+    *object = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>::Create();
+    *(*object) = (*var)->${propertyName}.Element();
+    return (static_cast<${propertyType}>(object));` + '\n'
+    } else {
      result += `
     return static_cast<${propertyType}>((*var)->${propertyName}.Value());` + '\n'
    }
 
-result += `
+   result += `
 }` + '\n'
 
   if (!options.readonly) {
@@ -306,13 +311,19 @@ result += `
    ASSERT(var->IsValid());` + '\n'
    if (json.type === 'object') {
      result += `
-    WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>* object = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}::${propertyName}>*>(${propertyName.toLowerCase()});
+    WPEFramework::Core::ProxyType<${objName}::${propertyName}>* object = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(${propertyName.toLowerCase()});
+    (*var)->${propertyName} = *(*object);` + '\n'
+   }
+   if (json.type === 'array') {
+     result += `
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>* object = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>*>(${propertyName.toLowerCase()}).Element();
     (*var)->${propertyName} = *(*object);` + '\n'
    }
    else {
      result += `(*var)->${propertyName} = static_cast<${propertyType}>(${propertyName.toLowerCase()});
 }` + '\n'
    }
+  }
 
   if (options.optional === true) {
     result += `${Indent.repeat(options.level)}bool ${objName}_has_${propertyName}(${objName}Handle handle) {
@@ -328,10 +339,70 @@ result += `
     ((*var)->${propertyName}.Clear());
 }` + '\n'
   }
-`
+
   return result
 }
 
+const getArrayAccessors = (objName, propertyName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
+    let result = `
+uint32_t ${objName}_${propertyName}Array_Size(${objName}::${propertyName}ArrayHandle handle) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
+    ASSERT(var->IsValid());
+
+    return ((*var)->Length());
+}` + '\n'
+
+  if (json.type === 'object') {
+result += `${objName}_${propertyType}Handle ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
+    ASSERT(var->IsValid());
+    WPEFramework::Core::ProxyType<${propertyType}>* object = new WPEFramework::Core::ProxyType<${propertyType}>();
+    *object = WPEFramework::Core::ProxyType<${propertyName}>::Create();
+    *(*object) = (*var)->Get(index);
+    return (static_cast<${objName}_${propertyType}Handle>(object));` + '\n'
+  } else {
+    result += `${propertyType} ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
+    ASSERT(var->IsValid());` + '\n'
+
+    if (json.type === 'string') {
+      result += `return (static_cast<${propertyType}>((*var)->Get(index).Value().c_str()));` + '\n'
+    } else {
+      result += `return (static_cast<${propertyType}>((*var)->Get(index)));` + '\n'
+    }
+
+  }
+  result += `}` + '\n'
+
+  if (json.type === 'object') {
+    result += `void ${objName}_${propertyName}Array_Add(${objName}_${propertyName}ArrayHandle handle, ${objName}_${propertyType}Handle value) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
+    ASSERT(var->IsValid());
+    WPEFramework::Core::ProxyType<${propertyName}>* object = static_cast<WPEFramework::Core::ProxyType<${propertyName}>*>(value);
+    (*var)->${propertyName} = *(*object);` + '\n'
+  } else {
+     result += `void ${objName}_${propertyName}Array_Add(${objName}_${propertyName}ArrayHandle handle, ${propertyType} value) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
+    ASSERT(var->IsValid());
+    (*var)->${propertyName} = value;` + '\n'
+  }
+  result += `}` + '\n'
+
+  result += `void ${objName}_${propertyName}Array_Clear(${objName}_${propertyName}ArrayHandle handle) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
+    ASSERT(var->IsValid());
+    (*var)->Clear();
+}` + '\n'
+
+  return result
+}
+/*
 const getMapAccessors = (typeName, nativeType, jsonDataName) => {
 
   let res
