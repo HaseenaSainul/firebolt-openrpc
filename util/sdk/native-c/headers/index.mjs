@@ -43,7 +43,7 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefini
          getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
          getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getJsonDefinition } from '../../../shared/cpphelpers.mjs'
+import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition } from '../../../shared/cpphelpers.mjs'
 
 
 // Maybe an array of <key, value> from the schema
@@ -100,16 +100,46 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
   const shape = generateJsonTypesForDefinitons(obj, schemas)
   if (shape.deps.size > 0 || shape.type.length > 0) {
     code.push(getHeaderText())
-    code.push('#pragma once')
+    code.push('#pragma once' + '\n')
     const i = getIncludeDefinitions(obj)
     code.push(i.join('\n'))
+    code.push(getNameSpaceOpen(obj))
     code.push([...shape.deps].join('\n'))
     code.join('\n')
     code.push(shape.type && shape.type.join('\n'))
     code.join('\n')
+    code.push(getNameSpaceClose(obj))
   }
   return code
 }
+
+const generateCppForDefinitions = (obj = {}, schemas = {}) => {
+  const code = []
+
+  code.push(getHeaderText())
+  const i = getIncludeDefinitions(obj, true)
+  code.push(i.join('\n'))
+  code.push(getStyleGuardOpen(obj))
+  const shape = generateImplForDefinitions(obj, schemas)
+  code.push([...shape.deps].join('\n'))
+  code.join('\n')
+  code.push(shape.type.join('\n'))
+  code.push(getStyleGuardClose())
+  code.join('\n')
+  return code
+}
+
+//For each schema object, 
+const generateImplForDefinitions = (json, schemas = {}) => compose(
+  reduce((acc, val) => {
+    const shape = getSchemaShape(json, val[1], schemas, val[0])
+    acc.type.push(shape.type.join('\n'))
+    shape.deps.forEach(dep => acc.deps.add(dep))
+    return acc
+  }, {type: [], deps: new Set()}),
+  getDefinitions //Get schema under Definitions
+)(json)
+
 
 //For each schema object, 
 const generateTypesForDefinitions = (json, schemas = {}) => compose(
