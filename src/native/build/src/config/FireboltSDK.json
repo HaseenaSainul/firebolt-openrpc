@@ -1,5 +1,0 @@
-{
- "url":"ws://192.168.1.2:9998",
- "waittime":1000,
- "loglevel":"Info"
-}
