@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/haseenasainul/thunder-repos/firebolt/firebolt-openrpc-git/src/native/test/Main.c
+OpenRPCCTests.h
+/home/haseenasainul/thunder-repos/firebolt/firebolt-openrpc-git/src/native/test/OpenRPCCTests.h
+
+/home/haseenasainul/thunder-repos/firebolt/firebolt-openrpc-git/src/native/test/OpenRPCCTests.h
+TestUtils.h
+/home/haseenasainul/thunder-repos/firebolt/firebolt-openrpc-git/src/native/test/TestUtils.h
+
+/home/haseenasainul/thunder-repos/firebolt/firebolt-openrpc-git/src/native/test/TestUtils.h
+stdio.h
+-
+stdbool.h
+-
+stdint.h
+-
+
