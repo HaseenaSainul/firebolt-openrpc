@@ -24,8 +24,6 @@ const { chain, filter, reduce, option, map } = pointfree
 import predicates from 'crocks/predicates/index.js'
 import { getPath, getSchema, getExternalRefs } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
-//import merg from 'deepmerge-json'
-
 
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
@@ -88,19 +86,19 @@ const Indent = '    '
 const getNativeType = json => {
     let type
 
-    if(json.const) {
-      if(typeof json.const === 'string') {
+    if (json.const) {
+      if (typeof json.const === 'string') {
         type = 'char*'
       }
-      else if(typeof json.const === 'number') {
+      else if (typeof json.const === 'number') {
         type = 'uint32_t'
-        if(json.const < 0)
+        if (json.const < 0)
             type = 'int32_t'
       } else if (typeof json.const === 'boolean'){
         type = 'bool'
       }
     }
-    else if(json.type === 'string') {
+    else if (json.type === 'string') {
         type = 'char*'
     }
     else if (json.type === 'number' || json.type === 'integer') { //Lets keep it simple for now
@@ -115,7 +113,6 @@ const getNativeType = json => {
     }
     return type
 }
-
 
 const getObjectHandleManagement = varName => {
 
@@ -132,11 +129,11 @@ const getPropertyAccessors = (objName, propertyName, propertyType,  options = {l
 
   let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle);` + '\n'
 
-  if(!options.readonly) {
+  if (!options.readonly) {
     result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()});` + '\n'
   }
 
-  if(options.optional === true) {
+  if (options.optional === true) {
     result += `${Indent.repeat(options.level)}bool ${objName}_has_${propertyName}(${objName}Handle handle);` + '\n'
     result += `${Indent.repeat(options.level)}void ${objName}_clear_${propertyName}(${objName}Handle handle);` + '\n'
   }
@@ -155,7 +152,6 @@ const getMapAccessors = (typeName, nativeType,  level=0) => {
 
   return res
 }
-
 
 const getTypeName = (moduleName, varName, upperCase = false) => {
   let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
@@ -279,7 +275,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     }
 
     res.deps.forEach(dep => structure.deps.add(dep))
-    let n = getTypeName(getModuleName(module), name || json.title) 
+    let n = getTypeName(getModuleName(module), name || json.title)
     let def = description(name || json.title, json.description) + '\n'
     if (options.level === 0) {
       def += getObjectHandleManagement(n + 'Array') + '\n'
@@ -304,7 +300,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     return structure
     //TODO
   }
-  else if (json.type === 'object') { 
+  else if (json.type === 'object') {
     let res = getSchemaShape(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
     res.deps.forEach(dep => structure.deps.add(dep))
     res.type.forEach(t => structure.deps.add(t))
@@ -321,14 +317,12 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
 
 function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
-    let level = options.level 
+    let level = options.level
     let descriptions = options.descriptions
 
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
-
-    //console.log(`name - ${name}, json - ${JSON.stringify(json, null, 4)}`)
 
     if (json['$ref']) {
       if (json['$ref'][0] === '#') {
@@ -357,8 +351,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         structure.type = res.type
       }
     }
-    //If the schema is a const, 
-    else if (json.hasOwnProperty('const')) { 
+    //If the schema is a const,
+    else if (json.hasOwnProperty('const')) {
       if (level > 0) {
 
         let t = description(name, json.description)
@@ -376,7 +370,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         Object.entries(json.properties).forEach(([pname, prop]) => {
           t += '\n' + description(pname, prop.description)
           let res
-          if(prop.type === 'array') {
+          if (prop.type === 'array') {
             if (Array.isArray(prop.items)) {
               //TODO
               const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
@@ -389,7 +383,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               // grab the type for the non-array schema
               res = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
             }
-            if(res.type && res.type.length > 0) {
+            if (res.type && res.type.length > 0) {
               let n = tName + '_' + capitalize(pname || prop.title) 
               let def = getArrayAccessors(n + 'Array', res.type)
               t += '\n' + def
@@ -399,7 +393,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
             }
           } else {
             res = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
-            if(res.type && res.type.length > 0) {
+            if (res.type && res.type.length > 0) {
               t += '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
             }
             else {
@@ -417,7 +411,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         //This is a map of string to type in schema
         //Get the Type
         let type = getSchemaType(moduleJson, json.additionalProperties, name,schemas)
-        if(type.type && type.type.length > 0) {
+        if (type.type && type.type.length > 0) {
           let tName = getTypeName(getModuleName(moduleJson), name)
           type.deps.forEach(dep => structure.deps.add(dep))
           let t = description(name, json.description)
@@ -455,7 +449,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       let res = getSchemaType(moduleJson, json, name, schemas, {level: 0, descriptions: descriptions})
       res.deps.forEach(dep => structure.deps.add(dep))
     }
-    else{
+    else {
       let res = getSchemaType(moduleJson, json, name, schemas, {level: level, descriptions: descriptions})
       res.deps.forEach(dep => structure.deps.add(dep))
     }
@@ -473,12 +467,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   }
 
   function getPropertyEventCallbackSignature(method, module, paramType) {
-    return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})` 
+    return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})`
   }
 
-  function getPropertyEventSignature(method, module) { 
+  function getPropertyEventSignature(method, module) {
     return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${capitalize(method.name)}Changed notification, uint16_t* listenerId)`
-
   }
 
   export {
