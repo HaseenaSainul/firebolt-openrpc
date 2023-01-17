@@ -43,10 +43,11 @@ const getHeaderText = () => {
 `
 }
     
-const getIncludeGuardOpen = (json) => {
+const getIncludeGuardOpen = (json, prefix=null) => {
+  prefix = prefix ? `${prefix.toUpperCase()}_` : ''
     return `
-#ifndef _${getModuleName(json).toUpperCase()}_H
-#define _${getModuleName(json).toUpperCase()}_H
+#ifndef _${prefix}${getModuleName(json).toUpperCase()}_H
+#define _${prefix}${getModuleName(json).toUpperCase()}_H
 
 `
 }
@@ -221,7 +222,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       let definition = getPath(json['$ref'], module, schemas)
       let tName = definition.title || json['$ref'].split('/').pop()
       const res = getSchemaType(module, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
-      structure.deps = res.deps
+      res.deps.forEach(dep => structure.deps.add(dep))
       structure.type = res.type
       return structure
     }
@@ -262,7 +263,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     let type = json.type.find(t => t !== 'null')
     console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
   }
-  else if (json.type === 'array' && json.items) { 
+  else if (json.type === 'array' && json.items) {
     let res
     if (Array.isArray(json.items)) {
       //TODO
@@ -277,7 +278,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       res = getSchemaType(module, json.items, '', schemas)
     }
 
-    structure.deps = res.deps
+    res.deps.forEach(dep => structure.deps.add(dep))
     let n = getTypeName(getModuleName(module), name || json.title) 
     let def = description(name || json.title, json.description) + '\n'
     if (options.level === 0) {
@@ -305,8 +306,8 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   }
   else if (json.type === 'object') { 
     let res = getSchemaShape(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
-    structure.deps = res.deps
-    structure.deps.add(res.type.join('\n'))
+    res.deps.forEach(dep => structure.deps.add(dep))
+    res.type.forEach(t => structure.deps.add(t))
     structure.type.push(getTypeName(getModuleName(module), json.title || name) + 'Handle')
     return structure
     //TODO
@@ -337,7 +338,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         const schema = getPath(json['$ref'], module, schemas)
         const tname = schema.title || json['$ref'].split('/').pop()
         res = getSchemaShape(module, schema, schemas, tname, {descriptions: descriptions, level: level})
-        structure.deps = res.deps
+        res.deps.forEach(dep => structure.deps.add(dep))
         structure.type = res.type
       }
       else {
@@ -359,9 +360,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     //If the schema is a const, 
     else if (json.hasOwnProperty('const')) { 
       if (level > 0) {
-        structure.type.push(description(name, json.description))
+
+        let t = description(name, json.description)
         typeName = getTypeName(getModuleName(moduleJson), name)
-        structure.type.push(getPropertyAccessors(typeName, capitalize(name), typeof json.const, {level: level, readonly:true, optional:false}))
+        t += getPropertyAccessors(typeName, capitalize(name), typeof json.const, {level: level, readonly:true, optional:false})
+        structure.type.push(t)
       }
     }
     else if (json.type === 'object') {
@@ -416,7 +419,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         let type = getSchemaType(moduleJson, json.additionalProperties, name,schemas)
         if(type.type && type.type.length > 0) {
           let tName = getTypeName(getModuleName(moduleJson), name)
-          structure.deps = type.deps
+          type.deps.forEach(dep => structure.deps.add(dep))
           let t = description(name, json.description)
           t += '\n' + getObjectHandleManagement(tName) + '\n'
           t += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type,{descriptions: descriptions, level: level})
@@ -450,11 +453,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     }
     else if (json.type === 'array') {
       let res = getSchemaType(moduleJson, json, name, schemas, {level: 0, descriptions: descriptions})
-      structure.deps = res.deps
+      res.deps.forEach(dep => structure.deps.add(dep))
     }
     else{
       let res = getSchemaType(moduleJson, json, name, schemas, {level: level, descriptions: descriptions})
-      structure.deps = res.deps
+      res.deps.forEach(dep => structure.deps.add(dep))
     }
     return structure
   }

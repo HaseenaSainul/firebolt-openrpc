@@ -45,7 +45,8 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefini
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition } from '../../../shared/cpphelpers.mjs'
 
-
+import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher,clearDirectory, localModules, trimPath, fsReadFile } from '../../../shared/helpers.mjs'
+import path from 'path'
 // Maybe an array of <key, value> from the schema
 const getDefinitions = compose(
   option([]),
@@ -61,13 +62,13 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   const shape = generateTypesForDefinitions(obj, schemas)
   if (shape.deps.size > 0 || shape.type.length > 0) {
     code.push(getHeaderText())
-    code.push(getIncludeGuardOpen(obj))
+    code.push(getIncludeGuardOpen(obj, 'common'))
     const i = getIncludeDefinitions(obj)
     code.push(i.join('\n'))
     code.push(getStyleGuardOpen(obj))
+    shape.type.forEach(type => shape.deps.add(type))
     code.push([...shape.deps].join('\n'))
     code.join('\n')
-    code.push(shape.type.join('\n'))
     code.push(getStyleGuardClose())
     code.push(getIncludeGuardClose())
     code.join('\n')

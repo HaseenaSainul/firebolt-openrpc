@@ -168,7 +168,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
 
-  console.log (`Incoming - ${name} - ${json.type}`)
+  //console.log (`Incoming - ${name} - ${json.type}`)
 
   if (json.type === 'object') {
     if (json.properties) {
@@ -205,9 +205,9 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
             }
         }
         })
-        console.log(`Props - ${JSON.stringify(props, null, 4)}`)
+        //console.log(`Props - ${JSON.stringify(props, null, 4)}`)
         structure.type.push(getJsonContainerDefinition(tName, props))
-        console.log(`Object - ${JSON.stringify(structure, null, 4)}`)
+        //console.log(`Object - ${JSON.stringify(structure, null, 4)}`)
     }
     else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
       //This is a map of string to type in schema
@@ -238,7 +238,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     delete union['$ref']
     return getJsonDefinition(moduleJson, union, schemas, name, options)
   }
-  console.log(`Returning - ${JSON.stringify(structure, null, 4)}`)
+  //console.log(`Returning - ${JSON.stringify(structure, null, 4)}`)
   return structure
 }
 
