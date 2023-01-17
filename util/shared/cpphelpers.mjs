@@ -278,7 +278,7 @@ const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propert
 
   let result
   if (json.type === 'object') {
-    result += `${objName}_${propertyType}Handle ${objName}_Get_${propertyName}(${objName}Handle handle) {
+    result += `${objName}_${propertyName}Handle ${objName}_Get_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
@@ -287,9 +287,8 @@ const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propert
     *object = WPEFramework::Core::ProxyType<${objName}::${propertyName}>::Create();
     *(*object) = (*var)->${propertyName};
     return (static_cast<${objName}_${propertyType}Handle>(object));` + '\n'
-/*
   } else if (json.type === 'array') {
-      result += `${objName}_${propertyType}ArrayHandle ${objName}_Get_${propertyName}(${objName}Handle handle) {
+      result += `${objName}_${propertyName}ArrayHandle ${objName}_Get_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
@@ -298,42 +297,61 @@ const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propert
     *object = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>::Create();
     *(*object) = (*var)->${propertyName}.Element();
     return (static_cast<${objName}_${propertyType}ArrayHandle>(object));` + '\n'
+  } else if (json.enum) {
+    result += `${objName}_${propertyName} ${objName}_Get_${propertyName}(${objName}Handle handle) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
+    ASSERT(var->IsValid());
+
+    return static_cast<${propertyType}>((*var)->${propertyName}.Value());` + '\n'
   } else {
       result += `${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());` + '\n'
-      if (json.type === 'string') {
-        result += `
+    if (json.type === 'string') {
+      result += `
     return static_cast<${propertyType}>((*var)->${propertyName}.Value().c_str());` + '\n'
-*/    
-      } else {
-        result += `
+    } else {
+      result += `
     return static_cast<${propertyType}>((*var)->${propertyName}.Value());` + '\n'
-      }
     }
   }
    result += `
 }` + '\n'
-/*
   if (!options.readonly) {
-    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()}) {
-   ASSERT(handle != NULL);
-   WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
-   ASSERT(var->IsValid());` + '\n'
-   if (json.type === 'object') {
-     result += `
+    if (json.type === 'object') {
+      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName}Handle ${propertyName.toLowerCase()}) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
+    ASSERT(var->IsValid());
+
     WPEFramework::Core::ProxyType<${objName}::${propertyName}>* object = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(${propertyName.toLowerCase()});
     (*var)->${propertyName} = *(*object);` + '\n'
-   }
-   if (json.type === 'array') {
-     result += `
-    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>* object = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${propertyName}>>*>(${propertyName.toLowerCase()}).Element();
+    }
+    if (json.type === 'array') {
+      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName}ArrayHandle ${propertyName.toLowerCase()}) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
+    ASSERT(var->IsValid());
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* object = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(${propertyName.toLowerCase()}).Element();
     (*var)->${propertyName} = *(*object);` + '\n'
-   }
-   else {
-     result += `(*var)->${propertyName} = static_cast<${propertyType}>(${propertyName.toLowerCase()});` + '\n'
-   }
+    } if (json.enum) {
+      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName} ${propertyName.toLowerCase()}) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
+    ASSERT(var->IsValid());
+
+    (*var)->${propertyName} = static_cast<${propertyType}>(${propertyName.toLowerCase()});` + '\n'
+    }
+    else {
+      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()}) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
+    ASSERT(var->IsValid());
+
+    (*var)->${propertyName} = static_cast<${propertyType}>(${propertyName.toLowerCase()});` + '\n'
+    }
 result += `}` + '\n'
   }
 
@@ -351,7 +369,6 @@ result += `}` + '\n'
     ((*var)->${propertyName}.Clear());
 }` + '\n'
   }
-*/
   return result
 }
 
@@ -374,6 +391,13 @@ result += `${objName}_${propertyType}Handle ${objName}_${propertyName}Array_Get(
     *object = WPEFramework::Core::ProxyType<${objName}::${propertyName}>::Create();
     *(*object) = (*var)->Get(index);
     return (static_cast<${objName}_${propertyType}Handle>(object));` + '\n'
+  } else if (json.enum) {
+    result += `${objName}_${propertyType} ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
+    ASSERT(handle != NULL);
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
+    ASSERT(var->IsValid());
+
+    return (static_cast<${propertyType}>((*var)->Get(index)));` + '\n'
   } else {
     result += `${propertyType} ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
     ASSERT(handle != NULL);
@@ -451,12 +475,12 @@ const getMapAccessors = (objName, propertyName, propertyType, json = {}, options
     } else if (json.type === 'array') {
       result += `
     WPEFramework::Core::JSON::ArrayType<propertyType> element(value);`
-    } else if(json.enum) {
+    } else if (json.enum) {
       result += `
-    WPEFramework::Core::JSON::EnumType<propertyType> element(value);`
-    }
+    WPEFramework::Core::JSON::EnumType<propertyType> element(value);
     (*var)->Add(key, element);` + '\n'
     }
+  result += `
   }` + '\n'
   result += `void ${objName}_${propertyName}_RemoveKey(${objName}_${propertyName}Handle handle, char* key) {
     ASSERT(handle != NULL);
@@ -465,8 +489,9 @@ const getMapAccessors = (objName, propertyName, propertyType, json = {}, options
  
     (*var)->Remove(key);
   }` + '\n'
-     if (json.type === 'object') {
-       result += `${objName}_${propertyType}Handle ${objName}_${propertyName}_FindKey(${objName}_${propertyName}Handle handle, char* key) {
+
+    if (json.type === 'object') {
+      result += `${objName}_${propertyType}Handle ${objName}_${propertyName}_FindKey(${objName}_${propertyName}Handle handle, char* key) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
     ASSERT(var->IsValid());
@@ -484,24 +509,27 @@ const getMapAccessors = (objName, propertyName, propertyType, json = {}, options
     *object = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>::Create();
     *(*object) = (*var)->Find(key);
     return (static_cast<${objName}_${propertyType}ArrayHandle>(object));` + '\n'
+
     } else {
         result += `${propertyType} ${objName}_${propertyName}_FindKey(${objName}_${propertyName}Handle handle, char* key) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
-    ASSERT(var->IsValid());
+    ASSERT(var->IsValid());` + '\n'
      
-    } else if (json.type === 'string') {
-      result += `
-    return (static_cast<${propertyType}>((*var)->(Find(key).Value().c_str())));
-    } else {
-      result += `
-    return (static_cast<${propertyType}>((*var)->(Find(key).Value())));
+      if (json.type === 'string') {
+        result += `
+    return (static_cast<${propertyType}>((*var)->(Find(key).Value().c_str())));` + '\n'
+      } else {
+        result += `
+    return (static_cast<${propertyType}>((*var)->(Find(key).Value())));` + '\n'
+      }
     }
+  result += `
 }` + '\n'
 
-  return res
+  return result
 }
-*/
+
 /*
 function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
