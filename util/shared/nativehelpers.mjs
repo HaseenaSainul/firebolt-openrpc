@@ -491,5 +491,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     getPropertyEventSignature,
     capitalize,
     description,
+    isOptional,
     getTypeName
   }

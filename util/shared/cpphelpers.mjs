@@ -1,6 +1,6 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { getSchemaType, capitalize, getTypeName,getModuleName } from "./nativehelpers.mjs"
+import { getSchemaType, capitalize, getTypeName,getModuleName, description, isOptional} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSdk'
 const getNameSpaceOpen = (module = {}) => `namespace ${getSdkNameSpace()} {\n` + `namespace ${capitalize(getModuleName(module))} {`
@@ -274,7 +274,7 @@ bool ${varName}Handle_IsValid(${varName}Handle handle) {
   return result
 }
 
-const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
+const getObjectPropertyAccessorsImpl = (objName, propertyName, jsonDataName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
 
   let result
   if (json.type === 'object') {
@@ -321,7 +321,7 @@ const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propert
 }` + '\n'
   if (!options.readonly) {
     if (json.type === 'object') {
-      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName}Handle ${propertyName.toLowerCase()}) {
+      result += `void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName}Handle ${propertyName.toLowerCase()}) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
@@ -330,14 +330,14 @@ const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propert
     (*var)->${propertyName} = *(*object);` + '\n'
     }
     if (json.type === 'array') {
-      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName}ArrayHandle ${propertyName.toLowerCase()}) {
+      result += `void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName}ArrayHandle ${propertyName.toLowerCase()}) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* object = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(${propertyName.toLowerCase()}).Element();
     (*var)->${propertyName} = *(*object);` + '\n'
     } if (json.enum) {
-      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName} ${propertyName.toLowerCase()}) {
+      result += `void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName} ${propertyName.toLowerCase()}) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
@@ -345,7 +345,7 @@ const getObjectPropertyAccessors = (objName, propertyName, jsonDataName, propert
     (*var)->${propertyName} = static_cast<${propertyType}>(${propertyName.toLowerCase()});` + '\n'
     }
     else {
-      result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()}) {
+      result += `void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()}) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
@@ -356,13 +356,13 @@ result += `}` + '\n'
   }
 
   if (options.optional === true) {
-    result += `${Indent.repeat(options.level)}bool ${objName}_has_${propertyName}(${objName}Handle handle) {
+    result += `bool ${objName}_has_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
     return ((*var)->${propertyName}.IsSet());
 }` + '\n'
-    result += `${Indent.repeat(options.level)}void ${objName}_clear_${propertyName}(${objName}Handle handle) {
+    result += `void ${objName}_clear_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
@@ -372,7 +372,7 @@ result += `}` + '\n'
   return result
 }
 
-const getArrayAccessors = (objName, propertyName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
+const getArrayAccessorsImpl = (objName, propertyName, propertyType, json = {}) => {
     let result = `
 uint32_t ${objName}_${propertyName}Array_Size(${objName}::${propertyName}ArrayHandle handle) {
     ASSERT(handle != NULL);
@@ -447,7 +447,7 @@ result += `${objName}_${propertyType}Handle ${objName}_${propertyName}Array_Get(
   return result
 }
 
-const getMapAccessors = (objName, propertyName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
+const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
   let result = `uint32_t ${objName}_${propertyName}_KeysCount(${objName}_${propertyName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
@@ -530,7 +530,7 @@ const getMapAccessors = (objName, propertyName, propertyType, json = {}, options
   return result
 }
 
-/*
+
 function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
     let level = options.level 
@@ -550,42 +550,31 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         const schema = getPath(json['$ref'], module, schemas)
         const tname = schema.title || json['$ref'].split('/').pop()
         res = getImplForSchema(module, schema, schemas, tname, {descriptions: descriptions, level: level})
-        structure.deps = res.deps
+        res.deps.forEach(dep => structure.deps.add(dep))
         structure.type = res.type
       }
       else {
-        // External dependency. Return only type
-        // e.g, "https://meta.comcast.com/firebolt/entertainment#/definitions/ProgramType"
-  
-        //Get the module of this definition
-        const schema = getSchema(json['$ref'].split('#')[0], schemas) || module
-  
-        //Get the schema of the definition
-        const definition = getPath(json['$ref'], schema, schemas)
-        const pname = (json.title || name) + (definition.title || json['$ref'].split('/').pop())
-  
-        res = getImplForSchema(schema, definition, schemas, pname,{descriptions: descriptions, level: level})
-        //We are only interested in the type definition for external modules
-        structure.type = res.type
+        //External schemas - No action
       }
     }
     //If the schema is a const, 
     else if (json.hasOwnProperty('const')) { 
       if (level > 0) {
-        structure.type.push(description(name, json.description))
+        let impl = structure.type.push(description(name, json.description))
         typeName = getTypeName(getModuleName(moduleJson), name)
-        structure.type.push(getPropertyAccessors(typeName, capitalize(name), typeof json.const, {level: level, readonly:true, optional:false}))
+        impl += getObjectPropertyAccessorsImpl(typeName, capitalize(name), getJsonNativeType(typeof json.const), typeof json.const, {level: level, readonly:true, optional:false})
+        structure.type.push(impl)
       }
     }
     else if (json.type === 'object') {
 
       if (json.properties) {
         let tName = getTypeName(getModuleName(moduleJson), name)
-        let t = description(name, json.description)
-        t += '\n' +  getObjectHandleManagement(tName)
+        let t = getObjectHandleImpl(tName, getJsonDataStructName(getModuleName(moduleJson), name))
         Object.entries(json.properties).forEach(([pname, prop]) => {
           t += '\n' + description(pname, prop.description)
-          let res
+          let nativeType
+          let j
           if(prop.type === 'array') {
             if (Array.isArray(prop.items)) {
               //TODO
@@ -593,30 +582,32 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               if (!IsHomogenous(prop.items)) {
                 throw 'Heterogenous Arrays not supported yet'
               }
-              res = getSchemaType(moduleJson, prop.items[0],pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              nativeType = getSchemaType(moduleJson, prop.items[0],pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              j = prop.items[0]
             }
             else {
               // grab the type for the non-array schema
-              res = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              nativeType = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              j = prop.items
             }
-            if(res.type && res.type.length > 0) {
-              let n = tName + '_' + capitalize(pname || prop.title) 
-              let def = getArrayAccessors(n + 'Array', res.type)
+            if(nativeType.type && nativeType.type.length > 0) {
+              
+              let def = getArrayAccessorsImpl(tName, capitalize(pname || prop.title, nativeType.type), j)
               t += '\n' + def
             }
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
           } else {
-            res = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
-            if(res.type && res.type.length > 0) {
-              t += '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
+            nativeType = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
+            if(nativeType.type && nativeType.type.length > 0) {
+              let jtype = getJsonType(moduleJson,prop, pname,schemas)
+              t += '\n' + getObjectPropertyAccessorsImpl(tName, capitalize(pname), jtype.type, nativeType.type, prop,{readonly:false, optional:isOptional(pname, json)})
             }
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
           }
-          res.deps.forEach(dep => structure.deps.add(dep))
         })
         structure.type.push(t)
       }
@@ -631,8 +622,8 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
           let tName = getTypeName(getModuleName(moduleJson), name)
           structure.deps = type.deps
           let t = description(name, json.description)
-          t += '\n' + getObjectHandleManagement(tName) + '\n'
-          t += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type,{descriptions: descriptions, level: level})
+          t += '\n' + getObjectHandleImpl(tName, getJsonDataStructName(getModuleName(moduleJson), name)) + '\n'
+          t += getMapAccessorsImpl(capitalize(getModuleName(moduleJson)), capitalize(name), type.type, json.additionalProperties)
           structure.type.push(t)
         }
         else {
@@ -658,25 +649,46 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         union['title'] = name
       }
       delete union['$ref']
-      return getSchemaShape(moduleJson, union, schemas, name, options)
+      return getImplForSchema(moduleJson, union, schemas, name, options)
 
     }
     else if (json.type === 'array') {
-      let res = getSchemaType(moduleJson, json, name, schemas, {level: 0, descriptions: descriptions})
-      structure.deps = res.deps
+      let j
+      if (Array.isArray(json.items)) {
+        //TODO
+        const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+        if (!IsHomogenous(json.items)) {
+          throw 'Heterogenous Arrays not supported yet'
+        }
+        j = json.items[0]
+      }
+      else {
+        j = json.items
+      }
+  
+      let res = getSchemaType(module, j,'',schemas)
+      let jsonType = getJsonType(module, j, '', schemas)
+      let n = getTypeName(getModuleName(module), name || json.title)
+      let def = description(name || json.title, json.description) + '\n'
+      if (options.level === 0) {
+        def += getObjectHandleImpl(n + 'Array', `WPEFramework::Core:JSON::ArrayType<${jsonType.type}>`) + '\n'
+      }
+      def += getArrayAccessorsImpl(getModuleName(module), name || json.title, res.type,j)
+      structure.type.push(def)
+      return structure
     }
     else{
-      let res = getSchemaType(moduleJson, json, name, schemas, {level: level, descriptions: descriptions})
-      structure.deps = res.deps
+        //TODO
     }
     return structure
   }
-*/
+
 
 export {
     getSdkNameSpace,
     getNameSpaceOpen,
     getNameSpaceClose,
     getJsonDefinition,
-    getJsonType
+    getJsonType,
+    getImplForSchema
 }

@@ -20,7 +20,7 @@
 import h from 'highland'
 import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher,clearDirectory, localModules, trimPath, fsReadFile } from '../../shared/helpers.mjs'
 import path from 'path'
-import { generateHeaderForDefinitions, generateHeaderForModules, generateJsonDataHeaderForDefinitions} from './headers/index.mjs'
+import { generateHeaderForDefinitions, generateHeaderForModules, generateJsonDataHeaderForDefinitions, generateCppForDefinitions} from './headers/index.mjs'
 import {getModuleName} from '../../shared/nativehelpers.mjs'
 
 
@@ -103,8 +103,10 @@ const generateCppFiles = ({
   const srcDir = path.join(outputFolderArg, 'src')
   const commonIncludeDir = path.join(headerDir, 'Common')
 
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
+
   //Generate headers for Common schemas under 'include/common' directory
-  fsMkDirP(srcDir)
+  return fsMkDirP(srcDir)
     .flatMap(_ => combinedSchemas
       .flatMap(schemas => combinedSchemas.observe()
         .flatMap(schs => Object.values(schs))
@@ -116,7 +118,7 @@ const generateCppFiles = ({
           })
       )
     )
-    .done(() => console.log('\nDone Generating Schema CPP by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
+    //.done(() => console.log('\nDone Generating Schema CPP by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
 
 }
 export {

@@ -43,7 +43,7 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefini
          getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
          getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition } from '../../../shared/cpphelpers.mjs'
+import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../../shared/cpphelpers.mjs'
 
 import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher,clearDirectory, localModules, trimPath, fsReadFile } from '../../../shared/helpers.mjs'
 import path from 'path'
@@ -133,7 +133,7 @@ const generateCppForDefinitions = (obj = {}, schemas = {}) => {
 //For each schema object, 
 const generateImplForDefinitions = (json, schemas = {}) => compose(
   reduce((acc, val) => {
-    const shape = getSchemaShape(json, val[1], schemas, val[0])
+    const shape = getImplForSchema(json, val[1], schemas, val[0])
     acc.type.push(shape.type.join('\n'))
     shape.deps.forEach(dep => acc.deps.add(dep))
     return acc
@@ -209,5 +209,6 @@ const generateMethodPrototypes = (json, schemas = {}) => {
 export {
   generateHeaderForDefinitions,
   generateHeaderForModules,
-  generateJsonDataHeaderForDefinitions
+  generateJsonDataHeaderForDefinitions,
+  generateCppForDefinitions
 }

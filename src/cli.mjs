@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import {javascript, generateHeaders} from '../util/sdk/index.js'
+import {javascript, generateHeaders, generateCppFiles} from '../util/sdk/index.js'
 import docs from '../util/docs/index.mjs'
 import validate from '../util/validate/index.mjs'
 import openrpc from '../util/openrpc/index.mjs'
@@ -41,7 +41,7 @@ if (util === 'sdk') {
   } 
   else if (parsedArgs.lang === 'native-c') {
     generateHeaders(parsedArgs).done(signOff)
-    //cpp(parsedArgs).done(signOff)
+    generateCppFiles(parsedArgs).done(signOff)
   }
 }
 else if (util === 'docs') {
