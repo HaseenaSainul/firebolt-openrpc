@@ -8,6 +8,9 @@ var src = 'src/native/build/' + process.env.TARGET_NAME;
 
 installFiles(src, dest);
 function installFiles(src, dest) {
+    if (!dest) {
+        dest = process.cwd() + "/firebolt";
+    }
     if (!fs.existsSync(dest)) {
         fs.mkdirSync(dest);
     }

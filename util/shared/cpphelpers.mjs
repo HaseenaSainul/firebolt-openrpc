@@ -447,7 +447,7 @@ result += `${objName}_${propertyType}Handle ${objName}_${propertyName}Array_Get(
   return result
 }
 
-const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
+const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}) => {
   let result = `uint32_t ${objName}_${propertyName}_KeysCount(${objName}_${propertyName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
