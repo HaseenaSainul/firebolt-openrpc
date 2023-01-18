@@ -24,9 +24,12 @@ set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
 option(ENABLE_TESTS "Build openrpc native test" OFF)
 
 if (NOT SYSROOT_PATH)
-    # Set sysroot and install prefix to support PC builds, sysroot_path not configured case
+    # Set sysroot to support PC builds, sysroot_path not configured case
     set(SYSROOT_PATH "${CMAKE_SOURCE_DIR}/../../firebolt")
-    set(CMAKE_INSTALL_PREFIX "${SYSROOT_PATH}/usr")
+endif()
+
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${SYSROOT_PATH}/usr" CACHE INTERNAL "" FORCE)
     set(CMAKE_PREFIX_PATH ${SYSROOT_PATH}/usr/lib/cmake CACHE INTERNAL "" FORCE)
 endif()
 
