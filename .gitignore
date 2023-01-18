@@ -4,3 +4,8 @@ node_modules/*
 .DS_Store
 .DS_Store
 coverage
+src/native/build
+firebolt
+thunder/build
+thunder/src
+build.sh
