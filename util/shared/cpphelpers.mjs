@@ -276,7 +276,7 @@ bool ${varName}Handle_IsValid(${varName}Handle handle) {
 
 const getObjectPropertyAccessorsImpl = (objName, propertyName, jsonDataName, propertyType, json = {}, options = {readonly:false, optional:false}) => {
 
-  let result
+  let result = ''
   if (json.type === 'object') {
     result += `${objName}_${propertyName}Handle ${objName}_Get_${propertyName}(${objName}Handle handle) {
     ASSERT(handle != NULL);
@@ -558,9 +558,9 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
       }
     }
     //If the schema is a const, 
-    else if (json.hasOwnProperty('const')) { 
+    else if (json.hasOwnProperty('const')) {
       if (level > 0) {
-        let impl = structure.type.push(description(name, json.description))
+        let impl = description(name, json.description)
         typeName = getTypeName(getModuleName(moduleJson), name)
         impl += getObjectPropertyAccessorsImpl(typeName, capitalize(name), getJsonNativeType(typeof json.const), typeof json.const, {level: level, readonly:true, optional:false})
         structure.type.push(impl)
