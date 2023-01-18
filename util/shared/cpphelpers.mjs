@@ -175,7 +175,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
         let tName = capitalize( name)
         let props = []
         Object.entries(json.properties).forEach(([pname, prop]) => {
-        if(prop.type === 'array') {
+        if (prop.type === 'array') {
             let res
             if (Array.isArray(prop.items)) {
             //TODO
@@ -189,7 +189,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
                 // grab the type for the non-array schema
                 res = getJsonType(moduleJson, prop.items, pname, schemas )
             }
-            if(res.type && res.type.length > 0) {
+            if (res.type && res.type.length > 0) {
                 props.push({name: `${pname}`, type: `WPEFramework::Core::JSON::ArrayType<${res.type}>`})
             }
             else {
@@ -197,7 +197,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
             }
         } else {
             let res = getJsonType(moduleJson, prop, pname,schemas)
-            if(res.type && res.type.length > 0) {
+            if (res.type && res.type.length > 0) {
                 props.push({name: `${pname}`, type: `${res.type}`})
             }
             else {
@@ -244,8 +244,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
 
 const getObjectHandleImpl = (varName, jsonDataName) => {
 
-  let result = `
-${varName}Handle ${varName}Handle_Create(void) {
+  let result = `${varName}Handle ${varName}Handle_Create(void) {
     WPEFramework::Core::ProxyType<${jsonDataName}>* type = new WPEFramework::Core::ProxyType<${jsonDataName}>();
     *type = WPEFramework::Core::ProxyType<${jsonDataName}>::Create();
     return (static_cast<${varName}Handle>(type));
@@ -260,7 +259,7 @@ void ${varName}Handle_Release(${varName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     var->Release();
-    if(var->IsValid() != true) {
+    if (var->IsValid() != true) {
         delete var;
     }
 }
@@ -302,7 +301,6 @@ const getObjectPropertyAccessorsImpl = (objName, propertyName, jsonDataName, pro
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = static_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
-
     return static_cast<${propertyType}>((*var)->${propertyName}.Value());` + '\n'
   } else {
       result += `${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle) {
@@ -317,8 +315,7 @@ const getObjectPropertyAccessorsImpl = (objName, propertyName, jsonDataName, pro
     return static_cast<${propertyType}>((*var)->${propertyName}.Value());` + '\n'
     }
   }
-   result += `
-}` + '\n'
+  result += `}` + '\n'
   if (!options.readonly) {
     if (json.type === 'object') {
       result += `void ${objName}_Set_${propertyName}(${objName}Handle handle, ${objName}_${propertyName}Handle ${propertyName.toLowerCase()}) {
@@ -352,7 +349,7 @@ const getObjectPropertyAccessorsImpl = (objName, propertyName, jsonDataName, pro
 
     (*var)->${propertyName} = static_cast<${propertyType}>(${propertyName.toLowerCase()});` + '\n'
     }
-result += `}` + '\n'
+    result += `}` + '\n'
   }
 
   if (options.optional === true) {
@@ -452,8 +449,7 @@ const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}) => 
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
     ASSERT(var->IsValid());
-    return (*var)->Size());
-
+    return (*var)->Size();
   }` + '\n'
   result += `void ${objName}_${propertyName}_AddKey(${objName}_${propertyName}Handle handle, char* key, ${propertyType} value) {
     ASSERT(handle != NULL);
@@ -463,25 +459,27 @@ const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}) => 
     if (json.type === 'object') {
       result += `
     (*var)->Add(key, value);` + '\n'
-    } else if (json.type === 'boolean') {
+    } else {
+      if (json.type === 'boolean') {
+        result += `
+    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
+      } else if (json.type === 'string') {
+        result += `
+    WPEFramework::Core::JSON::String element(value);` + '\n'
+      } else if (json.type === 'number') {
+        result += `
+    WPEFramework::Core::JSON::Number element(value);` + '\n'
+      } else if (json.type === 'array') {
+        result += `
+    WPEFramework::Core::JSON::ArrayType<propertyType> element(value);` + '\n'
+      } else if (json.enum) {
+        result += `
+    WPEFramework::Core::JSON::EnumType<propertyType> element(value);` + '\n'
+      }
       result += `
-    WPEFramework::Core::JSON::Boolean element(value);`
-    } else if (json.type === 'string') {
-      result += `
-    WPEFramework::Core::JSON::String element(value);`
-    } else if (json.type === 'number') {
-      result += `
-    WPEFramework::Core::JSON::Number element(value);`
-    } else if (json.type === 'array') {
-      result += `
-    WPEFramework::Core::JSON::ArrayType<propertyType> element(value);`
-    } else if (json.enum) {
-      result += `
-    WPEFramework::Core::JSON::EnumType<propertyType> element(value);
     (*var)->Add(key, element);` + '\n'
     }
-  result += `
-  }` + '\n'
+  result += `}` + '\n'
   result += `void ${objName}_${propertyName}_RemoveKey(${objName}_${propertyName}Handle handle, char* key) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
@@ -499,7 +497,6 @@ const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}) => 
     *object = WPEFramework::Core::ProxyType<${objName}::${propertyName}>::Create();
     *(*object) = (*var)->Find(key);
     return (static_cast<${objName}_${propertyType}Handle>(object));` + '\n'
-
     } else if (json.type === 'array') {
       result += `${objName}_${propertyType}ArrayHandle ${objName}_${propertyName}_FindKey(${objName}_${propertyName}Handle handle, char* key) {
     ASSERT(handle != NULL);
@@ -524,12 +521,10 @@ const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}) => 
     return (static_cast<${propertyType}>((*var)->(Find(key).Value())));` + '\n'
       }
     }
-  result += `
-}` + '\n'
+  result += `}` + '\n'
 
   return result
 }
-
 
 function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
@@ -575,7 +570,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
           t += '\n' + description(pname, prop.description)
           let nativeType
           let j
-          if(prop.type === 'array') {
+          if (prop.type === 'array') {
             if (Array.isArray(prop.items)) {
               //TODO
               const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
@@ -590,7 +585,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               nativeType = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
               j = prop.items
             }
-            if(nativeType.type && nativeType.type.length > 0) {
+            if (nativeType.type && nativeType.type.length > 0) {
               
               let def = getArrayAccessorsImpl(tName, capitalize(pname || prop.title, nativeType.type), j)
               t += '\n' + def
@@ -600,7 +595,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             }
           } else {
             nativeType = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
-            if(nativeType.type && nativeType.type.length > 0) {
+            if (nativeType.type && nativeType.type.length > 0) {
               let jtype = getJsonType(moduleJson,prop, pname,schemas)
               t += '\n' + getObjectPropertyAccessorsImpl(tName, capitalize(pname), jtype.type, nativeType.type, prop,{readonly:false, optional:isOptional(pname, json)})
             }
@@ -618,7 +613,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         //This is a map of string to type in schema
         //Get the Type
         let type = getSchemaType(moduleJson, json.additionalProperties, name,schemas)
-        if(type.type && type.type.length > 0) {
+        if (type.type && type.type.length > 0) {
           let tName = getTypeName(getModuleName(moduleJson), name)
           structure.deps = type.deps
           let t = description(name, json.description)

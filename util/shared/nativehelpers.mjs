@@ -192,13 +192,13 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     .map(ref => {
       const mod = ref.split('#')[0].split('/').pop()
       let i = `#include "Common/${capitalize(mod)}.h"`
-      if(jsonData === true) {
+      if (jsonData === true) {
         i += '\n' + `#include "JsonData_${capitalize(mod)}.h"`
       }
       return i
     })
     .filter((item, index, arr) => arr.indexOf(item) === index)
-    .concat([`#include "Firebolt/Types.h"`])
+    .concat([`#include "Firebolt.h"`])
 }
 
 function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {

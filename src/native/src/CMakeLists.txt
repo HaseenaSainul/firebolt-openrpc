@@ -20,6 +20,7 @@ project(FireboltSDK)
 project_version(1.0.0)
 set(TARGET ${PROJECT_NAME})
 message("Setup ${TARGET} v${PROJECT_VERSION}")
+file(GLOB GENERATED_SOURCES "${GENERATED_CODE_PATH}/src/*.cpp")
 
 add_library(${TARGET} SHARED
     Types.cpp
@@ -27,7 +28,9 @@ add_library(${TARGET} SHARED
     Logger/Logger.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp
-    Event/Event.cpp)
+    Event/Event.cpp
+    ${GENERATED_SOURCES}
+)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
