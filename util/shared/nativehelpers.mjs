@@ -209,6 +209,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
+  structure["name"] = []
   structure["type"] = []
 
   if (json['$ref']) {
@@ -220,6 +221,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       const res = getSchemaType(module, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
       res.deps.forEach(dep => structure.deps.add(dep))
       structure.type = res.type
+      structure.name = res.name
       return structure
     }
     else {
@@ -235,6 +237,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       const res = getSchemaType(schema, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
       //We are only interested in the type definition for external modules
       structure.type = res.type
+      structure.name = res.name
       return structure
     }
   }
@@ -249,7 +252,10 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   }
   else if (json.type === 'string' && json.enum) {
     //Enum
-    let typeName = getTypeName(getModuleName(module), name || json.title) 
+    if (name) {
+       structure.name.push(capitalize(name))
+    }
+    let typeName = getTypeName(getModuleName(module), name || json.title)
     let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
     structure.deps.add(res)
     structure.type.push(typeName)
@@ -281,6 +287,9 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       def += getObjectHandleManagement(n + 'Array') + '\n'
     }
     def += getArrayAccessors(n + 'Array', res.type)
+    if (name) {
+       structure.name.push(capitalize(name))
+    }
     structure.deps.add(def)
     structure.type.push(n + 'ArrayHandle')
     return structure
@@ -304,6 +313,9 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     let res = getSchemaShape(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
     res.deps.forEach(dep => structure.deps.add(dep))
     res.type.forEach(t => structure.deps.add(t))
+    if (name) {
+       structure.name.push(capitalize(name))
+    }
     structure.type.push(getTypeName(getModuleName(module), json.title || name) + 'Handle')
     return structure
     //TODO
