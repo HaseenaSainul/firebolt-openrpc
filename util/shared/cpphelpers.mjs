@@ -385,7 +385,7 @@ uint32_t ${objName}_${propertyName}Array_Size(${objName}::${propertyName}ArrayHa
 }` + '\n'
 
   if (json.type === 'object') {
-result += `${objName}_${propertyType}Handle ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
+result += `${objName}_${propertyName}Handle ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
     ASSERT(var->IsValid());
@@ -393,9 +393,9 @@ result += `${objName}_${propertyType}Handle ${objName}_${propertyName}Array_Get(
     *object = WPEFramework::Core::ProxyType<${objName}::${propertyName}>::Create();
     *(*object) = (*var)->Get(index);
 
-    return (static_cast<${objName}_${propertyType}Handle>(object));` + '\n'
+    return (static_cast<${objName}_${propertyName}Handle>(object));` + '\n'
   } else if (json.enum) {
-    result += `${objName}_${propertyType} ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
+    result += `${objName}_${propertyName} ${objName}_${propertyName}Array_Get(${objName}_${propertyName}ArrayHandle handle, uint32_t index) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>* var = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyName}>>*>(handle);
     ASSERT(var->IsValid());
@@ -590,7 +590,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             }
             if (nativeType.type && nativeType.type.length > 0) {
               
-              let def = getArrayAccessorsImpl(tName, capitalize(pname || prop.title, nativeType.type), j)
+              let def = getArrayAccessorsImpl(tName, capitalize(pname || prop.title), nativeType.type, j)
               t += '\n' + def
             }
             else {
