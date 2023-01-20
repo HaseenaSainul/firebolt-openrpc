@@ -1,6 +1,6 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { getSchemaType, capitalize, getTypeName,getModuleName, description, isOptional} from "./nativehelpers.mjs"
+import { getSchemaType, capitalize, getTypeName,getModuleName, description, isOptional, enumValue} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSdk'
 const getNameSpaceOpen = (module = {}) => `namespace ${getSdkNameSpace()} {\n` + `namespace ${capitalize(getModuleName(module))} {`
@@ -530,6 +530,19 @@ const getMapAccessorsImpl = (objName, propertyName, propertyType, json = {}) => 
   return result
 }
 
+function getEnumConversionImpl(name, json) {
+  let res
+  if (!json.enum) {
+    res = ''
+  } 
+  else {
+    res = `ENUM_CONVERSION_BEGIN(::${name})\n`
+    res += json.enum.map(e => `    { ${enumValue(e, name)}, _T("${e}") }`).join(',\n')
+    res += `\nENUM_CONVERSION_END(::${name})`
+  }
+  return res
+}
+
 
 function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
@@ -539,6 +552,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
+    structure["enums"] = new Set()
 
     //console.log(`name - ${name}, json - ${JSON.stringify(json, null, 4)}`)
 
@@ -551,6 +565,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         const tname = schema.title || json['$ref'].split('/').pop()
         res = getImplForSchema(module, schema, schemas, tname, {descriptions: descriptions, level: level})
         res.deps.forEach(dep => structure.deps.add(dep))
+        res.enums.forEach(e => structure.enums.add(e))
         structure.type = res.type
       }
       else {
@@ -565,6 +580,13 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         impl += getObjectPropertyAccessorsImpl(typeName, capitalize(name), getJsonNativeType(typeof json.const), typeof json.const, {level: level, readonly:true, optional:false})
         structure.type.push(impl)
       }
+    }
+    else if (json.type === 'string' && json.enum) {
+      //Enum
+      let typeName = getTypeName(getModuleName(moduleJson), name || json.title)
+      let res = description(capitalize(name || json.title), json.description) + '\n' + getEnumConversionImpl(typeName, json)
+      structure.enums.add(res)
+      return structure
     }
     else if (json.type === 'object') {
 
@@ -589,6 +611,12 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               // grab the type for the non-array schema
               nativeType = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
               j = prop.items
+              if(prop.type === 'string' && prop.enum) {
+                //Enum
+                let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title)
+                let res = description(capitalize(name || prop.title), prop.description) + '\n' + getEnumConversionImpl(typeName, prop)
+                structure.enums.add(res)
+              }
             }
             if(nativeType.type && nativeType.type.length > 0) {
               
@@ -598,7 +626,9 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
-          } else {
+            
+          }
+          else {
             nativeType = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
             if(nativeType.type && nativeType.type.length > 0) {
               let jtype = getJsonType(moduleJson,prop, pname,schemas)
@@ -606,6 +636,16 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             }
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+            }
+            if (prop.type === 'object' && prop.properties) {
+              let res = getImplForSchema(moduleJson, prop, schemas, pname, {descriptions: descriptions, level: level})
+              res.type.forEach(t => structure.deps.add(t))
+              res.enums.forEach(e => structure.enums.add(e))
+            } else if(prop.type === 'string' && prop.enum) {
+              //Enum
+              let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title)
+              let res = description(capitalize(name || prop.title), prop.description) + '\n' + getEnumConversionImpl(typeName, prop)
+              structure.enums.add(res)
             }
           }
         })

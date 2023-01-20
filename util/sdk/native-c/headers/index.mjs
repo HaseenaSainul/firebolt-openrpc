@@ -45,8 +45,6 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefini
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../../shared/cpphelpers.mjs'
 
-import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher,clearDirectory, localModules, trimPath, fsReadFile } from '../../../shared/helpers.mjs'
-import path from 'path'
 // Maybe an array of <key, value> from the schema
 const getDefinitions = compose(
   option([]),
@@ -120,8 +118,13 @@ const generateCppForDefinitions = (obj = {}, schemas = {}) => {
   code.push(getHeaderText())
   const i = getIncludeDefinitions(obj, true)
   code.push(i.join('\n'))
-  code.push(getStyleGuardOpen(obj))
   const shape = generateImplForDefinitions(obj, schemas)
+  if(shape.enums) {
+    code.push('\n')
+    code.push([...shape.enums].join('\n\n'))
+    code.push('\n')
+  }
+  code.push(getStyleGuardOpen(obj))
   code.push([...shape.deps].join('\n'))
   code.join('\n')
   code.push(shape.type.join('\n'))
@@ -136,8 +139,9 @@ const generateImplForDefinitions = (json, schemas = {}) => compose(
     const shape = getImplForSchema(json, val[1], schemas, val[0])
     acc.type.push(shape.type.join('\n'))
     shape.deps.forEach(dep => acc.deps.add(dep))
+    shape.enums.forEach(e => acc.enums.add(e))
     return acc
-  }, {type: [], deps: new Set()}),
+  }, {type: [], deps: new Set(), enums: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
 
@@ -172,6 +176,7 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   }, {type: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
+
 
 
 const generateMethodPrototypes = (json, schemas = {}) => {

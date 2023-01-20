@@ -172,7 +172,7 @@ const getArrayAccessors = (arrayName, valueType) => {
 
 const enumValue = (val,prefix) => {
   const keyName = val.replace(/[\.\-:]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
-  return `    ${prefix.toUpperCase()}_${keyName.toUpperCase()}`
+  return `${prefix.toUpperCase()}_${keyName.toUpperCase()}`
 }
 
 const generateEnum = (schema, prefix)=> {
@@ -181,11 +181,12 @@ const generateEnum = (schema, prefix)=> {
   }
   else {
     let str = `typedef enum {\n`
-    str += schema.enum.map(e => enumValue(e, prefix)).join(',\n')
+    str += schema.enum.map(e => `    ${enumValue(e, prefix)}`).join(',\n')
     str += `\n} ${prefix};\n`
     return str
   }
 }
+
 
 const getIncludeDefinitions = (json = {}, jsonData = false) => {
   return getExternalRefs(json)
@@ -492,5 +493,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     capitalize,
     description,
     isOptional,
-    getTypeName
+    getTypeName,
+    enumValue
   }
