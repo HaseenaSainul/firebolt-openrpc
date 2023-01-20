@@ -32,7 +32,6 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
   if (json.schema) {
     json = json.schema
   }
-  //console.log(`name - ${name}, schema - ${JSON.stringify(json, null, 4)}, title - ${options.title}`)
 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
@@ -76,7 +75,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
   else if (json.type === 'string' && json.enum) {
     //Enum
     let t = getSchemaType(module, json, name, schemas).type
-    t = 'WPEFramework::Core::JSON::EnumType<::' + t[0] +'>'
+    t = 'WPEFramework::Core::JSON::EnumType<' + getModuleName(module) + '::' + capitalize(name) + '>'
     structure.type.push(t)
     return structure
   }
@@ -84,7 +83,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
     let type = json.type.find(t => t !== 'null')
     console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
   }
-  else if (json.type === 'array' && json.items) { 
+  else if (json.type === 'array' && json.items) {
     let res
     if (Array.isArray(json.items)) {
       //TODO
@@ -137,7 +136,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
 
 function getJsonContainerDefinition (name, props = []) {
   name = capitalize(name)
-  let c = `    class ${name}: public Core::JSON::Container {
+  let c = `    class ${name}: public WPEFramework::Core::JSON::Container {
         public:
             ${name}(const ${name}&) = delete;
             ${name}& operator=(const ${name}&) = delete;
@@ -168,8 +167,6 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
 
-  //console.log (`Incoming - ${name} - ${json.type}`)
-
   if (json.type === 'object') {
     if (json.properties) {
         let tName = capitalize( name)
@@ -196,18 +193,20 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
                 console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
         } else {
-            let res = getJsonType(moduleJson, prop, pname,schemas)
-            if (res.type && res.type.length > 0) {
-                props.push({name: `${pname}`, type: `${res.type}`})
-            }
-            else {
-                console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+            if (prop.type === 'object' && !prop.properties) {
+                console.log(`WARNING: properties undetermined for ${pname}`)
+            } else {
+                let res = getJsonType(moduleJson, prop, pname, schemas)
+                if (res.type && res.type.length > 0) {
+                    props.push({name: `${pname}`, type: `${res.type}`})
+                }
+                else {
+                    console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+                }
             }
         }
         })
-        //console.log(`Props - ${JSON.stringify(props, null, 4)}`)
         structure.type.push(getJsonContainerDefinition(tName, props))
-        //console.log(`Object - ${JSON.stringify(structure, null, 4)}`)
     }
     else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
       //This is a map of string to type in schema
@@ -238,7 +237,6 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     delete union['$ref']
     return getJsonDefinition(moduleJson, union, schemas, name, options)
   }
-  //console.log(`Returning - ${JSON.stringify(structure, null, 4)}`)
   return structure
 }
 
@@ -275,7 +273,8 @@ bool ${varName}Handle_IsValid(${varName}Handle handle) {
 
 const getObjectPropertyAccessorsImpl = (objName, moduleName, propertyName, propertyType, propertyTypeName, json = {}, options = {readonly:false, optional:false}) => {
 
-  let result += `${propertyTypeName} ${objName}_Get_${propertyType}(${objName}Handle handle) {
+  let result = ''
+  result += `${propertyTypeName} ${objName}_Get_${propertyType}(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>*>(handle);
     ASSERT(var->IsValid());
@@ -287,7 +286,7 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, propertyName, prope
     *element = WPEFramework::Core::ProxyType<${moduleName}::${propertyType}>::Create();
     *(*element) = (*var)->${moduleName}::${propertyType};
     return (static_cast<${propertyTypeName}>(element));` + '\n'
-  } else if (json.type === 'array') {
+  } else if (json.type === 'array' && json.items) {
     result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${moduleName}::${propertyType}>>* element = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${moduleName}::${propertyType}>>();
     *element = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${moduleName}::${propertyType}>>::Create();
     *(*element) = (*var)->${propertyType}.Element();
@@ -312,7 +311,7 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, propertyName, prope
       result += `    WPEFramework::Core::ProxyType<${moduleName}::${propertyType}>* object = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyType}>*>(value);
     (*var)->${propertyType} = *(*object);` + '\n'
     }
-    if (json.type === 'array') {
+    if (json.type === 'array' && json.items) { 
       result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${moduleName}::${propertyType}>>* object = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${moduleName}::${propertyType}>>*>(value).Element();
     (*var)->${propertyType} = *(*object);` + '\n'
     } else {
@@ -379,11 +378,15 @@ uint32_t ${objName}_${propertyName}Array_Size(${objName}_${propertyName}ArrayHan
   if (json.type === 'object') {
     result += `    WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>& element = *(static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>*>(value));` + '\n'
   } else if (json.type === 'string') {
-    result += `    WPEFramework::Core::JSON::String element(value);` + '\n'
-  } else if (json.type === 'number') {
+    if (json.enum) {
+      result += `    WPEFramework::Core::JSON::EnumType<${moduleName}::${propertyName}> element(value);` + '\n'
+    } else {
+      result += `    WPEFramework::Core::JSON::String element(value);` + '\n'
+    }
+  } else if ((json.type === 'number') || (json.type === 'integer')) {
     result += `    WPEFramework::Core::JSON::Number element(value);` + '\n'
-  } else if (json.enum) {
-    result += `    WPEFramework::Core::JSON::EnumType<${moduleName}::${propertyName}> element(value);` + '\n'
+  } else if (json.type === 'boolean') {
+    result += `    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
   }
   result += `
     (*var)->Add(element);
@@ -415,17 +418,18 @@ const getMapAccessorsImpl = (objName, propertyName, propertyType, propertyTypeNa
 ` + '\n'
 
     if (json.type === 'object') {
-
       result += `    WPEFramework::Core::ProxyType<${objName}::${propertyType}>& element = *(static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyType}>*>(value));` + '\n'
-    } else if (json.type === 'array') {
+    } else if (json.type === 'array' && json.items) {
       result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyType}>>& element = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyType}>>*>(value));` + '\n'
-    } else if (json.enum) {
-      result += `    WPEFramework::Core::JSON::EnumType<${objName}::${propertyType}> element(value);` + '\n'
+    } else if (json.type === 'string') {
+      if (json.enum) {
+        result += `    WPEFramework::Core::JSON::EnumType<${objName}::${propertyType}> element(value);` + '\n'
+      } else {
+        result += `    WPEFramework::Core::JSON::String element(value);` + '\n'
+      }
     } else if (json.type === 'boolean') {
       result += `    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
-    } else if (json.type === 'string') {
-      result += `    WPEFramework::Core::JSON::String element(value);` + '\n'
-    } else if (json.type === 'number') {
+    } else if ((json.type === 'number') || (json.type === 'integer')) {
       result += `    WPEFramework::Core::JSON::Number element(value);` + '\n'
     }
     result += `    (*var)->Add(key, element);
@@ -449,7 +453,7 @@ const getMapAccessorsImpl = (objName, propertyName, propertyType, propertyTypeNa
     *element = WPEFramework::Core::ProxyType<${objName}::${propertyType}>::Create();
     *(*element) = (*var)->Find(key);
     return (static_cast<${propertyTypeName}>(object));` + '\n'
-    } else if (json.type === 'array') {
+    } else if (json.type === 'array' && json.items) {
       result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyType}>>* element = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyType}>>();
     *element = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${objName}::${propertyType}>>::Create();
     *(*element) = (*var)->Find(key);
@@ -476,8 +480,6 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
-
-    //console.log(`name - ${name}, json - ${JSON.stringify(json, null, 4)}`)
 
     if (json['$ref']) {
       if (json['$ref'][0] === '#') {
@@ -529,22 +531,28 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             }
             if (nativeType.type && nativeType.type.length > 0) {
               
-              let def = getArrayAccessorsImpl(tName, getModuleName(moduleJson), capitalize(pname || prop.title), nativeType.name, nativeType.type, j)
+              let def = getArrayAccessorsImpl(tName, getModuleName(moduleJson), capitalize(pname || prop.title), nativeType.name, nativeType.type, nativeType.json)
               t += '\n' + def
             }
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
           } else {
-            nativeType = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
-            if (nativeType.type && nativeType.type.length > 0) {
-              let jtype = getJsonType(moduleJson,prop, pname,schemas)
-              let propertyType = ((nativeType.name.length === 0) ? capitalize(pname) : nativeType.name)
-              let type = (((!prop.type != null) && (!prop.enum))? json : prop)
-              t += '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), capitalize(name), propertyType, nativeType.type, type, {readonly:false, optional:isOptional(pname, json)})
-            }
-            else {
-              console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+
+            if (prop.type === 'object' && !prop.properties) {
+                console.log(`WARNING: properties undetermined for ${pname}`)
+            } else {
+
+              nativeType = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
+              if (nativeType.type && nativeType.type.length > 0) {
+                let jtype = getJsonType(moduleJson,prop, pname,schemas)
+                let propertyType = ((nativeType.name.length === 0) ? capitalize(pname) : nativeType.name)
+                let type = (((!prop.type != null) && (!prop.enum))? json : prop)
+                t += '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), capitalize(name), propertyType, nativeType.type, type, {readonly:false, optional:isOptional(pname, json)})
+              }
+              else {
+                console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+              }
             }
           }
         })

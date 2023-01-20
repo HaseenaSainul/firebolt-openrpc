@@ -188,8 +188,10 @@ const generateEnum = (schema, prefix)=> {
 }
 
 const getIncludeDefinitions = (json = {}, jsonData = false) => {
+//  console.log("Inside getIncludeDefinitions  ------> " + jsonData);
   return getExternalRefs(json)
     .map(ref => {
+//      console.log("Inside map ------> " + jsonData);
       const mod = ref.split('#')[0].split('/').pop()
       let i = `#include "Common/${capitalize(mod)}.h"`
       if (jsonData === true) {
@@ -199,6 +201,7 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     })
     .filter((item, index, arr) => arr.indexOf(item) === index)
     .concat([`#include "Firebolt.h"`])
+//    console.log("After map ------>");
 }
 
 function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {
@@ -211,6 +214,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["name"] = []
   structure["type"] = []
+  structure["json"] = []
 
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
@@ -222,6 +226,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       res.deps.forEach(dep => structure.deps.add(dep))
       structure.type = res.type
       structure.name = res.name
+      structure.json = res.json
       return structure
     }
     else {
@@ -238,11 +243,13 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       //We are only interested in the type definition for external modules
       structure.type = res.type
       structure.name = res.name
+      structure.json = res.json
       return structure
     }
   }
   else if (json.const) {
     structure.type = getNativeType(json)
+    structure.json = json
     return structure
   }
   else if (json['x-method']) {
@@ -259,6 +266,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
     structure.deps.add(res)
     structure.type.push(typeName)
+    structure.json = json
     return structure
   }
   else if (Array.isArray(json.type)) {
@@ -292,6 +300,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     }
     structure.deps.add(def)
     structure.type.push(n + 'ArrayHandle')
+    structure.json = json
     return structure
   }
   else if (json.allOf) {
@@ -317,11 +326,13 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
        structure.name.push(capitalize(name))
     }
     structure.type.push(getTypeName(getModuleName(module), json.title || name) + 'Handle')
+    structure.json = json
     return structure
     //TODO
   }
   else if (json.type) {
     structure.type = getNativeType(json)
+    structure.json = json
     return structure
   }
   return structure
@@ -440,6 +451,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
     }
     else if (json.anyOf) {
+     console.log("json.anyOf = ------>");
 
     }
     else if (json.oneOf) {
