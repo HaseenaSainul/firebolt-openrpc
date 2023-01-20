@@ -187,12 +187,9 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-
 const getIncludeDefinitions = (json = {}, jsonData = false) => {
-//  console.log("Inside getIncludeDefinitions  ------> " + jsonData);
   return getExternalRefs(json)
     .map(ref => {
-//      console.log("Inside map ------> " + jsonData);
       const mod = ref.split('#')[0].split('/').pop()
       let i = `#include "Common/${capitalize(mod)}.h"`
       if (jsonData === true) {

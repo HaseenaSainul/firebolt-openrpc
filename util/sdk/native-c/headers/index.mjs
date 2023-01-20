@@ -41,7 +41,7 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 
 import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose,
          getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
-         getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
+         getPropertyEventCallbackSignature, getPropertyEventSignature, getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../../shared/cpphelpers.mjs'
 
@@ -116,7 +116,7 @@ const generateCppForDefinitions = (obj = {}, schemas = {}) => {
   const code = []
 
   code.push(getHeaderText())
-  const i = getIncludeDefinitions(obj, true)
+  const i = [`#include "Common/${capitalize(getModuleName(obj))}.h"`, ...getIncludeDefinitions(obj, true)]
   code.push(i.join('\n'))
   const shape = generateImplForDefinitions(obj, schemas)
   if(shape.enums) {
@@ -176,7 +176,6 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   }, {type: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
-
 
 
 const generateMethodPrototypes = (json, schemas = {}) => {
