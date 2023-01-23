@@ -122,7 +122,9 @@ const generateCppForDefinitions = (obj = {}, schemas = {}) => {
   const shape = generateImplForDefinitions(obj, schemas)
   if (shape.enums.size) {
     code.push('\n')
+    code.push(`\nnamespace WPEFramework {\n`)
     code.push([...shape.enums].join('\n'))
+    code.push(`\n}`)
   }
   code.push(getNameSpaceOpen())
   code.push([...shape.deps].join('\n'))
