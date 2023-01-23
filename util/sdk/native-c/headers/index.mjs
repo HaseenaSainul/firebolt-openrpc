@@ -39,11 +39,12 @@ import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose,
-         getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
-         getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
+import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose,
+         getIncludeGuardClose, getIncludeDefinitions, getSchemaShape, getSchemaType,
+	 getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventCallbackSignature,
+         getPropertyEventSignature, getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../../shared/cpphelpers.mjs'
+import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../../shared/cpphelpers.mjs'
 
 // Maybe an array of <key, value> from the schema
 const getDefinitions = compose(
@@ -116,19 +117,18 @@ const generateCppForDefinitions = (obj = {}, schemas = {}) => {
   const code = []
 
   code.push(getHeaderText())
-  const i = getIncludeDefinitions(obj, true)
+  const i = [`#include "Common/${capitalize(getModuleName(obj))}.h"`, `#include "JsonData_${capitalize(getModuleName(obj))}.h"`, ...getIncludeDefinitions(obj, true)]
   code.push(i.join('\n'))
   const shape = generateImplForDefinitions(obj, schemas)
-  if(shape.enums) {
+  if (shape.enums.size) {
     code.push('\n')
-    code.push([...shape.enums].join('\n\n'))
-    code.push('\n')
+    code.push([...shape.enums].join('\n'))
   }
-  code.push(getStyleGuardOpen(obj))
+  code.push(getNameSpaceOpen())
   code.push([...shape.deps].join('\n'))
   code.join('\n')
   code.push(shape.type.join('\n'))
-  code.push(getStyleGuardClose())
+  code.push(getNameSpaceClose())
   code.join('\n')
   return code
 }
@@ -176,7 +176,6 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   }, {type: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
-
 
 
 const generateMethodPrototypes = (json, schemas = {}) => {

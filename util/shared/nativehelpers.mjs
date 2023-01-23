@@ -68,7 +68,7 @@ const getStyleGuardClose = () => {
 
 `
 }
-    
+
 const getIncludeGuardClose = () => {
     return `
 #endif // Header Include Guard
@@ -187,12 +187,9 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-
 const getIncludeDefinitions = (json = {}, jsonData = false) => {
-//  console.log("Inside getIncludeDefinitions  ------> " + jsonData);
   return getExternalRefs(json)
     .map(ref => {
-//      console.log("Inside map ------> " + jsonData);
       const mod = ref.split('#')[0].split('/').pop()
       let i = `#include "Common/${capitalize(mod)}.h"`
       if (jsonData === true) {
@@ -202,7 +199,6 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     })
     .filter((item, index, arr) => arr.indexOf(item) === index)
     .concat([`#include "Firebolt.h"`])
-//    console.log("After map ------>");
 }
 
 function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {
