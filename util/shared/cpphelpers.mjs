@@ -2,9 +2,23 @@ import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName,getModuleName, description, isOptional, enumValue} from "./nativehelpers.mjs"
 
-const getSdkNameSpace = () => 'FireboltSdk'
-const getNameSpaceOpen = (module = {}) => `namespace ${getSdkNameSpace()} {\n` + `namespace ${capitalize(getModuleName(module))} {`
-const getNameSpaceClose = (module = {}) => `}//namespace ${capitalize(getModuleName(module))}\n}//namespace ${getSdkNameSpace()}`
+const getSdkNameSpace = () => 'FireboltSDK'
+const getNameSpaceOpen = (module = {}) => {
+  let result = `
+namespace ${getSdkNameSpace()} {`
+  if (JSON.stringify(module) !== '{}') {
+    result += '\n' + `namespace ${capitalize(getModuleName(module))} {`
+  }
+  return result
+}
+const getNameSpaceClose = (module = {}) => {
+  let result = ''
+  if (JSON.stringify(module) !== '{}') {
+    result += '\n' + `} // ${capitalize(getModuleName(module))}`
+  }
+  result += `\n} // ${getSdkNameSpace()}`
+  return result
+}
 
 const getJsonDataStructName = (modName, name) => `${capitalize(modName)}::${capitalize(name)}`
 
@@ -16,7 +30,7 @@ const getJsonNativeType = json => {
         type = 'WPEFramework::Core::JSON::String'
     }
     else if (jsonType === 'number' || json.type === 'integer') { //Lets keep it simple for now
-        type = 'WPEFramework::Core::JSON::Number'
+        type = 'WPEFramework::Core::JSON::DecSInt32'
     }
     else if (jsonType === 'boolean') {
       type = 'WPEFramework::Core::JSON::Boolean'
@@ -144,11 +158,11 @@ function getJsonContainerDefinition (name, props = []) {
 
         public:
             ${name}()
-                : Core::JSON::Container()
+                : WPEFramework::Core::JSON::Container()
             {`
 
     props.forEach(prop => {
-        c += `\n                Add(_T("${prop.name}"), &${capitalize(prop.name)};`
+        c += `\n                Add(_T("${prop.name}"), &${capitalize(prop.name)});`
     })
 
     c += `\n            }\n\n       public:`
@@ -215,7 +229,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
       //Get the Type
       let type = getJsonType(moduleJson, json.additionalProperties, name,schemas)
       if (type.type && type.type.length > 0) {
-      
+
       }
       else {
         console.log(`WARNING: Type undetermined for ${name}`)
@@ -297,7 +311,7 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, propertyName, prope
   }
   else {
     if (json.type === 'string') {
-      result += `    return (static_cast<${propertyTypeName}>((*var)->${propertyType}.Value().c_str()));` + '\n'
+      result += `    return (const_cast<${propertyTypeName}>((*var)->${propertyType}.Value().c_str()));` + '\n'
     }
     else {
       result += `    return (static_cast<${propertyTypeName}>((*var)->${propertyType}.Value()));` + '\n'
@@ -370,7 +384,7 @@ uint32_t ${objName}_${propertyName}Array_Size(${objName}_${propertyName}ArrayHan
   }
   else {
     if (json.type === 'string') {
-      result += `    return (static_cast<${propertyTypeName}>((*var)->Get(index).Value().c_str()));` + '\n'
+      result += `    return (const_cast<${propertyTypeName}>((*var)->Get(index).Value().c_str()));` + '\n'
     }
     else {
       result += `    return (static_cast<${propertyTypeName}>((*var)->Get(index)));` + '\n'
@@ -426,7 +440,7 @@ const getMapAccessorsImpl = (objName, moduleName, propertyName, propertyType, pr
   console.log
   result += `void ${objName}_AddKey(${objName}Handle handle, char* key, ${propertyType} value) {
     ASSERT(handle != NULL);
-    WPEFramework::Core::ProxyType<${objName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${objName}::${propertyName}>*>(handle);
+    WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>*>(handle);
     ASSERT(var->IsValid());
 ` + '\n'
 
@@ -463,7 +477,7 @@ const getMapAccessorsImpl = (objName, moduleName, propertyName, propertyType, pr
 
     result += `${propertyTypeName} ${objName}_FindKey(${objName}Handle handle, char* key) {
     ASSERT(handle != NULL);
-    WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<$moduleName}::${propertyName}>*>(handle);
+    WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>*>(handle);
      ASSERT(var->IsValid());` + '\n'
 
     if (json.type === 'object') {
@@ -481,7 +495,7 @@ const getMapAccessorsImpl = (objName, moduleName, propertyName, propertyType, pr
     else {
       if (json.type === 'string') {
         result += `
-    return (static_cast<${propertyTypeName}>((*var)->Find(key).Value().c_str()));` + '\n'
+    return (const_cast<${propertyTypeName}>((*var)->Find(key).Value().c_str()));` + '\n'
       }
     else {
         result += `
@@ -499,9 +513,11 @@ function getEnumConversionImpl(name, json) {
     res = ''
   } 
   else {
-    res = `ENUM_CONVERSION_BEGIN(::${name})\n`
+    res = `\nnamespace WPEFramework {\n`
+    res += `\nENUM_CONVERSION_BEGIN(${name})\n`
     res += json.enum.map(e => `    { ${enumValue(e, name)}, _T("${e}") }`).join(',\n')
-    res += `\nENUM_CONVERSION_END(::${name})`
+    res += `,\nENUM_CONVERSION_END(${name})`
+    res += `\n\n}`
   }
   return res
 }
@@ -545,7 +561,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     else if (json.type === 'string' && json.enum) {
       //Enum
       let typeName = getTypeName(getModuleName(moduleJson), name || json.title)
-      let res = description(capitalize(name || json.title), json.description) + '\n' + getEnumConversionImpl(typeName, json)
+      let res = description(capitalize(name || json.title), json.description) + getEnumConversionImpl(typeName, json)
       structure.enums.add(res)
       return structure
     }
@@ -575,7 +591,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               if (prop.type === 'string' && prop.enum) {
                 //Enum
                 let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title)
-                let res = description(capitalize(name || prop.title), prop.description) + '\n' + getEnumConversionImpl(typeName, prop)
+                let res = description(capitalize(name || prop.title), prop.description) + getEnumConversionImpl(typeName, prop)
                 structure.enums.add(res)
               }
             }
@@ -599,7 +615,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               if (nativeType.type && nativeType.type.length > 0) {
                 let jtype = getJsonType(moduleJson,prop, pname,schemas)
                 let propertyType = ((nativeType.name.length === 0) ? capitalize(pname) : nativeType.name)
-                let type = (((!prop.type != null) && (!prop.enum))? json : prop)
+                let type = (((!prop.type) && (!prop.enum))? json : prop)
                 t += '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), capitalize(name), propertyType, nativeType.type, type, {readonly:false, optional:isOptional(pname, json)})
               }
               else {
@@ -614,7 +630,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             else if (prop.type === 'string' && prop.enum) {
               //Enum
               let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title)
-              let res = description(capitalize(name || prop.title), prop.description) + '\n' + getEnumConversionImpl(typeName, prop)
+              let res = description(capitalize(name || prop.title), prop.description) + getEnumConversionImpl(typeName, prop)
               structure.enums.add(res)
             }
           }

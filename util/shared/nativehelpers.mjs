@@ -68,7 +68,7 @@ const getStyleGuardClose = () => {
 
 `
 }
-    
+
 const getIncludeGuardClose = () => {
     return `
 #endif // Header Include Guard
@@ -199,7 +199,6 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     })
     .filter((item, index, arr) => arr.indexOf(item) === index)
     .concat([`#include "Firebolt.h"`])
-//    console.log("After map ------>");
 }
 
 function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {
