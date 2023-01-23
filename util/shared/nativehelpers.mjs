@@ -487,7 +487,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     return `${description(method.name, method.summary)}\nuint32_t ${m}( ${paramType} ${method.result.name || method.name} )`
   }
 
-  function getPropertyEventCallbackSignature(method, module, paramType) {
+  function getPropertyEventCallbackSignature(method, paramType) {
     return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})`
   }
 

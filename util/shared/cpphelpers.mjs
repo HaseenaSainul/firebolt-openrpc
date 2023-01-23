@@ -1,6 +1,6 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { getSchemaType, capitalize, getTypeName,getModuleName, description, isOptional, enumValue} from "./nativehelpers.mjs"
+import { getSchemaType, capitalize, getTypeName,getModuleName, description, isOptional, enumValue, getPropertyGetterSignature} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const getNameSpaceOpen = (module = {}) => {
@@ -89,7 +89,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
    else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
       //This is a map of string to type in schema
       //Get the Type
-      let type = getJsonType(moduleJson, json.additionalProperties, name,schemas)
+      let type = getJsonType(module, json.additionalProperties, name,schemas)
       if (type.type && type.type.length > 0) {
       
       }
@@ -549,9 +549,9 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         //Ref points to local schema 
         //Get Path to ref in this module and getSchemaType
         
-        const schema = getPath(json['$ref'], module, schemas)
+        const schema = getPath(json['$ref'], moduleJson, schemas)
         const tname = schema.title || json['$ref'].split('/').pop()
-        res = getImplForSchema(module, schema, schemas, tname, {descriptions: descriptions, level: level})
+        let res = getImplForSchema(moduleJson, schema, schemas, tname, {descriptions: descriptions, level: level})
         res.deps.forEach(dep => structure.deps.add(dep))
         res.enums.forEach(e => structure.enums.add(e))
         structure.type = res.type
@@ -720,6 +720,54 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     return structure
   }
 
+function getPropertyGetterImpl(property, module, schemas = {}) {
+
+  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
+  let methodName = getModuleName(module).toLowerCase() + '.' + property.name
+  let moduleName = capitalize(getModuleName(module))
+
+  
+  let resJson = property.result.schema
+  if(property.result.schema.type === 'array') {
+    if (Array.isArray(property.result.schema.items)) {
+      resJson = property.result.schema.items[0]
+    }
+    else {
+      resJson = property.result.schema.items
+    }
+  }
+  let t = getJsonType(module, resJson, property.result.name || property.name, schemas)
+  console.log(`ResJson - ${JSON.stringify(resJson,null,4)} Json Type - ${t.type}`)
+  let jsonDataName = t && t.type
+
+  let impl = `${getPropertyGetterSignature(property, module, propType.type)} {\n`
+
+  impl += `    const string method = _T("${methodName}");` + '\n'
+
+  if (property.result.schema.type === 'array' && property.result.schema.items) {
+    result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>* result = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>();
+    *result = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>::Create();`
+  }
+  else {
+    impl += `    WPEFramework::Core::ProxyType<${jsonDataName}>* result = new WPEFramework::Core::ProxyType<${jsonDataName}>();
+    *result = WPEFramework::Core::ProxyType<${jsonDataName}>::Create();`
+  }
+  
+  impl += `\n    uint32_t status = FireboltSDK::Properties::Get(method, result);
+    if (status != FireboltSDKErrorNone) {\n`
+  if ((property.result.schema.type === 'string' && property.result.schema.enum) || (property.result.schema.type === 'number') || (property.result.schema.type === 'integer')) {
+    impl += `        *${property.result.name || property.name} = static_cast<${propType.type}((*result)->Value())>;` + '\n'
+  }
+  else if (property.result.schema.type === 'object' || property.result.schema.type === 'array' || property.result.schema.type === 'string') {
+    impl += `        *${property.result.name || property.name} = static_cast<void *>(result);` + '\n'
+  }
+  impl += '    }' + '\n'
+  impl += '    return status'
+
+  impl += `}` + '\n'
+
+  return impl
+}
 
 export {
     getSdkNameSpace,
@@ -727,5 +775,6 @@ export {
     getNameSpaceClose,
     getJsonDefinition,
     getJsonType,
-    getImplForSchema
+    getImplForSchema,
+    getPropertyGetterImpl
 }

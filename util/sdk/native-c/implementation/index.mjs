@@ -32,7 +32,7 @@ import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardC
          getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
          getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../../shared/cpphelpers.mjs'
+import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema, getPropertyGetterImpl } from '../../../shared/cpphelpers.mjs'
 
 
 const generateCppForSchemas = (obj = {}, schemas = {}) => {
@@ -42,15 +42,19 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
   const i = getIncludeDefinitions(obj, true)
   code.push(i.join('\n'))
   const shape = generateImplForSchemas(obj, schemas)
-  if(shape.enums) {
+  const methods = generateMethods(obj, schemas)
+  let enums = new Set ([...shape.enums, ...methods.enums])
+  if(enums) {
     code.push('\n')
-    code.push([...shape.enums].join('\n\n'))
+    code.push([...enums].join('\n\n'))
     code.push('\n')
   }
+  let deps = new Set ([...shape.deps, ...methods.deps])
   code.push(getStyleGuardOpen(obj))
-  code.push([...shape.deps].join('\n'))
+  code.push([...deps].join('\n'))
   code.join('\n')
   code.push(shape.type.join('\n'))
+  methods.type && code.push(methods.type.join('\n'))
   code.push(getStyleGuardClose())
   code.join('\n')
   return code
@@ -69,7 +73,55 @@ const generateImplForSchemas = (json, schemas = {}) => compose(
   getSchemas //Get schema under Components/Schemas
 )(json)
 
+const generateMethods = (json, schemas = {}) => {
+  
+  let sig = {type: [], deps: new Set(), enums: new Set()}
+
+  const properties = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('property'))) || []
+  
+  properties.forEach(property => {
+
+    const event = m => m.tags.find(t => t.name === 'property:readonly' || t.name === 'property')
+    const setter = m => m.tags.find(t => t.name === 'property')
+    
+    //Lets get the implementation for Result Schema if it is of type object
+    //If it is array then get Impl for the Array element if it is an object
+    let resJson = property.result.schema
+    if (property.result.schema.type === 'array' ) {
+      if (Array.isArray(json.items)) {
+        resJson = json.items[0]
+      }
+      else {
+        resJson = json.items
+      }
+    }
+    let res = getImplForSchema(json, resJson,schemas, property.result.name || property.name,{descriptions: true, level: 0})
+    res.deps.forEach(dep => sig.deps.add(dep))
+    res.enums.forEach(e => sig.enums.add(e))
+
+    //Get the JsonData definition for the result schema
+    let jType = getJsonDefinition(json, resJson, schemas,property.result.name || property.name, {descriptions: true, level: 0})
+    jType.deps.forEach(j => sig.enums.add(j))
+    jType.type.forEach(t => sig.enums.add(t))
+
+    //Get the Implementation for the method
+
+    sig.type.push(getPropertyGetterImpl(property, json, schemas) + '\n')
+/*
+    if(event(property)) {
+      sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
+      sig.type.push(getPropertyEventSignature(property, json, res.type) + ';\n')
+    }
+    else if(setter(property)) {
+      sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')
+    }
+    */
+  })
+
+  return sig
+}
 
 export {
-  generateCppForSchemas
+  generateCppForSchemas,
+  generateMethods
 }
