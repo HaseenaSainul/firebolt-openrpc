@@ -72,6 +72,17 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
     return structure
     //throw "x-methods not supported yet"
   }
+   else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
+      //This is a map of string to type in schema
+      //Get the Type
+      let type = getJsonType(moduleJson, json.additionalProperties, name,schemas)
+      if (type.type && type.type.length > 0) {
+      
+      }
+      else {
+        console.log(`WARNING: Type undetermined for ${name}`)
+      }
+    }
   else if (json.type === 'string' && json.enum) {
     //Enum
     let t = getSchemaType(module, json, name, schemas).type
@@ -652,14 +663,14 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         j = json.items
       }
   
-      let res = getSchemaType(module, j,'',schemas)
-      let jsonType = getJsonType(module, j, '', schemas)
-      let n = getTypeName(getModuleName(module), name || json.title)
+      let res = getSchemaType(moduleJson, j,'',schemas)
+      let jsonType = getJsonType(moduleJson, j, '', schemas)
+      let n = getTypeName(getModuleName(moduleJson), name || json.title)
       let def = description(name || json.title, json.description) + '\n'
       if (options.level === 0) {
         def += getObjectHandleImpl(n + 'Array', `WPEFramework::Core:JSON::ArrayType<${jsonType.type}>`) + '\n'
       }
-      def += getArrayAccessorsImpl(getModuleName(module), getModuleName(moduleJson), capitalize(name), capitalize(name || json.title), res.name, res.type, j)
+      def += getArrayAccessorsImpl(n,getModuleName(moduleJson), capitalize(name || json.title), res.name, res.type, j)
       structure.type.push(def)
       return structure
     }
