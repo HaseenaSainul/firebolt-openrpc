@@ -49,7 +49,7 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
   if (jsonDefs.type.length > 0) {
     jsonDefs.type.forEach(j => jsonData.add(j))
   }
-  let fwd = new Set(jsonDefs.fwd, methods.fwd)
+  let fwd = new Set([...jsonDefs.fwd, ...methods.fwd])
   if(jsonData.size > 0) {
 
     code.push(getNameSpaceOpen(obj))
