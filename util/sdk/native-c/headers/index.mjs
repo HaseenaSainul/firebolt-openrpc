@@ -104,6 +104,11 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
     const i = getIncludeDefinitions(obj)
     code.push(i.join('\n'))
     code.push(getNameSpaceOpen(obj))
+    if(shape.fwd.size > 0) {
+      code.push('    //Forward Declarations')
+      code.push([...shape.fwd].map(f => '    ' + f).join('\n'))
+      code.push('\n')
+    }
     code.push([...shape.deps].join('\n'))
     code.join('\n')
     code.push(shape.type && shape.type.join('\n'))
@@ -174,8 +179,9 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
     acc.type.push(shape.type.join('\n'))
     shape.deps.forEach(dep => acc.deps.add(dep))
+    shape.fwd.forEach(f => acc.fwd.add(f))
     return acc
-  }, {type: [], deps: new Set()}),
+  }, {type: [], deps: new Set(), fwd: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
 

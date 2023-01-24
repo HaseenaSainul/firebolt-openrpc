@@ -41,13 +41,34 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
   code.push(getHeaderText())
   const i = getIncludeDefinitions(obj, true)
   code.push(i.join('\n'))
+  const jsonDefs = generateJsonTypesForSchemas(obj, schemas)
   const shape = generateImplForSchemas(obj, schemas)
   const methods = generateMethods(obj, schemas)
+  let jsonData = new Set([...jsonDefs.deps, ...methods.jsonData])
+  if (jsonDefs.type.length > 0) {
+    jsonDefs.type.forEach(j => jsonData.add(j))
+  }
+  let fwd = new Set(jsonDefs.fwd, methods.fwd)
+  if(jsonData.size > 0) {
+
+    code.push(getNameSpaceOpen(obj))
+    code.push('\n')
+    if(fwd.size > 0) {
+      code.push('    //Forward Declarations')
+      code.push([...fwd].map(f => '    ' + f).join('\n'))
+      code.push('\n')
+    }
+    code.push([...jsonData].join('\n'))
+    code.join('\n')
+    code.push(getNameSpaceClose(obj))
+  }
+
   let enums = new Set ([...shape.enums, ...methods.enums])
-  if(enums) {
+  if (enums.size > 0) {
     code.push('\n')
+    code.push(`\nnamespace WPEFramework {\n`)
     code.push([...enums].join('\n\n'))
-    code.push('\n')
+    code.push(`\n}`)
   }
   let deps = new Set ([...shape.deps, ...methods.deps])
   code.push(getStyleGuardOpen(obj))
@@ -73,9 +94,21 @@ const generateImplForSchemas = (json, schemas = {}) => compose(
   getSchemas //Get schema under Components/Schemas
 )(json)
 
+const generateJsonTypesForSchemas = (json, schemas = {}) => compose(
+  reduce((acc, val) => {
+    const shape = getJsonDefinition(json, val[1], schemas, val[0])
+    acc.type.push(shape.type.join('\n'))
+    shape.deps.forEach(dep => acc.deps.add(dep))
+    shape.fwd.forEach(f => acc.fwd.add(f))
+    return acc
+  }, {type: [], deps: new Set(), fwd: new Set()}),
+  getSchemas //Get schema under Definitions
+)(json)
+
+
 const generateMethods = (json, schemas = {}) => {
   
-  let sig = {type: [], deps: new Set(), enums: new Set()}
+  let sig = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set(), fwd: new Set()}
 
   const properties = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('property'))) || []
   
@@ -101,8 +134,9 @@ const generateMethods = (json, schemas = {}) => {
 
     //Get the JsonData definition for the result schema
     let jType = getJsonDefinition(json, resJson, schemas,property.result.name || property.name, {descriptions: true, level: 0})
-    jType.deps.forEach(j => sig.enums.add(j))
-    jType.type.forEach(t => sig.enums.add(t))
+    jType.deps.forEach(j => sig.jsonData.add(j))
+    jType.type.forEach(t => sig.jsonData.add(t))
+    jType.fwd.forEach(f => sig.fwd.add(f))
 
     //Get the Implementation for the method
 

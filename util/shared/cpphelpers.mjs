@@ -191,6 +191,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
+  structure["fwd"] = new Set()
 
   if (json.type === 'object') {
     if (json.properties) {
@@ -215,12 +216,12 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
                 props.push({name: `${pname}`, type: `WPEFramework::Core::JSON::ArrayType<${res.type}>`})
             }
             else {
-                console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+                console.log(`WARNING: getJsonDefinition: Type undetermined for ${name}:${pname}`)
             }
         }
         else {
             if (prop.type === 'object' && !prop.properties) {
-                console.log(`WARNING: properties undetermined for ${pname}`)
+                console.log(`WARNING: getJsonDefinition: properties undetermined for ${pname}`)
             }
             else {
                 let res = getJsonType(moduleJson, prop, pname, schemas)
@@ -228,19 +229,20 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
                     props.push({name: `${pname}`, type: `${res.type}`})
                 }
                 else {
-                    console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+                    console.log(`WARNING: getJsonDefinition: Type undetermined for ${name}:${pname}`)
                 }
             }
         }
         })
         structure.type.push(getJsonContainerDefinition(tName, props))
+        structure.fwd.add(`class ${tName};`)
     }
     else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
       //This is a map of string to type in schema
       //Get the Type
       let type = getJsonType(moduleJson, json.additionalProperties, name, schemas)
       if (!type.type || type.type.length > 0) {
-        console.log(`WARNING: Type undetermined for ${name}`)
+        console.log(`WARNING: getJsonDefinition: Type undetermined for ${name}`)
       }
     }
   }
@@ -547,6 +549,8 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     let level = options.level 
     let descriptions = options.descriptions
 
+    //console.log(`Module - ${getModuleName(moduleJson)}, schema - ${name}`)
+
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
@@ -746,7 +750,6 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
     }
   }
   let t = getJsonType(module, resJson, property.result.name || property.name, schemas)
-  console.log(`ResJson - ${JSON.stringify(resJson,null,4)} Json Type - ${t.type}`)
   let jsonDataName = t && t.type
 
   let impl = `${getPropertyGetterSignature(property, module, propType.type)} {\n`
