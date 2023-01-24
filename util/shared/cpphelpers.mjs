@@ -1,6 +1,7 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { getSchemaType, capitalize, getTypeName,getModuleName, description, isOptional, enumValue, getPropertyGetterSignature} from "./nativehelpers.mjs"
+import { getSchemaType, capitalize, getTypeName,getModuleName, description,
+         isOptional, enumValue, getPropertyGetterSignature, getFireboltStringType} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const getNameSpaceOpen = (module = {}) => {
@@ -91,7 +92,9 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
       //Get the Type
       let type = getJsonType(module, json.additionalProperties, name,schemas)
       if (type.type && type.type.length > 0) {
-      
+          let t = 'WPEFramework::Core::JSON::VariantContainer';
+          structure.type.push(t)
+          return structure
       }
       else {
         console.log(`WARNING: Type undetermined for ${name}`)
@@ -549,8 +552,6 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     let level = options.level 
     let descriptions = options.descriptions
 
-    //console.log(`Module - ${getModuleName(moduleJson)}, schema - ${name}`)
-
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
@@ -740,13 +741,13 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   let moduleName = capitalize(getModuleName(module))
 
   
-  let resJson = property.result.schema
-  if (property.result.schema.type === 'array') {
-    if (Array.isArray(property.result.schema.items)) {
-      resJson = property.result.schema.items[0]
+  let resJson = propType.json
+  if (propType.json.type === 'array') {
+    if (Array.isArray(propType.json.items)) {
+      resJson = propType.json.items[0]
     }
     else {
-      resJson = property.result.schema.items
+      resJson = propType.json.items
     }
   }
   let t = getJsonType(module, resJson, property.result.name || property.name, schemas)
@@ -756,22 +757,20 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 
   impl += `    const string method = _T("${methodName}");` + '\n'
 
-  if (property.result.schema.type === 'array' && property.result.schema.items) {
-    result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>* result = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>();
-    *result = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>::Create();`
+  if (propType.json.type === 'array' && propType.json.items) {
+    impl += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>* result = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${jsonDataName}>>();`
   }
   else {
-    impl += `    WPEFramework::Core::ProxyType<${jsonDataName}>* result = new WPEFramework::Core::ProxyType<${jsonDataName}>();
-    *result = WPEFramework::Core::ProxyType<${jsonDataName}>::Create();`
+    impl += `    WPEFramework::Core::ProxyType<${jsonDataName}>* result = new WPEFramework::Core::ProxyType<${jsonDataName}>();`
   }
   
-  impl += `\n    uint32_t status = Properties::Get(method, result);
-    if (status != FireboltSDKErrorNone) {\n`
-  if ((property.result.schema.type === 'string' && property.result.schema.enum) || (property.result.schema.type === 'number') || (property.result.schema.type === 'integer')) {
-    impl += `        *${property.result.name || property.name} = static_cast<${propType.type}((*result)->Value())>;` + '\n'
-  }
-  else if (property.result.schema.type === 'object' || property.result.schema.type === 'array' || property.result.schema.type === 'string') {
-    impl += `        *${property.result.name || property.name} = static_cast<void *>(result);` + '\n'
+  impl += `\n\n    uint32_t status = Properties::Get(method, *result);
+    if (status == FireboltSDKErrorNone) {
+        ASSERT(result->IsValid() == true);\n`
+  if ((propType.json.type === 'string') && (propType.type === 'char*')) {
+    impl += `        *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(result);` + '\n'
+  } else {
+    impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>(result);` + '\n'
   }
   impl += '    }' + '\n'
   impl += '    return status' + '\n'

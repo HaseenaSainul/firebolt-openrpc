@@ -29,6 +29,8 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
+const getFireboltStringType = () => 'FireboltTypes_StringHandle'
+
 const getHeaderText = () => {
 
     return `/*
@@ -479,7 +481,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
 
   function getPropertyGetterSignature(method, module, paramType) {
     let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
-    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType}* ${method.result.name || method.name})`
+    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType === 'char*' ? getFireboltStringType() : paramType}* ${method.result.name || method.name})`
   }
 
   function getPropertySetterSignature(method, module, paramType) {
@@ -488,7 +490,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   }
 
   function getPropertyEventCallbackSignature(method, paramType) {
-    return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})`
+    return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? getFireboltStringType() : paramType})`
   }
 
   function getPropertyEventSignature(method, module) {
@@ -514,5 +516,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     description,
     isOptional,
     getTypeName,
-    enumValue
+    enumValue,
+    getFireboltStringType
   }

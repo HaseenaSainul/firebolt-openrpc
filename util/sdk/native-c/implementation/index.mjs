@@ -50,11 +50,11 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
     jsonDefs.type.forEach(j => jsonData.add(j))
   }
   let fwd = new Set([...jsonDefs.fwd, ...methods.fwd])
-  if(jsonData.size > 0) {
+  if (jsonData.size > 0) {
 
     code.push(getNameSpaceOpen(obj))
     code.push('\n')
-    if(fwd.size > 0) {
+    if (fwd.size > 0) {
       code.push('    //Forward Declarations')
       code.push([...fwd].map(f => '    ' + f).join('\n'))
       code.push('\n')
