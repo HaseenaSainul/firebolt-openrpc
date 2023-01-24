@@ -363,7 +363,7 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, propertyName, prope
     WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyName}>*>(handle);
     ASSERT(var->IsValid());
     ((*var)->${propertyType}.Clear());
-}` + '\n'
+}`
   }
 
   return result
@@ -741,7 +741,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 
   
   let resJson = property.result.schema
-  if(property.result.schema.type === 'array') {
+  if (property.result.schema.type === 'array') {
     if (Array.isArray(property.result.schema.items)) {
       resJson = property.result.schema.items[0]
     }
@@ -765,7 +765,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
     *result = WPEFramework::Core::ProxyType<${jsonDataName}>::Create();`
   }
   
-  impl += `\n    uint32_t status = FireboltSDK::Properties::Get(method, result);
+  impl += `\n    uint32_t status = Properties::Get(method, result);
     if (status != FireboltSDKErrorNone) {\n`
   if ((property.result.schema.type === 'string' && property.result.schema.enum) || (property.result.schema.type === 'number') || (property.result.schema.type === 'integer')) {
     impl += `        *${property.result.name || property.name} = static_cast<${propType.type}((*result)->Value())>;` + '\n'
@@ -774,9 +774,9 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
     impl += `        *${property.result.name || property.name} = static_cast<void *>(result);` + '\n'
   }
   impl += '    }' + '\n'
-  impl += '    return status'
+  impl += '    return status' + '\n'
 
-  impl += `}` + '\n'
+  impl += `}`
 
   return impl
 }

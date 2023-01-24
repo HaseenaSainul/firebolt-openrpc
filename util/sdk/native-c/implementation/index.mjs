@@ -29,8 +29,9 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose,
-         getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature, getPropertyGetterSignature,
-         getPropertyEventCallbackSignature, getPropertyEventSignature } from '../../../shared/nativehelpers.mjs'
+         getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature,
+         getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventSignature,
+         getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema, getPropertyGetterImpl } from '../../../shared/cpphelpers.mjs'
 
@@ -39,7 +40,7 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
   const code = []
 
   code.push(getHeaderText())
-  const i = getIncludeDefinitions(obj, true)
+  const i = [`#include "${capitalize(getModuleName(obj))}.h"`, ...getIncludeDefinitions(obj, true)]
   code.push(i.join('\n'))
   const jsonDefs = generateJsonTypesForSchemas(obj, schemas)
   const shape = generateImplForSchemas(obj, schemas)
@@ -71,12 +72,12 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
     code.push(`\n}`)
   }
   let deps = new Set ([...shape.deps, ...methods.deps])
-  code.push(getStyleGuardOpen(obj))
+  code.push(getNameSpaceOpen())
   code.push([...deps].join('\n'))
   code.join('\n')
   code.push(shape.type.join('\n'))
   methods.type && code.push(methods.type.join('\n'))
-  code.push(getStyleGuardClose())
+  code.push(getNameSpaceClose())
   code.join('\n')
   return code
 }
@@ -140,7 +141,7 @@ const generateMethods = (json, schemas = {}) => {
 
     //Get the Implementation for the method
 
-    sig.type.push(getPropertyGetterImpl(property, json, schemas) + '\n')
+    sig.type.push(getPropertyGetterImpl(property, json, schemas))
 /*
     if(event(property)) {
       sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
