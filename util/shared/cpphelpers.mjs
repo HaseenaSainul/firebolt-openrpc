@@ -375,15 +375,15 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, propertyName, prope
 const getArrayAccessorsImpl = (objName, moduleName, propertyNameType, propertyName, propertyType, propertyTypeName, json = {}) => {
 
   let result = `
-uint32_t ${objName}Array_Size(${objName}ArrayHandle handle) {
+uint32_t ${objName}_${propertyName}Array_Size(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>*>(handle);
     ASSERT(var->IsValid());
 
-    return ((*var)->${propertyType}.Length());
+    return ((*var)->${propertyName}.Length());
 }` + '\n'
 
-  result += `${propertyTypeName} ${objName}Array_Get(${objName}ArrayHandle handle, uint32_t index) {
+  result += `${propertyTypeName} ${objName}_${propertyName}Array_Get(${objName}Handle handle, uint32_t index) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>*>(handle);
     ASSERT(var->IsValid());` + '\n'
@@ -405,7 +405,7 @@ uint32_t ${objName}Array_Size(${objName}ArrayHandle handle) {
   }
   result += `}` + '\n'
 
-  result += `void ${objName}Array_Add(${objName}ArrayHandle handle, ${propertyTypeName} value) {
+  result += `void ${objName}_${propertyName}Array_Add(${objName}Handle handle, ${propertyTypeName} value) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>>*>(handle);
     ASSERT(var->IsValid());` + '\n'
@@ -431,7 +431,7 @@ uint32_t ${objName}Array_Size(${objName}ArrayHandle handle) {
     (*var)->${propertyName}.Add(element);
 }` + '\n'
 
-  result += `void ${objName}Array_Clear(${objName}ArrayHandle handle) {
+  result += `void ${objName}_${propertyName}Array_Clear(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>* var = static_cast<WPEFramework::Core::ProxyType<${moduleName}::${propertyNameType}>*>(handle);
     ASSERT(var->IsValid());
@@ -620,8 +620,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               }
             }
             if (nativeType.type && nativeType.type.length > 0) {
-              
-              let def = getArrayAccessorsImpl(tName, getModuleName(moduleJson), capitalize(name), capitalize(pname || prop.title), nativeType.name, nativeType.type, nativeType.json)
+              let def = getArrayAccessorsImpl(tName, getModuleName(moduleJson), capitalize(json.title || name), capitalize(pname || prop.title), nativeType.name, nativeType.type, nativeType.json)
               t += '\n' + def
             }
             else {
@@ -647,7 +646,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               }
             }
             if (prop.type === 'object' && prop.properties) {
-              let res = getImplForSchema(moduleJson, prop, schemas, pname, {descriptions: descriptions, level: level})
+              let res = getImplForSchema(moduleJson, prop, schemas, (prop.title || pname), {descriptions: descriptions, level: level})
               res.type.forEach(t => structure.deps.add(t))
               res.enums.forEach(e => structure.enums.add(e))
             }
@@ -724,7 +723,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
       if (options.level === 0) {
         def += getObjectHandleImpl(n + 'Array', `WPEFramework::Core:JSON::ArrayType<${jsonType.type}>`) + '\n'
       }
-      def += getArrayAccessorsImpl(n, getModuleName(moduleJson), capitalize(name || json.title), "", res.name, res.type, j)
+      def += getArrayAccessorsImpl(n, getModuleName(moduleJson), capitalize(name), "", res.name, res.type, j)
       structure.type.push(def)
       return structure
     }

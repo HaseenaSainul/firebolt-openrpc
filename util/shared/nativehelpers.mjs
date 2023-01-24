@@ -162,12 +162,12 @@ const getTypeName = (moduleName, varName, upperCase = false) => {
   return `${mName}_${vName}`
 }
 
-const getArrayAccessors = (arrayName, valueType) => {
+const getArrayAccessors = (arrayName, propertyName, valueType) => {
 
-  let res = `uint32_t ${arrayName}_Size(${arrayName}Handle handle);` + '\n'
-  res += `${valueType} ${arrayName}_Get(${arrayName}Handle handle, uint32_t index);` + '\n'
-  res += `void ${arrayName}_Add(${arrayName}Handle handle, ${valueType} value);` + '\n'
-  res += `void ${arrayName}_Clear(${arrayName}Handle handle);` + '\n'
+  let res = `uint32_t ${arrayName}_${propertyName}Array_Size(${arrayName}Handle handle);` + '\n'
+  res += `${valueType} ${arrayName}_${propertyName}Array_Get(${arrayName}Handle handle, uint32_t index);` + '\n'
+  res += `void ${arrayName}_${propertyName}Array_Add(${arrayName}Handle handle, ${valueType} value);` + '\n'
+  res += `void ${arrayName}_${propertyName}Array_Clear(${arrayName}Handle handle);` + '\n'
 
   return res
 }
@@ -207,7 +207,6 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   if (json.schema) {
     json = json.schema
   }
-  //console.log(`name - ${name}, schema - ${JSON.stringify(json, null, 4)}, title - ${options.title}`)
 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
@@ -293,7 +292,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     if (options.level === 0) {
       def += getObjectHandleManagement(n + 'Array') + '\n'
     }
-    def += getArrayAccessors(n + 'Array', res.type)
+    def += getArrayAccessors(n, capitalize(json.title || name), res.type)
     if (name) {
        structure.name.push(capitalize(name))
     }
@@ -406,8 +405,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               res = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
             }
             if (res.type && res.type.length > 0) {
-              let n = tName + '_' + capitalize(pname || prop.title) 
-              let def = getArrayAccessors(n + 'Array', res.type)
+              let def = getArrayAccessors(tName, capitalize(prop.title || pname), res.type)
               t += '\n' + def
             }
             else {
