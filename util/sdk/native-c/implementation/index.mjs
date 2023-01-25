@@ -33,7 +33,7 @@ import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardC
          getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventSignature,
          getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema, getPropertyGetterImpl } from '../../../shared/cpphelpers.mjs'
+import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema, getPropertyGetterImpl,getPropertySetterImpl } from '../../../shared/cpphelpers.mjs'
 
 
 const generateCppForSchemas = (obj = {}, schemas = {}) => {
@@ -147,10 +147,10 @@ const generateMethods = (json, schemas = {}) => {
       sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
       sig.type.push(getPropertyEventSignature(property, json, res.type) + ';\n')
     }
-    else if (setter(property)) {
-      sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')
+    else */ if(setter(property)) {
+      sig.type.push(getPropertySetterImpl(property, json, schemas))
     }
-    */
+    
   })
 
   return sig

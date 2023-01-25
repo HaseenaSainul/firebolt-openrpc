@@ -189,6 +189,24 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
+const getArrayElementSchema = (json, module, schemas = {}) => {
+  let result
+  if(json.type == 'array' && json.items) {
+    if (Array.isArray(json.items)) {
+      result = json.items[0]
+    }
+    else {
+      // grab the type for the non-array schema
+      result = json.items
+    }
+    if (schema['$ref']) {
+        result = getPath(schema['$ref'], module, schemas)
+    }
+  }
+  return result
+
+}
+
 const getIncludeDefinitions = (json = {}, jsonData = false) => {
   return getExternalRefs(json)
     .map(ref => {
@@ -515,5 +533,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     isOptional,
     getTypeName,
     enumValue,
-    getFireboltStringType
+    getFireboltStringType,
+    getArrayElementSchema
   }
