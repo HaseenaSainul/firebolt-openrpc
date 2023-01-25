@@ -87,7 +87,6 @@ const Indent = '    '
 
 const getNativeType = json => {
     let type
-
     if (json.const) {
       if (typeof json.const === 'string') {
         type = 'char*'
@@ -190,8 +189,8 @@ const generateEnum = (schema, prefix)=> {
 }
 
 const getArrayElementSchema = (json, module, schemas = {}) => {
-  let result
-  if(json.type == 'array' && json.items) {
+  let result = ''
+  if (json.type == 'array' && json.items) {
     if (Array.isArray(json.items)) {
       result = json.items[0]
     }
@@ -199,12 +198,21 @@ const getArrayElementSchema = (json, module, schemas = {}) => {
       // grab the type for the non-array schema
       result = json.items
     }
-    if (schema['$ref']) {
-        result = getPath(schema['$ref'], module, schemas)
+    if (schemas['$ref']) {
+      result = getPath(schema['$ref'], module, schemas)
     }
   }
-  return result
+  else if (json.type == 'object') {
+    if (json.properties) {
+      Object.entries(json.properties).forEach(([pname, prop]) => {
+        if (prop.type === 'array') {
+          result = getArrayElementSchema(prop, module, schemas)
+        }
+      })
+    }
+  }
 
+  return result
 }
 
 const getIncludeDefinitions = (json = {}, jsonData = false) => {

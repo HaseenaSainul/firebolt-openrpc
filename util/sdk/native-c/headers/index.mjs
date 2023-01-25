@@ -104,15 +104,16 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
     const i = getIncludeDefinitions(obj)
     code.push(i.join('\n'))
     code.push(getNameSpaceOpen(obj))
-    if(shape.fwd.size > 0) {
-      code.push('    //Forward Declarations')
-      code.push([...shape.fwd].map(f => '    ' + f).join('\n'))
-      code.push('\n')
+    if (shape.fwd.size > 0) {
+      code.push('    // Forward Declarations')
+      code.push([...shape.fwd].map(f => '    ' + f).join('\n') + '\n')
     }
-    code.push([...shape.deps].join('\n'))
-    code.join('\n')
-    code.push(shape.type && shape.type.join('\n'))
-    code.join('\n')
+    if (shape.deps.size > 0) {
+      code.push([...shape.deps].join('\n') + '\n')
+    }
+    if (shape.type.length) {
+      code.push(shape.type && shape.type.join('\n'))
+    }
     code.push(getNameSpaceClose(obj))
   }
   return code
@@ -177,9 +178,11 @@ const generateTypesForModules = (json,  schemas = {}) => compose(
 const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
-    acc.type.push(shape.type.join('\n'))
-    shape.deps.forEach(dep => acc.deps.add(dep))
-    shape.fwd.forEach(f => acc.fwd.add(f))
+    if (shape.type.length > 0) {
+      acc.type.push(shape.type.join('\n'))
+      shape.deps.forEach(dep => acc.deps.add(dep))
+      shape.fwd.forEach(f => acc.fwd.add(f))
+    }
     return acc
   }, {type: [], deps: new Set(), fwd: new Set()}),
   getDefinitions //Get schema under Definitions
@@ -193,14 +196,10 @@ const generateMethodPrototypes = (json, schemas = {}) => {
   const properties = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('property'))) || []
   
   properties.forEach(property => {
- //   console.log(`Method - ${JSON.stringify(property,null,4)}`)
     const event = m => m.tags.find(t => t.name === 'property:readonly' || t.name === 'property')
     const setter = m => m.tags.find(t => t.name === 'property')
     
     let res = getSchemaType(json, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
- //   console.log(`Type - ${res.type}`)
- //   console.log(`Deps - `)
- //   res.deps.forEach((dep, index) => console.log(`Item# - ${dep}`))
     res.deps.forEach(dep => sig.deps.add(dep))
 
     sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')

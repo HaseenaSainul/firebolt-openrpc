@@ -33,7 +33,8 @@ import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardC
          getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventSignature,
          getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema, getPropertyGetterImpl,getPropertySetterImpl } from '../../../shared/cpphelpers.mjs'
+import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema,
+         getPropertyGetterImpl, getPropertySetterImpl } from '../../../shared/cpphelpers.mjs'
 
 
 const generateCppForSchemas = (obj = {}, schemas = {}) => {
@@ -49,36 +50,32 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
   if (jsonDefs.type.length > 0) {
     jsonDefs.type.forEach(j => jsonData.add(j))
   }
+
   let fwd = new Set([...jsonDefs.fwd, ...methods.fwd])
   if (jsonData.size > 0) {
-
     code.push(getNameSpaceOpen(obj))
-    code.push('\n')
     if (fwd.size > 0) {
-      code.push('    //Forward Declarations')
-      code.push([...fwd].map(f => '    ' + f).join('\n'))
-      code.push('\n')
+      code.push('    // Forward Declarations')
+      code.push([...fwd].map(f => '    ' + f).join('\n') + '\n')
     }
     code.push([...jsonData].join('\n'))
-    code.join('\n')
     code.push(getNameSpaceClose(obj))
   }
 
   let enums = new Set ([...shape.enums, ...methods.enums])
   if (enums.size > 0) {
-    code.push('\n')
     code.push(`\nnamespace WPEFramework {\n`)
     code.push([...enums].join('\n\n'))
     code.push(`\n}`)
   }
   let deps = new Set ([...shape.deps, ...methods.deps])
   code.push(getNameSpaceOpen())
-  code.push([...deps].join('\n'))
+  deps.size ? code.push([...deps].join('\n')) : null
   code.join('\n')
   code.push(shape.type.join('\n'))
-  methods.type && code.push(methods.type.join('\n'))
-  code.push(getNameSpaceClose())
-  code.join('\n')
+  methods.type.length ? code.push(methods.type.join('\n')) : null
+  code.push(getNameSpaceClose() + '\n')
+
   return code
 }
 
@@ -140,17 +137,15 @@ const generateMethods = (json, schemas = {}) => {
     jType.fwd.forEach(f => sig.fwd.add(f))
 
     //Get the Implementation for the method
-
     sig.type.push(getPropertyGetterImpl(property, json, schemas))
 /*
     if (event(property)) {
       sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
       sig.type.push(getPropertyEventSignature(property, json, res.type) + ';\n')
     }
-    else */ if(setter(property)) {
-      sig.type.push(getPropertySetterImpl(property, json, schemas))
+    else */ if (setter(property)) {
+      sig.type.push(getPropertySetterImpl(property, json, res.type) + ';\n')
     }
-    
   })
 
   return sig
