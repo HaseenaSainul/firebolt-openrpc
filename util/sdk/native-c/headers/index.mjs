@@ -205,8 +205,8 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')
 
     if(event(property)) {
-      sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
-      sig.type.push(getPropertyEventSignature(property, json, res.type) + ';\n')
+      sig.type.push(getPropertyEventCallbackSignature(property, res.type) + ';\n')
+      sig.type.push(getPropertyEventSignature(property, res.type) + ';\n')
     }
     else if(setter(property)) {
       sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')

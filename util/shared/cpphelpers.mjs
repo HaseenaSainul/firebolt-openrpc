@@ -165,7 +165,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
 
 function getJsonContainerDefinition (name, props = []) {
   name = capitalize(name)
-  let c = `    class ${name}: public WPEFramework::Core::JSON::Container {
+  let c = `    class ${name} : public WPEFramework::Core::JSON::Container {
     public:
         ${name}(const ${name}&) = delete;
         ~${name}() override = default;
@@ -784,7 +784,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
     impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>(result);` + '\n'
   }
   impl += '    }' + '\n'
-  impl += '    return status' + '\n'
+  impl += '    return status;' + '\n'
 
   impl += `}`
 
