@@ -44,6 +44,7 @@ const generateHeaders = ({
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
 
+  console.log("Calling header for common")
   //Generate headers for Common schemas under 'include/common' directory
   fsMkDirP(commonIncludeDir)
     .tap(_ => logSuccess(`Created folder: ${trimPath(headerDir)}`))
@@ -60,6 +61,7 @@ const generateHeaders = ({
     )
     .done(() => console.log('\nDone Generating Schema Headers by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
     {
+  console.log("Calling header for jsonData")
       const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
 
       fsMkDirP(srcDir)
@@ -77,6 +79,7 @@ const generateHeaders = ({
       .done(() => console.log('\nDone Generating JsonData Headers by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
       }
 
+  console.log("Calling header for module")
   //Generate the Module headers under 'include/' directory
   return combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
     .flatMap(schemas => allModules
@@ -106,6 +109,7 @@ const generateCppFiles = ({
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
 
+  console.log("Calling cpp for common")
   //Generate headers for Common schemas under 'include/common' directory
   fsMkDirP(srcDir)
     .flatMap(_ => combinedSchemas
@@ -113,7 +117,7 @@ const generateCppFiles = ({
         .flatMap(schs => Object.values(schs))
         .flatten()
         .filter(module => getModuleName(module) !== 'FireboltOpenRPC')
-        .map(schema =>  ({title : schema.title, contents : generateCppForDefinitions(schema, schemas)}))
+        .map(schema =>  ({title : schema.title, contents : generateCppForDefinitions(schema, schemas, srcDir)}))
         .map(fileContent => {
           (fileContent.contents.length > 0) && fsWriteFile(path.join(srcDir, `${fileContent.title}_Common.cpp`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(srcDir, `${fileContent.title}_Common.cpp`)} written`))
           })
@@ -121,12 +125,13 @@ const generateCppFiles = ({
     )
     .done(() => console.log('\nDone Generating Schema CPP by \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n'))
 
+  console.log("Calling cpp for module")
   //Generate the Module CPP under 'src/' directory
   return combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
     .flatMap(schemas => allModules
       .flatMap(modules => Object.values(modules))
       .flatten()
-      .map(module => ({title : getModuleName(module), contents : generateCppForSchemas(module, schemas)}))
+      .map(module => ({title : getModuleName(module), contents : generateCppForSchemas(module, schemas, srcDir)}))
       .map(fileContent => {
         (fileContent.contents.length > 0) && fsWriteFile(path.join(srcDir, `${fileContent.title}.cpp`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(srcDir, `${fileContent.title}.cpp`)} written`))
       })

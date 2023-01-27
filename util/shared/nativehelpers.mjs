@@ -23,7 +23,11 @@ import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, reduce, option, map } = pointfree
 import predicates from 'crocks/predicates/index.js'
 import { getPath, getSchema, getExternalRefs } from './json-schema.mjs'
+import { fsReadFile } from './helpers.mjs'
 import deepmerge from 'deepmerge'
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const fs = require('fs');
 
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
@@ -198,8 +202,8 @@ const getArrayElementSchema = (json, module, schemas = {}) => {
       // grab the type for the non-array schema
       result = json.items
     }
-    if (schemas['$ref']) {
-      result = getPath(schema['$ref'], module, schemas)
+    if (result['$ref']) {
+      result = getPath(result['$ref'], module, schemas)
     }
   }
   else if (json.type == 'object') {
@@ -215,18 +219,29 @@ const getArrayElementSchema = (json, module, schemas = {}) => {
   return result
 }
 
-const getIncludeDefinitions = (json = {}, jsonData = false) => {
-  return getExternalRefs(json)
+const getIncludeDefinitions = (json = {}, cpp = false, srcDir = {}, common = false) => {
+  const headers = []
+  if (cpp == true) {
+    headers.push((common === true) ? `#include "Common/${capitalize(getModuleName(json))}.h"` : `#include "${capitalize(getModuleName(json))}.h"`)
+    if (fs.existsSync(srcDir + `/JsonData_${capitalize(getModuleName(json))}.h`) === true) {
+      headers.push(`#include "JsonData_${capitalize(getModuleName(json))}.h"`)
+    }
+  }
+
+  return (getExternalRefs(json)
     .map(ref => {
       const mod = ref.split('#')[0].split('/').pop()
       let i = `#include "Common/${capitalize(mod)}.h"`
-      if (jsonData === true) {
-        i += '\n' + `#include "JsonData_${capitalize(mod)}.h"`
+      if (cpp === true) {
+        if (fs.existsSync(srcDir + `JsonData_${capitalize(mod)}.h`) === true) {
+          i += '\n' + `#include "JsonData_${capitalize(mod)}.h"`
+        }
       }
       return i
     })
     .filter((item, index, arr) => arr.indexOf(item) === index)
-    .concat([`#include "Firebolt.h"`])
+    .concat([`#include "Firebolt.h"`]))
+    .concat(headers)
 }
 
 function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {
@@ -440,7 +455,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
           } else {
             res = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
             if (res.type && res.type.length > 0) {
-              t += '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
+              if (res.json.type === 'object' && !schemas.properties) {
+                console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+              } else {
+                t += '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
+              }
             }
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
@@ -456,7 +475,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
         //This is a map of string to type in schema
         //Get the Type
-        let type = getSchemaType(moduleJson, json.additionalProperties, name,schemas)
+        let type = getSchemaType(moduleJson, json.additionalProperties, name, schemas)
         if (type.type && type.type.length > 0) {
           let tName = getTypeName(getModuleName(moduleJson), name)
           type.deps.forEach(dep => structure.deps.add(dep))
@@ -542,5 +561,5 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     getTypeName,
     enumValue,
     getFireboltStringType,
-    getArrayElementSchema
+    getArrayElementSchema,
   }

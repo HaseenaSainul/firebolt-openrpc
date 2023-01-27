@@ -45,7 +45,6 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClo
          getPropertyEventSignature, getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../../shared/cpphelpers.mjs'
-
 // Maybe an array of <key, value> from the schema
 const getDefinitions = compose(
   option([]),
@@ -108,9 +107,6 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
       code.push('    // Forward Declarations')
       code.push([...shape.fwd].map(f => '    ' + f).join('\n') + '\n')
     }
-    if (shape.deps.size > 0) {
-      code.push([...shape.deps].join('\n') + '\n')
-    }
     if (shape.type.length) {
       code.push(shape.type && shape.type.join('\n'))
     }
@@ -119,11 +115,12 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
   return code
 }
 
-const generateCppForDefinitions = (obj = {}, schemas = {}) => {
+const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
 
   code.push(getHeaderText())
-  const i = [`#include "Common/${capitalize(getModuleName(obj))}.h"`, `#include "JsonData_${capitalize(getModuleName(obj))}.h"`, ...getIncludeDefinitions(obj, true)]
+  const i = getIncludeDefinitions(obj, true, srcDir, true)
+
   code.push(i.join('\n'))
   const shape = generateImplForDefinitions(obj, schemas)
   if (shape.enums.size) {
@@ -132,11 +129,11 @@ const generateCppForDefinitions = (obj = {}, schemas = {}) => {
     code.push([...shape.enums].join('\n'))
     code.push(`\n}`)
   }
-  code.push(getNameSpaceOpen())
+  code.push(getStyleGuardOpen(obj))
   code.push([...shape.deps].join('\n'))
   code.join('\n')
   code.push(shape.type.join('\n'))
-  code.push(getNameSpaceClose())
+  code.push(getStyleGuardClose())
   code.join('\n')
   return code
 }

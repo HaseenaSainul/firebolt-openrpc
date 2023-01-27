@@ -33,17 +33,18 @@ import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardC
          getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventSignature,
          getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen,getNameSpaceClose, getJsonDefinition, getImplForSchema,
+import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema,
          getPropertyGetterImpl, getPropertySetterImpl } from '../../../shared/cpphelpers.mjs'
 
 
-const generateCppForSchemas = (obj = {}, schemas = {}) => {
+const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
 
   code.push(getHeaderText())
-  const i = [`#include "${capitalize(getModuleName(obj))}.h"`, ...getIncludeDefinitions(obj, true)]
-  code.push(i.join('\n'))
   const jsonDefs = generateJsonTypesForSchemas(obj, schemas)
+  const i = getIncludeDefinitions(obj, true, srcDir);
+  code.push(i.join('\n'))
+
   const shape = generateImplForSchemas(obj, schemas)
   const methods = generateMethods(obj, schemas)
   let jsonData = new Set([...jsonDefs.deps, ...methods.jsonData])
@@ -69,12 +70,12 @@ const generateCppForSchemas = (obj = {}, schemas = {}) => {
     code.push(`\n}`)
   }
   let deps = new Set ([...shape.deps, ...methods.deps])
-  code.push(getNameSpaceOpen())
+  code.push(getStyleGuardOpen())
   deps.size ? code.push([...deps].join('\n')) : null
   code.join('\n')
   code.push(shape.type.join('\n'))
   methods.type.length ? code.push(methods.type.join('\n')) : null
-  code.push(getNameSpaceClose() + '\n')
+  code.push(getStyleGuardClose() + '\n')
 
   return code
 }
