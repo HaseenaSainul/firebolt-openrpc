@@ -38,7 +38,6 @@ const { not } = logic
 import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
-
 import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose,
          getIncludeGuardClose, getIncludeDefinitions, getSchemaShape, getSchemaType,
 	 getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventCallbackSignature,
@@ -64,6 +63,7 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
     const i = getIncludeDefinitions(obj)
     code.push(i.join('\n'))
     code.push(getStyleGuardOpen(obj))
+    shape.enum.length ? code.push(shape.enum.join('\n')) : null
     shape.type.forEach(type => shape.deps.add(type))
     code.push([...shape.deps].join('\n'))
     code.join('\n')
@@ -84,6 +84,7 @@ const generateHeaderForModules = (obj = {}, schemas = {}) => {
   code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForModules(obj, schemas)
   const m = generateMethodPrototypes(obj, schemas)
+  shape.enum.length ? code.push(shape.enum.join('\n')) : null
   m.deps.forEach(dep => shape.deps.add(dep))
   shape.type.forEach(type => shape.deps.add(type))
   code.push([...shape.deps].join('\n'))
@@ -103,9 +104,8 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
     const i = getIncludeDefinitions(obj)
     code.push(i.join('\n'))
     code.push(getNameSpaceOpen(obj))
-    if (shape.fwd.size > 0) {
-      code.push('    // Forward Declarations')
-      code.push([...shape.fwd].map(f => '    ' + f).join('\n') + '\n')
+    if (shape.deps.size > 0) {
+      code.push([...shape.deps].join('\n') + '\n')
     }
     if (shape.type.length) {
       code.push(shape.type && shape.type.join('\n'))
@@ -157,8 +157,9 @@ const generateTypesForDefinitions = (json, schemas = {}) => compose(
     const shape = getSchemaShape(json, val[1], schemas, val[0])
     acc.type.push(shape.type.join('\n'))
     shape.deps.forEach(dep => acc.deps.add(dep))
+    shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
-  }, {type: [], deps: new Set()}),
+  }, {type: [], enum: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
 
@@ -167,8 +168,9 @@ const generateTypesForModules = (json,  schemas = {}) => compose(
     const shape = getSchemaShape(json, val[1], schemas, val[0])
     acc.type.push(shape.type.join('\n'))
     shape.deps.forEach(dep => acc.deps.add(dep))
+    shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
-  }, {type: [], deps: new Set()}),
+  }, {type: [], enum: [], deps: new Set()}),
   getSchemas //Get schema under Definitions
 )(json)
 
@@ -176,8 +178,8 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
     if (shape.type.length > 0) {
-      acc.type.push(shape.type.join('\n'))
-      shape.deps.forEach(dep => acc.deps.add(dep))
+      shape.type.forEach(type => { (acc.deps.has(type) === false) ? acc.type.push(type) : acc.type})
+      shape.deps.forEach(dep => { (acc.type.includes(dep) === false) ? acc.deps.add(dep) : acc.deps})
       shape.fwd.forEach(f => acc.fwd.add(f))
     }
     return acc
@@ -188,7 +190,7 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
 
 const generateMethodPrototypes = (json, schemas = {}) => {
   
-  let sig = {type: [], deps: new Set()}
+  let sig = {type: [], enum: [], deps: new Set()}
 
   const properties = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('property'))) || []
   
@@ -198,7 +200,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     
     let res = getSchemaType(json, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
     res.deps.forEach(dep => sig.deps.add(dep))
-
+    res.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
     sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')
 
     if(event(property)) {

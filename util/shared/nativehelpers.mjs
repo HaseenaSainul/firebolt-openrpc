@@ -81,7 +81,13 @@ const getIncludeGuardClose = () => {
 `
 }
 
-const capitalize = str => str[0].toUpperCase() + str.substr(1)
+const capitalize = (str) => {
+  if (str.length) {
+    str = str.toLowerCase()
+    str = str[0].toUpperCase() + str.substr(1)
+  }
+  return str
+}
 const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
 const isOptional = (prop, json) => (!json.required || !json.required.includes(prop))
 
@@ -165,12 +171,12 @@ const getTypeName = (moduleName, varName, upperCase = false) => {
   return `${mName}_${vName}`
 }
 
-const getArrayAccessors = (arrayName, propertyName, valueType) => {
+const getArrayAccessors = (arrayName, propertyName, propertyType, valueType) => {
 
-  let res = `uint32_t ${arrayName}_${propertyName}Array_Size(${arrayName}Handle handle);` + '\n'
-  res += `${valueType} ${arrayName}_${propertyName}Array_Get(${arrayName}Handle handle, uint32_t index);` + '\n'
-  res += `void ${arrayName}_${propertyName}Array_Add(${arrayName}Handle handle, ${valueType} value);` + '\n'
-  res += `void ${arrayName}_${propertyName}Array_Clear(${arrayName}Handle handle);` + '\n'
+  let res = `uint32_t ${arrayName}_${propertyName}Array_Size(${propertyType}Handle handle);` + '\n'
+  res += `${valueType} ${arrayName}_${propertyName}Array_Get(${propertyType}Handle handle, uint32_t index);` + '\n'
+  res += `void ${arrayName}_${propertyName}Array_Add(${propertyType}Handle handle, ${valueType} value);` + '\n'
+  res += `void ${arrayName}_${propertyName}Array_Clear(${propertyType}Handle handle);` + '\n'
 
   return res
 }
@@ -254,6 +260,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   structure["name"] = []
   structure["type"] = []
   structure["json"] = []
+  structure["enum"] = []
 
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
@@ -303,9 +310,10 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     }
     let typeName = getTypeName(getModuleName(module), name || json.title)
     let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
-    structure.deps.add(res)
+    //structure.deps.add(res)
     structure.type.push(typeName)
     structure.json = json
+    res.length ? ((structure.enum.includes(res) === false) ? structure.enum.push(res): null) : null
     return structure
   }
   else if (Array.isArray(json.type)) {
@@ -333,13 +341,15 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     if (options.level === 0) {
       def += getObjectHandleManagement(n + 'Array') + '\n'
     }
-    def += getArrayAccessors(n, capitalize(json.title || name), res.type)
+
+    def += getArrayAccessors(getModuleName(module), capitalize(json.title || name), (n + 'Array'), res.type)
     if (name) {
        structure.name.push(capitalize(name))
     }
     structure.deps.add(def)
     structure.type.push(n + 'ArrayHandle')
     structure.json = json
+    structure.enum = res.enum
     return structure
   }
   else if (json.allOf) {
@@ -366,6 +376,8 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     }
     structure.type.push(getTypeName(getModuleName(module), json.title || name) + 'Handle')
     structure.json = json
+    res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
+
     return structure
     //TODO
   }
@@ -385,6 +397,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
+    structure["enum"] = []
 
     if (json['$ref']) {
       if (json['$ref'][0] === '#') {
@@ -446,7 +459,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               res = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
             }
             if (res.type && res.type.length > 0) {
-              let def = getArrayAccessors(tName, capitalize(prop.title || pname), res.type)
+
+              let def = getArrayAccessors(tName, capitalize(prop.title || pname), tName, res.type)
               t += '\n' + def
             }
             else {
@@ -466,6 +480,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
             }
           }
           res.deps.forEach(dep => structure.deps.add(dep))
+          res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null)
         })
         structure.type.push(t)
       }
@@ -483,6 +498,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
           t += '\n' + getObjectHandleManagement(tName) + '\n'
           t += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type,{descriptions: descriptions, level: level})
           structure.type.push(t)
+          type.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
         }
         else {
           console.log(`WARNING: Type undetermined for ${name}`)
@@ -514,10 +530,13 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     else if (json.type === 'array') {
       let res = getSchemaType(moduleJson, json, name, schemas, {level: 0, descriptions: descriptions})
       res.deps.forEach(dep => structure.deps.add(dep))
+      res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
     }
     else {
       let res = getSchemaType(moduleJson, json, name, schemas, {level: level, descriptions: descriptions})
       res.deps.forEach(dep => structure.deps.add(dep))
+      structure.enum = res.enum
+      res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
     }
     return structure
   }
