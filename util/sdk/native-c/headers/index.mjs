@@ -60,7 +60,7 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   if (shape.deps.size > 0 || shape.type.length > 0) {
     code.push(getHeaderText())
     code.push(getIncludeGuardOpen(obj, 'common'))
-    const i = getIncludeDefinitions(obj)
+    const i = getIncludeDefinitions(obj, schemas)
     code.push(i.join('\n'))
     code.push(getStyleGuardOpen(obj))
     shape.enum.length ? code.push(shape.enum.join('\n')) : null
@@ -79,7 +79,7 @@ const generateHeaderForModules = (obj = {}, schemas = {}) => {
 
   code.push(getHeaderText())
   code.push(getIncludeGuardOpen(obj))
-  const i = getIncludeDefinitions(obj)
+  const i = getIncludeDefinitions(obj, schemas)
   code.push(i.join('\n'))
   code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForModules(obj, schemas)
@@ -101,7 +101,7 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
   if (shape.deps.size > 0 || shape.type.length > 0) {
     code.push(getHeaderText())
     code.push('#pragma once' + '\n')
-    const i = getIncludeDefinitions(obj)
+    const i = getIncludeDefinitions(obj, schemas)
     code.push(i.join('\n'))
     code.push(getNameSpaceOpen(obj))
     if (shape.deps.size > 0) {
@@ -119,7 +119,7 @@ const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
 
   code.push(getHeaderText())
-  const i = getIncludeDefinitions(obj, true, srcDir, true)
+  const i = getIncludeDefinitions(obj, schemas, true, srcDir, true)
 
   code.push(i.join('\n'))
   const shape = generateImplForDefinitions(obj, schemas)

@@ -81,13 +81,7 @@ const getIncludeGuardClose = () => {
 `
 }
 
-const capitalize = (str) => {
-  if (str.length) {
-    str = str.toLowerCase()
-    str = str[0].toUpperCase() + str.substr(1)
-  }
-  return str
-}
+const capitalize = str => str[0].toUpperCase() + str.substr(1)
 const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
 const isOptional = (prop, json) => (!json.required || !json.required.includes(prop))
 
@@ -225,21 +219,21 @@ const getArrayElementSchema = (json, module, schemas = {}) => {
   return result
 }
 
-const getIncludeDefinitions = (json = {}, cpp = false, srcDir = {}, common = false) => {
+const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}, common = false) => {
   const headers = []
   if (cpp == true) {
     headers.push((common === true) ? `#include "Common/${capitalize(getModuleName(json))}.h"` : `#include "${capitalize(getModuleName(json))}.h"`)
-    if (fs.existsSync(srcDir + `/JsonData_${capitalize(getModuleName(json))}.h`) === true) {
+    if ((common === true) && (fs.existsSync(srcDir + `/JsonData_${capitalize(getModuleName(json))}.h`) === true)) {
       headers.push(`#include "JsonData_${capitalize(getModuleName(json))}.h"`)
     }
   }
 
   return (getExternalRefs(json)
     .map(ref => {
-      const mod = ref.split('#')[0].split('/').pop()
+      const mod = getModuleName(getSchema(ref.split('#')[0], schemas))
       let i = `#include "Common/${capitalize(mod)}.h"`
       if (cpp === true) {
-        if (fs.existsSync(srcDir + `JsonData_${capitalize(mod)}.h`) === true) {
+        if (fs.existsSync(srcDir + `/JsonData_${capitalize(mod)}.h`) === true) {
           i += '\n' + `#include "JsonData_${capitalize(mod)}.h"`
         }
       }

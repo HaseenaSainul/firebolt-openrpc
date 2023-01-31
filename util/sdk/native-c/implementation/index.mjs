@@ -42,7 +42,7 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
 
   code.push(getHeaderText())
   const jsonDefs = generateJsonTypesForSchemas(obj, schemas)
-  const i = getIncludeDefinitions(obj, true, srcDir);
+  const i = getIncludeDefinitions(obj, schemas, true, srcDir);
   code.push(i.join('\n'))
 
   const shape = generateImplForSchemas(obj, schemas)
