@@ -222,13 +222,16 @@ const getArrayElementSchema = (json, module, schemas = {}) => {
 const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}, common = false) => {
   const headers = []
   if (cpp == true) {
+    headers.push('#include "FireboltSDK.h"')
     headers.push((common === true) ? `#include "Common/${capitalize(getModuleName(json))}.h"` : `#include "${capitalize(getModuleName(json))}.h"`)
     if ((common === true) && (fs.existsSync(srcDir + `/JsonData_${capitalize(getModuleName(json))}.h`) === true)) {
       headers.push(`#include "JsonData_${capitalize(getModuleName(json))}.h"`)
     }
+  } else {
+    headers.push('#include "Firebolt.h"')
   }
 
-  return (getExternalRefs(json)
+  let externalHeaders = (getExternalRefs(json)
     .map(ref => {
       const mod = getModuleName(getSchema(ref.split('#')[0], schemas))
       let i = `#include "Common/${capitalize(mod)}.h"`
@@ -239,9 +242,10 @@ const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}
       }
       return i
     })
-    .filter((item, index, arr) => arr.indexOf(item) === index)
-    .concat([`#include "Firebolt.h"`]))
-    .concat(headers)
+    .filter((item, index, arr) => arr.indexOf(item) === index))
+
+  externalHeaders.forEach(header => (headers.includes(header) === false) ? headers.push(header) : null)
+  return headers
 }
 
 function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {
