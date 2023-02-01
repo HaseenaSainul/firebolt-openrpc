@@ -27,13 +27,19 @@ extern "C" {
 // String Type Handler Interfaces
 const char* FireboltTypes_String(FireboltTypes_StringHandle handle)
 {
-    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
+    WPEFramework::Core::ProxyType<FireboltSDK::JSON::String>& str = *(static_cast<WPEFramework::Core::ProxyType<FireboltSDK::JSON::String>*>(handle));
     return (str->Value().c_str());
 }
+
 void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle)
 {
-    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
-    delete str;
+    WPEFramework::Core::ProxyType<FireboltSDK::JSON::String>* str = static_cast<WPEFramework::Core::ProxyType<FireboltSDK::JSON::String>*>(handle);
+    str->Release();
+
+    ASSERT(str->IsValid() != true);
+    if (str->IsValid() != true) {
+        delete str;
+    }
 }
 
 #ifdef __cplusplus

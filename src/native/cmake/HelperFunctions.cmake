@@ -93,8 +93,8 @@ function(InstallLibraries)
                     POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
                     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Release/lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-                    COMMAND ${CMAKE_COMMAND} -D "LIBRARY=${CMAKE_BINARY_DIR}/Release/lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR}" -D "DESTINATION=${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib" -P ${CMAKE_SOURCE_DIR}/cmake/CopySymlink.cmake
-                    COMMAND ${CMAKE_COMMAND} -D "LIBRARY=${CMAKE_BINARY_DIR}/Release/lib${LIBRARY}.so" -D "DESTINATION=${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib" -P ${CMAKE_SOURCE_DIR}/cmake/CopySymlink.cmake
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR}
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so
                 )
              else()
                 add_custom_command(

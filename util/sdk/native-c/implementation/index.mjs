@@ -85,7 +85,8 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
 const generateImplForSchemas = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getImplForSchema(json, val[1], schemas, val[0])
-    acc.type.push(shape.type.join('\n'))
+    // This type push making redefinition of definitions, needs to revisit later
+    // acc.type.push(shape.type.join('\n'))
     shape.deps.forEach(dep => acc.deps.add(dep))
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
@@ -128,6 +129,7 @@ const generateMethods = (json, schemas = {}) => {
       }
     }
     let res = getImplForSchema(json, resJson,schemas, property.result.name || property.name,{descriptions: true, level: 0})
+    res.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
     res.deps.forEach(dep => sig.deps.add(dep))
     res.enums.forEach(e => sig.enums.add(e))
 
@@ -138,7 +140,9 @@ const generateMethods = (json, schemas = {}) => {
     jType.fwd.forEach(f => sig.fwd.add(f))
 
     //Get the Implementation for the method
-    sig.type.push(getPropertyGetterImpl(property, json, schemas))
+    res.type = getPropertyGetterImpl(property, json, schemas)
+    sig.type.includes(res.type) === false ?  sig.type.push(res.type) : null
+
 /*
     if (event(property)) {
       sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')

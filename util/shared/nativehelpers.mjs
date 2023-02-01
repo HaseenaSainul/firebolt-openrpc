@@ -139,8 +139,8 @@ const getPropertyAccessors = (objName, propertyName, propertyType,  options = {l
   }
 
   if (options.optional === true) {
-    result += `${Indent.repeat(options.level)}bool ${objName}_has_${propertyName}(${objName}Handle handle);` + '\n'
-    result += `${Indent.repeat(options.level)}void ${objName}_clear_${propertyName}(${objName}Handle handle);` + '\n'
+    result += `${Indent.repeat(options.level)}bool ${objName}_Has_${propertyName}(${objName}Handle handle);` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_Clear_${propertyName}(${objName}Handle handle);` + '\n'
   }
 
   return result
@@ -255,10 +255,11 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
-  structure["name"] = []
   structure["type"] = []
   structure["json"] = []
   structure["enum"] = []
+  structure["name"] = {}
+  structure["namespace"] = {}
 
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
@@ -269,8 +270,9 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       const res = getSchemaType(module, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
       res.deps.forEach(dep => structure.deps.add(dep))
       structure.type = res.type
-      structure.name = res.name
       structure.json = res.json
+      structure.name = res.name
+      structure.namespace = res.namespace
       return structure
     }
     else {
@@ -286,8 +288,9 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       const res = getSchemaType(schema, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
       //We are only interested in the type definition for external modules
       structure.type = res.type
-      structure.name = res.name
       structure.json = res.json
+      structure.name = res.name
+      structure.namespace = res.namespace
       return structure
     }
   }
@@ -304,13 +307,13 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   else if (json.type === 'string' && json.enum) {
     //Enum
     if (name) {
-       structure.name.push(capitalize(name))
+       structure.name = capitalize(name)
     }
     let typeName = getTypeName(getModuleName(module), name || json.title)
     let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
-    //structure.deps.add(res)
-    structure.type.push(typeName)
     structure.json = json
+    structure.type.push(typeName)
+    structure.namespace = getModuleName(module)
     res.length ? ((structure.enum.includes(res) === false) ? structure.enum.push(res): null) : null
     return structure
   }
@@ -342,12 +345,13 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
 
     def += getArrayAccessors(getModuleName(module), capitalize(json.title || name), (n + 'Array'), res.type)
     if (name) {
-       structure.name.push(capitalize(name))
+       structure.name = capitalize(name)
     }
     structure.deps.add(def)
     structure.type.push(n + 'ArrayHandle')
     structure.json = json
     structure.enum = res.enum
+    structure.namespace = getModuleName(module)
     return structure
   }
   else if (json.allOf) {
@@ -370,11 +374,12 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     res.deps.forEach(dep => structure.deps.add(dep))
     res.type.forEach(t => structure.deps.add(t))
     if (name) {
-       structure.name.push(capitalize(name))
+       structure.name = capitalize(name)
     }
     structure.type.push(getTypeName(getModuleName(module), json.title || name) + 'Handle')
     structure.json = json
     res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
+    structure.namespace = getModuleName(module)
 
     return structure
     //TODO
@@ -467,7 +472,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
           } else {
             res = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
             if (res.type && res.type.length > 0) {
-              if (res.json.type === 'object' && !schemas.properties) {
+              if (res.json.type === 'object' && !res.json.properties) {
                 console.log(`WARNING: Type undetermined for ${name}:${pname}`)
               } else {
                 t += '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
