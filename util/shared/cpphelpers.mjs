@@ -33,7 +33,7 @@ const getJsonNativeType = json => {
         type = 'JSON::String'
     }
     else if (jsonType === 'number' || json.type === 'integer') { //Lets keep it simple for now
-        type = 'WPEFramework::Core::JSON::DecSInt32'
+        type = 'WPEFramework::Core::JSON::DecUInt32'
     }
     else if (jsonType === 'boolean') {
       type = 'WPEFramework::Core::JSON::Boolean'
@@ -455,7 +455,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, moduleNa
     }
   }
   else if ((json.type === 'number') || (json.type === 'integer')) {
-    result += `    WPEFramework::Core::JSON::DecSInt32 element(value);` + '\n'
+    result += `    WPEFramework::Core::JSON::DecUInt32 element(value);` + '\n'
   }
   else if (json.type === 'boolean') {
     result += `    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
@@ -513,7 +513,7 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
       result += `    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
     }
     else if ((json.type === 'number') || (json.type === 'integer')) {
-      result += `    WPEFramework::Core::JSON::DecSInt32 element(value);` + '\n'
+      result += `    WPEFramework::Core::JSON::DecUInt32 element(value);` + '\n'
     }
     result += `    (*var)->Add(const_cast<const char*>(key), &element);
 }` + '\n'
@@ -678,7 +678,6 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
                 let jtype = getJsonType(moduleJson, prop, pname, schemas)
                 let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : nativeType.name)
                 let subPropertyType = ((!prop.title) ? nativeType.name : capitalize(prop.title))
-                console.log(nativeType.json)
 
                 let nativeTypeNameSpace = (`${getSdkNameSpace()}` + '::' + nativeType.namespace)
                 t += desc + '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), capitalize(name), subPropertyType, subPropertyName, nativeType.type, nativeTypeNameSpace, nativeType.json, {readonly:false, optional:isOptional(pname, json)})
@@ -815,8 +814,14 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, *result);
     if (status == FireboltSDKErrorNone) {
         ASSERT(result->IsValid() == true);\n`
-  if (propType.json && (propType.json.type === 'string') && (propType.type === 'char*')) {
-    impl += `        *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(result);` + '\n'
+  if (propType.json) {
+    if ((propType.json.type === 'string') && (propType.type === 'char*')) {
+      impl += `        *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(result);` + '\n'
+    } else if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
+      impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>((*result)->Value());` + '\n'
+    } else {
+      impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>(result);` + '\n'
+    }
   } else {
     impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>(result);` + '\n'
   }
@@ -868,7 +873,7 @@ function getPropertySetterImpl(property, module, schemas = {}) {
       impl += `    WPEFramework::Core::JSON::Variant param(${paramName});`
     }
   }
-  impl += `\n    parameters.Add (_T("${paramName}"), param);`
+  impl += `\n    parameters.Add(_T("${paramName}"), &param);`
   impl += `\n\n    return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
   impl += `\n}`
 
