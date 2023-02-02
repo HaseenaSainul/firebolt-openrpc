@@ -148,8 +148,9 @@ const generateMethods = (json, schemas = {}) => {
       sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
       sig.type.push(getPropertyEventSignature(property, json, res.type) + ';\n')
     }
-    else */ if (setter(property)) {
-      sig.type.push(getPropertySetterImpl(property, json, res.type) + ';\n')
+    else*/  if (setter(property)) {
+      console.log(`Generating Set`)
+      sig.type.push(getPropertySetterImpl(property, json, res.type))
     }
   })
 

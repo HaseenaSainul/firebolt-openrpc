@@ -1,7 +1,7 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName,getModuleName, description, getArrayElementSchema,
-         isOptional, enumValue, getPropertyGetterSignature, getFireboltStringType} from "./nativehelpers.mjs"
+         isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,getFireboltStringType} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -829,7 +829,52 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 }
 
 function getPropertySetterImpl(property, module, schemas = {}) {
+
+  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
+  let methodName = getModuleName(module).toLowerCase() + '.' + property.name
+  let paramName = property.result.name || property.name
+  
+  let resJson = propType.json
+  if (propType.json.type === 'array') {
+    if (Array.isArray(propType.json.items)) {
+      resJson = propType.json.items[0]
+    }
+    else {
+      resJson = propType.json.items
+    }
+  }
+  let t = getJsonType(module, resJson, property.result.name || property.name, schemas)
+  let containerType = t && t.type
+
+  let impl = `${getPropertySetterSignature(property, module, propType.type)} {\n`
+
+  impl += `    const string method = _T("${methodName}");` + '\n'
+
+  impl += `    WPEFramework::Core::JSON::VariantContainer parameters;` + '\n'
+
+  let containerName = (containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`
+  if (propType.json && (propType.json.type === 'array') && (propType.json.items))  {
+    impl += `    WPEFramework::Core::JSON::Variant param(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>>(${paramName})));`
+  }
+  else if (propType.json.type === 'object'){
+    impl += `    WPEFramework::Core::JSON::Variant param(*(static_cast<WPEFramework::Core::ProxyType<${containerName}>>(${paramName})));`
+  }
+  //ToDo Map?
+  else {
+    if(propType.json.type === 'string' && propType.json.enum) {
+        impl += `    WPEFramework::Core::JSON::Variant param(${containerType}(${paramName}));`
+    }
+    else {
+      impl += `    WPEFramework::Core::JSON::Variant param(${paramName});`
+    }
+  }
+  impl += `\n    parameters.Add (_T("${paramName}"), param);`
+  impl += `\n\n    return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
+  impl += `\n}`
+
+  return impl
 }
+
 export {
     getSdkNameSpace,
     getNameSpaceOpen,
