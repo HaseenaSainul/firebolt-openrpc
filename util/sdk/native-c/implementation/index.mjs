@@ -85,8 +85,7 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
 const generateImplForSchemas = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getImplForSchema(json, val[1], schemas, val[0])
-    // This type push making redefinition of definitions, needs to revisit later
-    // acc.type.push(shape.type.join('\n'))
+    acc.type.push(shape.type.join('\n'))
     shape.deps.forEach(dep => acc.deps.add(dep))
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
@@ -128,10 +127,13 @@ const generateMethods = (json, schemas = {}) => {
         resJson = json.items
       }
     }
-    let res = getImplForSchema(json, resJson,schemas, property.result.name || property.name,{descriptions: true, level: 0})
-    res.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
-    res.deps.forEach(dep => sig.deps.add(dep))
-    res.enums.forEach(e => sig.enums.add(e))
+    let res = {}
+    if ((resJson['$ref'] === undefined) || (resJson['$ref'][0] !== '#')) {
+      res = getImplForSchema(json, resJson,schemas, property.result.name || property.name,{descriptions: true, level: 0})
+      res.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+      res.deps.forEach(dep => sig.deps.add(dep))
+      res.enums.forEach(e => sig.enums.add(e))
+    }
 
     //Get the JsonData definition for the result schema
     let jType = getJsonDefinition(json, resJson, schemas,property.result.name || property.name, {descriptions: true, level: 0})
