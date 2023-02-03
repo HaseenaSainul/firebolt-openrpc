@@ -786,7 +786,6 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let moduleName = capitalize(getModuleName(module))
 
-  
   let resJson = propType.json
   if (propType.json && (propType.json.type === 'array')) {
     if (Array.isArray(propType.json.items)) {
@@ -822,8 +821,6 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
     } else {
       impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>(result);` + '\n'
     }
-  } else {
-    impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>(result);` + '\n'
   }
   impl += '    }' + '\n'
   impl += '    return status;' + '\n'
@@ -834,11 +831,10 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 }
 
 function getPropertySetterImpl(property, module, schemas = {}) {
-
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let paramName = property.result.name || property.name
-  
+
   let resJson = propType.json
   if (propType.json.type === 'array') {
     if (Array.isArray(propType.json.items)) {
@@ -855,25 +851,28 @@ function getPropertySetterImpl(property, module, schemas = {}) {
 
   impl += `    const string method = _T("${methodName}");` + '\n'
 
-  impl += `    WPEFramework::Core::JSON::VariantContainer parameters;` + '\n'
 
   let containerName = (containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`
-  if (propType.json && (propType.json.type === 'array') && (propType.json.items))  {
-    impl += `    WPEFramework::Core::JSON::Variant param(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>>(${paramName})));`
-  }
-  else if (propType.json.type === 'object'){
-    impl += `    WPEFramework::Core::JSON::Variant param(*(static_cast<WPEFramework::Core::ProxyType<${containerName}>>(${paramName})));`
-  }
-  //ToDo Map?
-  else {
-    if(propType.json.type === 'string' && propType.json.enum) {
-        impl += `    WPEFramework::Core::JSON::Variant param(${containerType}(${paramName}));`
+  if (propType.json) {
+    if (propType.json.type === 'object'){
+      impl += `    ${containerName}& parameters = *(*(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(${paramName})));`
     }
     else {
-      impl += `    WPEFramework::Core::JSON::Variant param(${paramName});`
+      //ToDo Map?
+      impl += `    WPEFramework::Core::JSON::VariantContainer parameters;` + '\n'
+      if ((propType.json.type === 'array') && (propType.json.items))  {
+        impl += `    WPEFramework::Core::JSON::ArrayType<${containerName}> param = *(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>*>(${paramName})));`
+      } else {
+        if (propType.json.type === 'string' && propType.json.enum) {
+          impl += `    WPEFramework::Core::JSON::Variant param(${containerType}(${paramName}));`
+        }
+        else {
+          impl += `    WPEFramework::Core::JSON::Variant param(${paramName});`
+        }
+      }
+      impl += `\n    parameters.Add(_T("${paramName}"), &param);`
     }
   }
-  impl += `\n    parameters.Add(_T("${paramName}"), &param);`
   impl += `\n\n    return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
   impl += `\n}`
 

@@ -152,7 +152,7 @@ const generateMethods = (json, schemas = {}) => {
     }
     else*/  if (setter(property)) {
       console.log(`Generating Set`)
-      sig.type.push(getPropertySetterImpl(property, json, res.type))
+      sig.type.push(getPropertySetterImpl(property, json, schemas))
     }
   })
 
