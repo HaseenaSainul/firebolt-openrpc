@@ -28,14 +28,12 @@ import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions, getStyleGuardClose,
-         getIncludeGuardClose, getSchemaShape, getSchemaType, getPropertySetterSignature,
-         getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventSignature,
-         getModuleName, capitalize } from '../../../shared/nativehelpers.mjs'
+import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions,
+         getStyleGuardClose } from '../../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema,
+import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition,
+         getImplForSchema, getPropertyEventCallbackImpl, getPropertyEventImpl,
          getPropertyGetterImpl, getPropertySetterImpl } from '../../../shared/cpphelpers.mjs'
-
 
 const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
@@ -129,14 +127,14 @@ const generateMethods = (json, schemas = {}) => {
     }
     let res = {}
     if ((resJson['$ref'] === undefined) || (resJson['$ref'][0] !== '#')) {
-      res = getImplForSchema(json, resJson,schemas, property.result.name || property.name,{descriptions: true, level: 0})
+      res = getImplForSchema(json, resJson, schemas, property.result.name || property.name, {descriptions: true, level: 0})
       res.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
       res.deps.forEach(dep => sig.deps.add(dep))
       res.enums.forEach(e => sig.enums.add(e))
     }
 
     //Get the JsonData definition for the result schema
-    let jType = getJsonDefinition(json, resJson, schemas,property.result.name || property.name, {descriptions: true, level: 0})
+    let jType = getJsonDefinition(json, resJson, schemas, property.result.name || property.name, {descriptions: true, level: 0})
     jType.deps.forEach(j => sig.jsonData.add(j))
     jType.type.forEach(t => sig.jsonData.add(t))
     jType.fwd.forEach(f => sig.fwd.add(f))
@@ -145,13 +143,12 @@ const generateMethods = (json, schemas = {}) => {
     res.type = getPropertyGetterImpl(property, json, schemas)
     sig.type.includes(res.type) === false ?  sig.type.push(res.type) : null
 
-/*
     if (event(property)) {
-      sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';\n')
-      sig.type.push(getPropertyEventSignature(property, json, res.type) + ';\n')
+      sig.type.push(getPropertyEventCallbackImpl(property, json, schemas) + ';\n')
+      sig.type.push(getPropertyEventImpl(property, json, schemas) + ';\n')
     }
-    else*/  if (setter(property)) {
-      console.log(`Generating Set`)
+
+    if (setter(property)) {
       sig.type.push(getPropertySetterImpl(property, json, schemas))
     }
   })

@@ -673,7 +673,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             }
             else {
 
-              nativeType = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
+              nativeType = getSchemaType(moduleJson, prop, pname, schemas, {descriptions: descriptions, level: level + 1, title: true})
               if (nativeType.type && nativeType.type.length > 0) {
                 let jtype = getJsonType(moduleJson, prop, pname, schemas)
                 let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : nativeType.name)
@@ -781,11 +781,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     return structure
   }
 
-function getPropertyGetterImpl(property, module, schemas = {}) {
-  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
-  let methodName = getModuleName(module).toLowerCase() + '.' + property.name
-  let moduleName = capitalize(getModuleName(module))
-
+function getContainerName(property, module, schemas, propType) {
   let resJson = propType.json
   if (propType.json && (propType.json.type === 'array')) {
     if (Array.isArray(propType.json.items)) {
@@ -797,12 +793,18 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   }
   let t = getJsonType(module, resJson, property.result.name || property.name, schemas)
   let containerType = t && t.type
+  return (containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`
+}
+
+function getPropertyGetterImpl(property, module, schemas = {}) {
+  let methodName = getModuleName(module).toLowerCase() + '.' + property.name
+  let moduleName = capitalize(getModuleName(module))
+  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
+  let containerName = getContainerName(property, module, schemas, propType);
 
   let impl = `${getPropertyGetterSignature(property, module, propType.type)} {\n`
-
   impl += `    const string method = _T("${methodName}");` + '\n'
 
-  let containerName = (containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`
   if (propType.json && (propType.json.type === 'array') && (propType.json.items)) {
     impl += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>* result = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>();`
   }
@@ -831,28 +833,15 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 }
 
 function getPropertySetterImpl(property, module, schemas = {}) {
-  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let paramName = property.result.name || property.name
-
-  let resJson = propType.json
-  if (propType.json.type === 'array') {
-    if (Array.isArray(propType.json.items)) {
-      resJson = propType.json.items[0]
-    }
-    else {
-      resJson = propType.json.items
-    }
-  }
-  let t = getJsonType(module, resJson, property.result.name || property.name, schemas)
-  let containerType = t && t.type
+  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
+  let containerName = getContainerName(property, module, schemas, propType);
 
   let impl = `${getPropertySetterSignature(property, module, propType.type)} {\n`
 
   impl += `    const string method = _T("${methodName}");` + '\n'
 
-
-  let containerName = (containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`
   if (propType.json) {
     if (propType.json.type === 'object'){
       impl += `    ${containerName}& parameters = *(*(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(${paramName})));`
@@ -879,6 +868,51 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   return impl
 }
 
+function getPropertyEventCallbackImpl(property, module, schemas) {
+  let moduleName = capitalize(getModuleName(module));
+  let methodName = moduleName + capitalize(property.name)
+  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
+  let containerName = getContainerName(property, module, schemas, propType)
+  let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
+
+  let impl = `static void ${methodName}ChangedCallback(const void* userData, void* response)
+{
+    WPEFramework::Core::ProxyType<${containerName}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(response));
+    Firebolt${methodName}EventHandler& handler = *(const_cast<Firebolt${methodName}EventHandler*>(static_cast<const Firebolt${methodName}EventHandler*>(userData)));
+    WPEFramework::Core::ProxyType<${containerName}>& handle = *(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(handler.handle));
+    if (handle.IsValid()) {
+        handle.Release();
+    }
+    ASSERT(jsonResponse.IsValid() == true);
+    if (jsonResponse.IsValid() == true) {
+        *handle = *jsonResponse;
+        handler.notifyEventChange(static_cast<${paramType}>(&handle));
+    }
+    jsonResponse.Release();
+}`
+  return impl
+}
+
+function getPropertyEventImpl(property, module, schemas) {
+  let eventName = getModuleName(module).toLowerCase() + '.' + property.name
+  let moduleName = capitalize(getModuleName(module))
+  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
+  let containerName = getContainerName(property, module, schemas, propType)
+
+  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Listen${capitalize(property.name)}Update(uint32_t* listenerId, const void* userData)
+{
+    const string eventName = _T("${eventName}");
+    uint32_t status = FireboltSDKErrorNone;
+    if (userData != nullptr) {
+        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${moduleName}${capitalize(property.name)}ChangedCallback, userData, *listenerId);
+    } else {
+        status = ${getSdkNameSpace()}::Properties::Unsubscribe(eventName, *listenerId);
+    }
+    return status;
+}`
+  return impl
+}
+
 export {
     getSdkNameSpace,
     getNameSpaceOpen,
@@ -887,5 +921,7 @@ export {
     getJsonType,
     getImplForSchema,
     getPropertyGetterImpl,
-    getPropertySetterImpl
+    getPropertySetterImpl,
+    getPropertyEventCallbackImpl,
+    getPropertyEventImpl
 }

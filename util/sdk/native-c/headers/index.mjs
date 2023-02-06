@@ -203,11 +203,11 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     res.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
     sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')
 
-    if(event(property)) {
-      sig.type.push(getPropertyEventCallbackSignature(property, res.type) + ';\n')
-      sig.type.push(getPropertyEventSignature(property, res.type) + ';\n')
+    if (event(property)) {
+      sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';')
+      sig.type.push(getPropertyEventSignature(property, json) + ';\n')
     }
-    else if(setter(property)) {
+    if (setter(property)) {
       sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')
     }
   })
