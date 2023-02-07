@@ -72,9 +72,9 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename CALLBACK>
-        static uint32_t Subscribe(const string& propertyName, const CALLBACK& callback, const void* userdata, uint32_t& id)
+        static uint32_t Subscribe(const string& propertyName, const CALLBACK& callback, const void* usercb, const void* userdata, uint32_t& id)
         {
-            return Event::Instance().Subscribe<PARAMETERS, CALLBACK>(EventName(propertyName), callback, userdata, id);
+            return Event::Instance().Subscribe<PARAMETERS, CALLBACK>(EventName(propertyName), callback, usercb, userdata, id);
         }
 
         static uint32_t Unsubscribe(const string& propertyName, const uint32_t id)

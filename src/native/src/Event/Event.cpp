@@ -102,7 +102,7 @@ namespace FireboltSDK {
                 state = idIndex->second.state;
                 _adminLock.Unlock();
                 if (state == State::EXECUTING) {
-                    idIndex->second.lambda(idIndex->second.userdata, (jsonResponse->Result.Value()));
+                    idIndex->second.lambda(idIndex->second.usercb, idIndex->second.userdata, (jsonResponse->Result.Value()));
                 }
                 _adminLock.Lock();
                 if (idIndex->second.state == State::REVOKED) {

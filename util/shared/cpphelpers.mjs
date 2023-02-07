@@ -875,36 +875,37 @@ function getPropertyEventCallbackImpl(property, module, schemas) {
   let containerName = getContainerName(property, module, schemas, propType)
   let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
 
-  let impl = `static void ${methodName}ChangedCallback(const void* userData, void* response)
+  let impl = `static void ${methodName}ChangedCallback(const void* userCB, const void* userData, void* response)
 {
     WPEFramework::Core::ProxyType<${containerName}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(response));
-    Firebolt${methodName}EventHandler& handler = *(const_cast<Firebolt${methodName}EventHandler*>(static_cast<const Firebolt${methodName}EventHandler*>(userData)));
-    WPEFramework::Core::ProxyType<${containerName}>& handle = *(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(handler.handle));
-    if (handle.IsValid()) {
-        handle.Release();
-    }
     ASSERT(jsonResponse.IsValid() == true);
     if (jsonResponse.IsValid() == true) {
-        *handle = *jsonResponse;
-        handler.notifyEventChange(static_cast<${paramType}>(&handle));
+        On${methodName}Changed on${methodName}Changed = reinterpret_cast<On${methodName}Changed>(userCB);` + '\n'
+  if (propType.json) {
+    if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
+      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(response).Value());` + '\n'
+    } else {
+      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(response));` + '\n'
     }
-    jsonResponse.Release();
+  }
+  impl += `    }
 }`
-  return impl
+  return impl;
 }
 
 function getPropertyEventImpl(property, module, schemas) {
   let eventName = getModuleName(module).toLowerCase() + '.' + property.name
   let moduleName = capitalize(getModuleName(module))
+  let methodName = moduleName + capitalize(property.name)
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
   let containerName = getContainerName(property, module, schemas, propType)
 
-  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Listen${capitalize(property.name)}Update(uint32_t* listenerId, const void* userData)
+  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Listen${capitalize(property.name)}Update(On${methodName}Changed userCB, const void* userData, uint32_t* listenerId)
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
-    if (userData != nullptr) {
-        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${moduleName}${capitalize(property.name)}ChangedCallback, userData, *listenerId);
+    if (userCB != nullptr) {
+        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);
     } else {
         status = ${getSdkNameSpace()}::Properties::Unsubscribe(eventName, *listenerId);
     }

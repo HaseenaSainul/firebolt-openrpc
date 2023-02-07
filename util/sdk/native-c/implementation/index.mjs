@@ -144,8 +144,8 @@ const generateMethods = (json, schemas = {}) => {
     sig.type.includes(res.type) === false ?  sig.type.push(res.type) : null
 
     if (event(property)) {
-      sig.type.push(getPropertyEventCallbackImpl(property, json, schemas) + ';\n')
-      sig.type.push(getPropertyEventImpl(property, json, schemas) + ';\n')
+      sig.type.push(getPropertyEventCallbackImpl(property, json, schemas))
+      sig.type.push(getPropertyEventImpl(property, json, schemas))
     }
 
     if (setter(property)) {

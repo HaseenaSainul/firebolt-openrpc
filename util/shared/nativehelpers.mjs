@@ -555,17 +555,13 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   }
 
   function getPropertyEventCallbackSignature(method, module, paramType) {
-  let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-  paramType = (paramType === 'char*') ? getFireboltStringType() : paramType
-  return `typedef void (*Notify${methodName}EventChange)(${paramType} newHandle); 
-typedef struct {
-    ${paramType} handle;
-    Notify${methodName}EventChange notifyEventChange;
-} Firebolt${methodName}EventHandler`
+    let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+    return `typedef void (*On${methodName}Changed)(const void* userData, ${paramType === 'char*' ? getFireboltStringType() : paramType})`
   }
 
   function getPropertyEventSignature(method, module) {
-    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(uint32_t* listenerId, const void* userData)`
+    let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${methodName}Changed, const void* userData, uint32_t* listenerId)`
   }
 
   export {

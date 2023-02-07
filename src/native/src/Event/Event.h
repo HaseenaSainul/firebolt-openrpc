@@ -26,7 +26,7 @@ namespace FireboltSDK {
 
     class Event : public IEventHandler {
     public:
-        typedef std::function<uint32_t(const void*, const string& parameters)> DispatchFunction;
+        typedef std::function<uint32_t(const void*, const void*, const string& parameters)> DispatchFunction;
     private:
         enum State : uint8_t {
             IDLE,
@@ -36,6 +36,7 @@ namespace FireboltSDK {
 
         struct CallbackData {
             const DispatchFunction lambda;
+            const void* usercb;
             const void* userdata;
             State state;
         };
@@ -73,12 +74,12 @@ namespace FireboltSDK {
 
     public:
         template <typename PARAMETERS, typename CALLBACK>
-        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
+        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* usercb, const void* userdata, uint32_t& id)
         {
             uint32_t status = FireboltSDKErrorUnavailable;
             if (_transport != nullptr) {
 
-                status = Assign<PARAMETERS, CALLBACK>(eventName, callback, userdata, id);
+                status = Assign<PARAMETERS, CALLBACK>(eventName, callback, usercb, userdata, id);
                 if (status == FireboltSDKErrorNone) {
                     const string parameters("{\"listen\":true}");
                     Response response;
@@ -102,19 +103,20 @@ namespace FireboltSDK {
 
     private:
         template <typename PARAMETERS, typename CALLBACK>
-        uint32_t Assign(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
+        uint32_t Assign(const string& eventName, const CALLBACK& callback, const void* usercb, const void* userdata, uint32_t& id)
         {
             uint32_t status = FireboltSDKErrorNone;
             id = Id();
-            std::function<void(const void* userdata, void* parameters)> actualCallback = callback;
-            DispatchFunction implementation = [actualCallback](const void* userdata, const string& parameters) -> uint32_t {
+            std::function<void(const void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
+            DispatchFunction implementation = [actualCallback](const void* usercb, const void* userdata, const string& parameters) -> uint32_t {
 
-                WPEFramework::Core::ProxyType<PARAMETERS> inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
-                inbound->FromString(parameters);
-                actualCallback(userdata, static_cast<void*>(&inbound));
+                WPEFramework::Core::ProxyType<PARAMETERS>* inbound = new WPEFramework::Core::ProxyType<PARAMETERS>();
+                *inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
+                (*inbound)->FromString(parameters);
+                actualCallback(usercb, userdata, static_cast<void*>(inbound));
                 return (FireboltSDKErrorNone);
             };
-            CallbackData callbackData = {implementation, userdata, State::IDLE};
+            CallbackData callbackData = {implementation, usercb, userdata, State::IDLE};
 
             _adminLock.Lock();
             EventMap::iterator eventIndex = _eventMap.find(eventName);
