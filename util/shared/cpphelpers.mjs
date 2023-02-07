@@ -395,12 +395,13 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, moduleNa
   let propertyName
   if (subPropertyName) {
      propertyName = '(*var)->' + `${subPropertyName}`
+     objName = objName + '_' + subPropertyName
   }
   else {
      propertyName = '(*(*var))'
   }
 
-  let result = `uint32_t ${objName}_${subPropertyName}Array_Size(${objHandleType} handle) {
+  let result = `uint32_t ${objName}Array_Size(${objHandleType} handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
@@ -408,7 +409,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, moduleNa
     return (${propertyName}.Length());
 }` + '\n'
 
-  result += `${accessorPropertyType} ${objName}_${subPropertyName}Array_Get(${objHandleType} handle, uint32_t index) {
+  result += `${accessorPropertyType} ${objName}Array_Get(${objHandleType} handle, uint32_t index) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());` + '\n'
@@ -436,7 +437,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, moduleNa
   }
   result += `}` + '\n'
 
-  result += `void ${objName}_${subPropertyName}Array_Add(${objHandleType} handle, ${accessorPropertyType} value) {
+  result += `void ${objName}Array_Add(${objHandleType} handle, ${accessorPropertyType} value) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());` + '\n'
@@ -464,7 +465,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, moduleNa
     ${propertyName}.Add(element);
 }` + '\n'
 
-  result += `void ${objName}_${subPropertyName}Array_Clear(${objHandleType} handle) {
+  result += `void ${objName}Array_Clear(${objHandleType} handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
