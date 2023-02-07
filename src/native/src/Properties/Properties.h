@@ -84,7 +84,12 @@ namespace FireboltSDK {
     private:
         static inline string EventName(const string& propertyName) {
             size_t pos = propertyName.find_first_of('.');
-            return string(propertyName.substr(0, pos + 1) + "on" + propertyName.substr(pos + 1) + "Changed");
+            string eventName = propertyName;
+            if (pos != std::string::npos) {
+               eventName[pos + 1] = std::toupper(eventName[pos + 1]);
+               eventName = string(eventName.substr(0, pos + 1) + "on" + eventName.substr(pos + 1) + "Changed");
+            }
+            return eventName;
         }
     };
 }
