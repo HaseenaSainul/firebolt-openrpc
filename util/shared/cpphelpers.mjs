@@ -877,8 +877,13 @@ function getPropertyEventCallbackImpl(property, module, schemas) {
   let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
 
   let impl = `static void ${methodName}ChangedCallback(const void* userCB, const void* userData, void* response)
-{
-    WPEFramework::Core::ProxyType<${containerName}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(response));
+{`
+  if ((propType.json.type === 'array') && (propType.json.items)) {
+    impl +=`    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>*>(response));`
+  } else {
+    impl +=`    WPEFramework::Core::ProxyType<${containerName}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(response));`
+  }
+  impl +=`
     ASSERT(jsonResponse.IsValid() == true);
     if (jsonResponse.IsValid() == true) {
         On${methodName}Changed on${methodName}Changed = reinterpret_cast<On${methodName}Changed>(userCB);` + '\n'
@@ -905,8 +910,13 @@ function getPropertyEventImpl(property, module, schemas) {
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
-    if (userCB != nullptr) {
-        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);
+    if (userCB != nullptr) {` + '\n'
+  if ((propType.json.type === 'array') && (propType.json.items)) {
+    impl += `    status = ${getSdkNameSpace()}::Properties::Subscribe<WPEFramework::Core::JSON::ArrayType<${containerName}>>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
+  } else {
+    impl += `    status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
+  }
+  impl += `
     } else {
         status = ${getSdkNameSpace()}::Properties::Unsubscribe(eventName, *listenerId);
     }
