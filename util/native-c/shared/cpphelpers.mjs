@@ -818,11 +818,11 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
         ASSERT(result->IsValid() == true);\n`
   if (propType.json) {
     if ((propType.json.type === 'string') && (propType.type === 'char*')) {
-      impl += `        *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(result);` + '\n'
+      impl += `        *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(result);` + '\n'
     } else if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
-      impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>((*result)->Value());` + '\n'
+      impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>((*result)->Value());` + '\n'
     } else {
-      impl += `        *${property.result.name || property.name} = static_cast<${propType.type}>(result);` + '\n'
+      impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(result);` + '\n'
     }
   }
   impl += '    }' + '\n'
@@ -835,7 +835,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 
 function getPropertySetterImpl(property, module, schemas = {}) {
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
-  let paramName = property.result.name || property.name
+  let paramName = property.name || property.result.name
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
   let containerName = getContainerName(property, module, schemas, propType);
 
@@ -889,7 +889,7 @@ function getPropertyEventCallbackImpl(property, module, schemas) {
         On${methodName}Changed on${methodName}Changed = reinterpret_cast<On${methodName}Changed>(userCB);` + '\n'
   if (propType.json) {
     if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
-      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(response).Value());` + '\n'
+      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
     } else {
       impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(response));` + '\n'
     }
