@@ -440,6 +440,14 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
   return (refs.length > 0)
 }
 
+const getExternalRefs = (moduleJson = {}) => {
+  return objectPaths(moduleJson)
+                .filter(x => /\/\$ref$/.test(x))
+                .map(refToPath)
+                .map(x => getPathOr(null, x, moduleJson))
+                .filter(x => x[0] !== '#' && x.includes('definitions'))
+}
+
 export {
   getExternalMarkdownPaths,
   getSchema,
@@ -455,5 +463,6 @@ export {
   replaceUri,
   replaceRef,
   flattenSchemas,
-  removeIgnoredAdditionalItems
+  removeIgnoredAdditionalItems,
+  getExternalRefs
 }
