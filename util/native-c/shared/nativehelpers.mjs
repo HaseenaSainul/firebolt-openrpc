@@ -546,12 +546,12 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
 
   function getPropertyGetterSignature(method, module, paramType) {
     let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
-    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType === 'char*' ? getFireboltStringType() : paramType}* ${method.result.name || method.name})`
+    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType === 'char*' ? getFireboltStringType() : paramType}* ${method.name || method.result.name})`
   }
 
   function getPropertySetterSignature(method, module, paramType) {
     let m = `${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
-    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType} ${method.result.name || method.name})`
+    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType} ${method.name || method.result.name})`
   }
 
   function getPropertyEventCallbackSignature(method, module, paramType) {

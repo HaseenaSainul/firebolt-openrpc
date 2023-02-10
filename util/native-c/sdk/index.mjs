@@ -18,12 +18,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import h from 'highland'
-import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher,clearDirectory, localModules, trimPath, fsReadFile } from '../../shared/helpers.mjs'
+import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher, clearDirectory, localModules, trimPath, fsReadFile } from '../../shared/helpers.mjs'
 import path from 'path'
 import { generateHeaderForDefinitions, generateHeaderForModules, generateJsonDataHeaderForDefinitions, generateCppForDefinitions} from './headers/index.mjs'
 import { generateCppForSchemas } from './implementation/index.mjs'
 import {getModuleName} from '../shared/nativehelpers.mjs'
 
+
+const filterBlackListedSchemas = (module) => {
+    const blackList = ["FireboltOpenRPC", "Discovery", "Entertainment", "Intents", "Parameters"]
+    console.log("blackList.includes = " + getModuleName(module) + " is = " + blackList.includes(getModuleName(module)))
+    return blackList.includes(getModuleName(module))
+}
 
 const generateHeaders = ({
   source,
@@ -52,7 +58,7 @@ const generateHeaders = ({
       .flatMap(schemas => combinedSchemas.observe()
         .flatMap(schs => Object.values(schs))
         .flatten()
-        .filter(module => getModuleName(module) !== 'FireboltOpenRPC')
+        .filter(module => filterBlackListedSchemas(module) !== true)
         .map(schema =>  ({title : schema.title, contents : generateHeaderForDefinitions(schema, schemas)}))
         .map(fileContent => {
           (fileContent.contents.length > 0) && fsWriteFile(path.join(commonIncludeDir, `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(commonIncludeDir, `${fileContent.title}.h`)} written`))
@@ -69,7 +75,7 @@ const generateHeaders = ({
         .flatMap(schemas => combinedSchemas.observe()
           .flatMap(schs => Object.values(schs))
           .flatten()
-          .filter(module => getModuleName(module) !== 'FireboltOpenRPC')
+          .filter(module => filterBlackListedSchemas(module) !== true)
           .map(schema =>  ({title : schema.title, contents : generateJsonDataHeaderForDefinitions(schema, schemas)}))
           .map(fileContent => {
             (fileContent.contents.length > 0) && fsWriteFile(path.join(srcDir, `JsonData_${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(srcDir, `JsonData_${fileContent.title}.h`)} written`))
@@ -85,6 +91,7 @@ const generateHeaders = ({
     .flatMap(schemas => allModules
       .flatMap(modules => Object.values(modules))
       .flatten()
+      .filter(module => filterBlackListedSchemas(module) !== true)
       .map(module => ({title : getModuleName(module), contents : generateHeaderForModules(module, schemas)}))
       .map(fileContent => {
         (fileContent.contents.length > 0) && fsWriteFile(path.join(headerDir, `${fileContent.title}.h`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(headerDir, `${fileContent.title}.h`)} written`))
@@ -116,7 +123,7 @@ const generateCppFiles = ({
       .flatMap(schemas => combinedSchemas.observe()
         .flatMap(schs => Object.values(schs))
         .flatten()
-        .filter(module => getModuleName(module) !== 'FireboltOpenRPC')
+        .filter(module => filterBlackListedSchemas(module) !== true)
         .map(schema =>  ({title : schema.title, contents : generateCppForDefinitions(schema, schemas, srcDir)}))
         .map(fileContent => {
           (fileContent.contents.length > 0) && fsWriteFile(path.join(srcDir, `${fileContent.title}_Common.cpp`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(srcDir, `${fileContent.title}_Common.cpp`)} written`))
@@ -131,6 +138,7 @@ const generateCppFiles = ({
     .flatMap(schemas => allModules
       .flatMap(modules => Object.values(modules))
       .flatten()
+      .filter(module => filterBlackListedSchemas(module) !== true)
       .map(module => ({title : getModuleName(module), contents : generateCppForSchemas(module, schemas, srcDir)}))
       .map(fileContent => {
         (fileContent.contents.length > 0) && fsWriteFile(path.join(srcDir, `${fileContent.title}.cpp`) , fileContent.contents.join('\n')).done(() => console.log(`File ${path.join(srcDir, `${fileContent.title}.cpp`)} written`))

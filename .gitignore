@@ -4,3 +4,7 @@ node_modules/*
 .DS_Store
 .DS_Store
 coverage
+build.sh
+firebolt/
+run.sh
+src/native-c/build/

@@ -238,7 +238,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
         }
         else {
             if (prop.type === 'object' && !prop.properties) {
-                console.log(`WARNING: getJsonDefinition1: properties undetermined for ${pname}`)
+                console.log(`WARNING: getJsonDefinition: properties undetermined for ${pname}`)
             }
             else {
                 let res = getJsonType(moduleJson, prop, pname, schemas)

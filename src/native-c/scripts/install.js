@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 var dest = process.env.NODE_INSTALL_PATH;
-var src = 'src/native/build/' + process.env.TARGET_NAME;
+var src = 'src/native-c/build/' + process.env.TARGET_NAME;
 
 installFiles(src, dest);
 function installFiles(src, dest) {
