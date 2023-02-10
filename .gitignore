@@ -8,3 +8,6 @@ build.sh
 firebolt/
 run.sh
 src/native-c/build/
+src/native-c/thunder/src
+src/native-c/thunder/build
+
