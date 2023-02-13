@@ -373,15 +373,14 @@ uint32_t test_eventregister_by_providing_callback()
 uint32_t test_string_set_get_value()
 {
     uint32_t status = FireboltSDKErrorNone;
-    WPEFramework::Core::ProxyType<FireboltSDK::JSON::String>* str = new WPEFramework::Core::ProxyType<FireboltSDK::JSON::String>();
+    FireboltSDK::JSON::String* str = new FireboltSDK::JSON::String();
     WPEFramework::Core::JSON::String wpeJsonStr("TestString");
-    *str = WPEFramework::Core::ProxyType<FireboltSDK::JSON::String>::Create("TestString");
     FireboltTypes_StringHandle handle = static_cast<void*>(str);
 
     const char* value = FireboltTypes_String(handle);
-    EXPECT_EQ(strncmp(value, (*str)->Value().c_str(), (*str)->Value().length()), 0);
+    EXPECT_EQ(strncmp(value, str->Value().c_str(), str->Value().length()), 0);
     FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
-    " ---> type name = %s %s", (*str)->Value().c_str(), value);
+    " ---> type name = %s %s", str->Value().c_str(), value);
 
     WPEFramework::Core::JSON::EnumType<::TestEnum> testEnum = Test4;
     FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",

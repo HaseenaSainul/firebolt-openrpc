@@ -38,21 +38,18 @@ const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 const getHeaderText = () => {
 
     return `/*
-*  Copyright 2022 Comcast
-*
-*  Auto Generated using firebolt-openrpc tools. DO NOT EDIT.
-*
-*/
-
+ *  Copyright 2022 Comcast
+ *
+ *  Auto Generated using firebolt-openrpc tools. DO NOT EDIT.
+ *
+ */
 `
 }
     
 const getIncludeGuardOpen = (json, prefix=null) => {
   prefix = prefix ? `${prefix.toUpperCase()}_` : ''
-    return `
-#ifndef _${prefix}${getModuleName(json).toUpperCase()}_H
+    return `#ifndef _${prefix}${getModuleName(json).toUpperCase()}_H
 #define _${prefix}${getModuleName(json).toUpperCase()}_H
-
 `
 }
     
@@ -67,18 +64,13 @@ extern "C" {
     
 const getStyleGuardClose = () => {
     return `
-
 #ifdef __cplusplus
 }
-#endif
-
-`
+#endif`
 }
 
 const getIncludeGuardClose = () => {
-    return `
-#endif // Header Include Guard
-`
+    return `#endif // Header Include Guard`
 }
 
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
@@ -222,18 +214,20 @@ const getArrayElementSchema = (json, module, schemas = {}) => {
 const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}, common = false) => {
   const headers = []
   if (cpp == true) {
-    headers.push('#include "FireboltSDK.h"')
+    headers.push(`#include "FireboltSDK.h"`)
     headers.push((common === true) ? `#include "Common/${capitalize(getModuleName(json))}.h"` : `#include "${capitalize(getModuleName(json))}.h"`)
     if ((common === true) && (fs.existsSync(srcDir + `/JsonData_${capitalize(getModuleName(json))}.h`) === true)) {
       headers.push(`#include "JsonData_${capitalize(getModuleName(json))}.h"`)
     }
   } else {
-    headers.push('#include "Firebolt.h"')
+    headers.push(`#include "Firebolt.h"`)
   }
+
 
   let externalHeaders = (getExternalRefs(json)
     .map(ref => {
       const mod = getModuleName(getSchema(ref.split('#')[0], schemas))
+      
       let i = `#include "Common/${capitalize(mod)}.h"`
       if (cpp === true) {
         if (fs.existsSync(srcDir + `/JsonData_${capitalize(mod)}.h`) === true) {
@@ -244,7 +238,13 @@ const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}
     })
     .filter((item, index, arr) => arr.indexOf(item) === index))
 
-  externalHeaders.forEach(header => (headers.includes(header) === false) ? headers.push(header) : null)
+  if (externalHeaders.length) {
+    externalHeaders.forEach((header) => {
+      var external = header.split('\n')
+      external.forEach(header => (headers.includes(header) === false) ? headers.push(header) : null)
+    })
+  }
+
   return headers
 }
 
@@ -446,8 +446,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         let t = description(name, json.description)
         t += '\n' +  getObjectHandleManagement(tName)
         Object.entries(json.properties).forEach(([pname, prop]) => {
-          t += '\n' + description(pname, prop.description)
           let res
+          var desc = '\n' + description(pname, prop.description)
           if (prop.type === 'array') {
             if (Array.isArray(prop.items)) {
               //TODO
@@ -464,7 +464,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
             if (res.type && res.type.length > 0) {
 
               let def = getArrayAccessors(tName, capitalize(prop.title || pname), tName, res.type)
-              t += '\n' + def
+              t += desc + '\n' + def
             }
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
@@ -475,7 +475,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               if (res.json.type === 'object' && !res.json.properties) {
                 console.log(`WARNING: Type undetermined for ${name}:${pname}`)
               } else {
-                t += '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
+                t += desc + '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
               }
             }
             else {

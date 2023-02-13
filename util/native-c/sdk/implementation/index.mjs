@@ -37,11 +37,12 @@ import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition,
 
 const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
+  const header = []
 
-  code.push(getHeaderText())
+  header.push(getHeaderText())
   const jsonDefs = generateJsonTypesForSchemas(obj, schemas)
   const i = getIncludeDefinitions(obj, schemas, true, srcDir);
-  code.push(i.join('\n'))
+  header.push(i.join('\n'))
 
   const shape = generateImplForSchemas(obj, schemas)
   const methods = generateMethods(obj, schemas)
@@ -50,30 +51,30 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
     jsonDefs.type.forEach(j => jsonData.add(j))
   }
 
-  let fwd = new Set([...jsonDefs.fwd, ...methods.fwd])
   if (jsonData.size > 0) {
+    code.push(code.length === 0 ? header.join('\n') : null)
     code.push(getNameSpaceOpen(obj))
-    if (fwd.size > 0) {
-      code.push('    // Forward Declarations')
-      code.push([...fwd].map(f => '    ' + f).join('\n') + '\n')
-    }
     code.push([...jsonData].join('\n'))
     code.push(getNameSpaceClose(obj))
   }
 
   let enums = new Set ([...shape.enums, ...methods.enums])
   if (enums.size > 0) {
+    code.push(code.length === 0 ? header.join('\n') : null)
     code.push(`\nnamespace WPEFramework {\n`)
     code.push([...enums].join('\n\n'))
     code.push(`\n}`)
   }
   let deps = new Set ([...shape.deps, ...methods.deps])
-  code.push(getStyleGuardOpen())
-  deps.size ? code.push([...deps].join('\n')) : null
-  code.join('\n')
-  code.push(shape.type.join('\n'))
-  methods.type.length ? code.push(methods.type.join('\n')) : null
-  code.push(getStyleGuardClose() + '\n')
+  if (deps.size || shape.type.length || methods.type.length) {
+    code.push(code.length === 0 ? header.join('\n') : null)
+    code.push(getStyleGuardOpen())
+    deps.size ? code.push([...deps].join('\n')) : null
+    code.join('\n')
+    shape.type.length ? code.push(shape.type.join('\n')) : null
+    methods.type.length ? code.push(methods.type.join('\n')) : null
+    code.push(getStyleGuardClose() + '\n')
+  }
 
   return code
 }
@@ -83,7 +84,7 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
 const generateImplForSchemas = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getImplForSchema(json, val[1], schemas, val[0])
-    acc.type.push(shape.type.join('\n'))
+    shape.type.length ? acc.type.push(shape.type.join('\n')) : null
     shape.deps.forEach(dep => acc.deps.add(dep))
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
@@ -94,18 +95,17 @@ const generateImplForSchemas = (json, schemas = {}) => compose(
 const generateJsonTypesForSchemas = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
-    acc.type.push(shape.type.join('\n'))
+    shape.type.length ? acc.type.push(shape.type.join('\n')) : null
     shape.deps.forEach(dep => acc.deps.add(dep))
-    shape.fwd.forEach(f => acc.fwd.add(f))
     return acc
-  }, {type: [], deps: new Set(), fwd: new Set()}),
+  }, {type: [], deps: new Set()}),
   getSchemas //Get schema under Definitions
 )(json)
 
 
 const generateMethods = (json, schemas = {}) => {
   
-  let sig = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set(), fwd: new Set()}
+  let sig = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set()}
 
   const properties = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('property'))) || []
   
@@ -137,7 +137,6 @@ const generateMethods = (json, schemas = {}) => {
     let jType = getJsonDefinition(json, resJson, schemas, property.result.name || property.name, {descriptions: true, level: 0})
     jType.deps.forEach(j => sig.jsonData.add(j))
     jType.type.forEach(t => sig.jsonData.add(t))
-    jType.fwd.forEach(f => sig.fwd.add(f))
 
     //Get the Implementation for the method
     res.type = getPropertyGetterImpl(property, json, schemas)

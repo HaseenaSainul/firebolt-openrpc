@@ -56,6 +56,21 @@ namespace FireboltSDK {
             return status;
         }
 
+	template <typename RESPONSETYPE>
+        static uint32_t Get(const string& propertyName, RESPONSETYPE& response)
+        {
+            uint32_t status = FireboltSDKErrorUnavailable;
+            Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
+            if (transport != nullptr) {
+                JsonObject parameters;
+                status = transport->Invoke(propertyName, parameters, response);
+            } else {
+                FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Error in getting Transport err = %d", status);
+            }
+
+            return status;
+        }
+
         template <typename PARAMETERS>
         static uint32_t Set(const string& propertyName, const PARAMETERS& parameters)
         {

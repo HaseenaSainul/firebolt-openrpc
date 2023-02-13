@@ -806,23 +806,32 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   let impl = `${getPropertyGetterSignature(property, module, propType.type)} {\n`
   impl += `    const string method = _T("${methodName}");` + '\n'
 
-  if (propType.json && (propType.json.type === 'array') && (propType.json.items)) {
-    impl += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>* result = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>();`
-  }
-  else {
-    impl += `    WPEFramework::Core::ProxyType<${containerName}>* result = new WPEFramework::Core::ProxyType<${containerName}>();`
+  if (propType.json) {
+    if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
+        impl += `    ${containerName}* result = new ${containerName}();`
+    }
+    else {
+      if ((propType.json.type === 'array') && (propType.json.items)) {
+        impl += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>* result = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>();`
+      }
+      else {
+        impl += `    WPEFramework::Core::ProxyType<${containerName}>* result = new WPEFramework::Core::ProxyType<${containerName}>();`
+      }
+    }
   }
   
   impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, *result);
-    if (status == FireboltSDKErrorNone) {
-        ASSERT(result->IsValid() == true);\n`
+    if (status == FireboltSDKErrorNone) {\n`
   if (propType.json) {
     if ((propType.json.type === 'string') && (propType.type === 'char*')) {
       impl += `        *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(result);` + '\n'
-    } else if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
-      impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>((*result)->Value());` + '\n'
     } else {
-      impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(result);` + '\n'
+      impl += `        ASSERT(result->IsValid() == true);\n`
+      if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
+        impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>((*result)->Value());` + '\n'
+      } else {
+        impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(result);` + '\n'
+      }
     }
   }
   impl += '    }' + '\n'
@@ -877,20 +886,35 @@ function getPropertyEventCallbackImpl(property, module, schemas) {
   let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
 
   let impl = `static void ${methodName}ChangedCallback(const void* userCB, const void* userData, void* response)
-{`
+{` + '\n'
   if ((propType.json.type === 'array') && (propType.json.items)) {
     impl +=`    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>*>(response));`
-  } else {
+  }
+  else {
     impl +=`    WPEFramework::Core::ProxyType<${containerName}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(response));`
   }
-  impl +=`
-    ASSERT(jsonResponse.IsValid() == true);
-    if (jsonResponse.IsValid() == true) {
-        On${methodName}Changed on${methodName}Changed = reinterpret_cast<On${methodName}Changed>(userCB);` + '\n'
+  
   if (propType.json) {
+    impl +=`
+
+    ASSERT(jsonResponse.IsValid() == true);
+    if (jsonResponse.IsValid() == true) {` + '\n'
+    
+    if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
+       impl +=`        ${containerName}* jsonStrResponse = new ${containerName}();
+        *jsonStrResponse = *jsonResponse;
+        jsonResponse.Release();` + '\n\n'
+    }
+    
+    impl +=`        On${methodName}Changed on${methodName}Changed = reinterpret_cast<On${methodName}Changed>(userCB);` + '\n'
+    
     if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
       impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
-    } else {
+    }
+    else if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
+      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
+    }
+    else {
       impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(response));` + '\n'
     }
   }
@@ -912,9 +936,9 @@ function getPropertyEventImpl(property, module, schemas) {
     uint32_t status = FireboltSDKErrorNone;
     if (userCB != nullptr) {` + '\n'
   if ((propType.json.type === 'array') && (propType.json.items)) {
-    impl += `    status = ${getSdkNameSpace()}::Properties::Subscribe<WPEFramework::Core::JSON::ArrayType<${containerName}>>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
+    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<WPEFramework::Core::JSON::ArrayType<${containerName}>>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
   } else {
-    impl += `    status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
+    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
   }
   impl += `
     } else {

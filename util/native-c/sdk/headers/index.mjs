@@ -57,42 +57,44 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   const code = []
 
   const shape = generateTypesForDefinitions(obj, schemas)
-  if (shape.deps.size > 0 || shape.type.length > 0) {
-    code.push(getHeaderText())
-    code.push(getIncludeGuardOpen(obj, 'common'))
-    const i = getIncludeDefinitions(obj, schemas)
-    code.push(i.join('\n'))
+  code.push(getHeaderText())
+  code.push(getIncludeGuardOpen(obj, 'common'))
+  const i = getIncludeDefinitions(obj, schemas)
+  code.push(i.join('\n'))
+  if (shape.deps.size || shape.type.length || shape.enum.length) {
     code.push(getStyleGuardOpen(obj))
     shape.enum.length ? code.push(shape.enum.join('\n')) : null
     shape.type.forEach(type => shape.deps.add(type))
     code.push([...shape.deps].join('\n'))
     code.join('\n')
     code.push(getStyleGuardClose())
-    code.push(getIncludeGuardClose())
-    code.join('\n')
   }
+  code.push('\n' + getIncludeGuardClose())
+  code.join('\n')
   return code
 }
 
 const generateHeaderForModules = (obj = {}, schemas = {}) => {
   const code = []
 
-  code.push(getHeaderText())
-  code.push(getIncludeGuardOpen(obj))
-  const i = getIncludeDefinitions(obj, schemas)
-  code.push(i.join('\n'))
-  code.push(getStyleGuardOpen(obj))
   const shape = generateTypesForModules(obj, schemas)
   const m = generateMethodPrototypes(obj, schemas)
-  shape.enum.length ? code.push(shape.enum.join('\n')) : null
-  m.deps.forEach(dep => shape.deps.add(dep))
-  shape.type.forEach(type => shape.deps.add(type))
-  code.push([...shape.deps].join('\n'))
-  code.join('\n')
-  code.push(m.type && m.type.join('\n'))
-  code.push(getStyleGuardClose())
-  code.push(getIncludeGuardClose())
-  code.join('\n')
+
+  if (m.deps.size || m.type.length || shape.type.length || shape.enum.length || shape.deps.size) {
+    code.push(getHeaderText())
+    code.push(getIncludeGuardOpen(obj))
+    const i = getIncludeDefinitions(obj, schemas)
+    code.push(i.join('\n'))
+    code.push(getStyleGuardOpen(obj))
+    shape.enum.length ? code.push(shape.enum.join('\n')) : null
+    m.deps.forEach(dep => shape.deps.add(dep))
+    shape.type.forEach(type => shape.deps.add(type))
+    shape.deps.size ? code.push([...shape.deps].join('\n')) : null
+    m.type.length ? code.push(m.type && m.type.join('\n')) : null
+    code.push(getStyleGuardClose())
+    code.push('\n' + getIncludeGuardClose())
+    code.join('\n')
+  }
   return code
 }
 const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
@@ -104,12 +106,8 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
     const i = getIncludeDefinitions(obj, schemas)
     code.push(i.join('\n'))
     code.push(getNameSpaceOpen(obj))
-    if (shape.deps.size > 0) {
-      code.push([...shape.deps].join('\n') + '\n')
-    }
-    if (shape.type.length) {
-      code.push(shape.type && shape.type.join('\n'))
-    }
+    shape.deps.size ? code.push([...shape.deps].join('\n') + '\n') : null
+    shape.type.length ? code.push(shape.type && shape.type.join('\n')) : null
     code.push(getNameSpaceClose(obj))
   }
   return code
@@ -117,24 +115,28 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
 
 const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
+  const header = []
 
-  code.push(getHeaderText())
+  header.push(getHeaderText())
   const i = getIncludeDefinitions(obj, schemas, true, srcDir, true)
 
-  code.push(i.join('\n'))
+  header.push(i.join('\n'))
   const shape = generateImplForDefinitions(obj, schemas)
+
   if (shape.enums.size) {
-    code.push('\n')
-    code.push(`\nnamespace WPEFramework {\n`)
-    code.push([...shape.enums].join('\n'))
-    code.push(`\n}`)
+      code.push(header.join('\n'))
+      code.push(`\nnamespace WPEFramework {\n`)
+      code.push([...shape.enums].join('\n'))
+      code.push(`\n}`)
   }
-  code.push(getStyleGuardOpen(obj))
-  code.push([...shape.deps].join('\n'))
-  code.join('\n')
-  code.push(shape.type.join('\n'))
-  code.push(getStyleGuardClose())
-  code.join('\n')
+  if ((shape.deps.size) || (shape.type.length))  {
+    code.push(code.length === 0 ? header.join('\n') : null)
+
+    code.push(getStyleGuardOpen(obj))
+    shape.deps.size ? code.push([...shape.deps].join('\n')) : null
+    code.push(shape.type.join('\n'))
+    code.push(getStyleGuardClose())
+  }
   return code
 }
 
@@ -142,7 +144,7 @@ const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
 const generateImplForDefinitions = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getImplForSchema(json, val[1], schemas, val[0])
-    acc.type.push(shape.type.join('\n'))
+    shape.type.length ? acc.type.push(shape.type.join('\n')) : null
     shape.deps.forEach(dep => acc.deps.add(dep))
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
@@ -155,7 +157,7 @@ const generateImplForDefinitions = (json, schemas = {}) => compose(
 const generateTypesForDefinitions = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getSchemaShape(json, val[1], schemas, val[0])
-    acc.type.push(shape.type.join('\n'))
+    shape.type.length ? acc.type.push(shape.type.join('\n')) : null
     shape.deps.forEach(dep => acc.deps.add(dep))
     shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
@@ -166,7 +168,7 @@ const generateTypesForDefinitions = (json, schemas = {}) => compose(
 const generateTypesForModules = (json,  schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getSchemaShape(json, val[1], schemas, val[0])
-    acc.type.push(shape.type.join('\n'))
+    shape.type.length ? acc.type.push(shape.type.join('\n')) : null
     shape.deps.forEach(dep => acc.deps.add(dep))
     shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
@@ -180,10 +182,9 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
     if (shape.type.length > 0) {
       shape.type.forEach(type => { (acc.deps.has(type) === false) ? acc.type.push(type) : acc.type})
       shape.deps.forEach(dep => { (acc.type.includes(dep) === false) ? acc.deps.add(dep) : acc.deps})
-      shape.fwd.forEach(f => acc.fwd.add(f))
     }
     return acc
-  }, {type: [], deps: new Set(), fwd: new Set()}),
+  }, {type: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
 
