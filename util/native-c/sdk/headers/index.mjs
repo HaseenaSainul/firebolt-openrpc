@@ -65,7 +65,7 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
     code.push(getStyleGuardOpen(obj))
     shape.enum.length ? code.push(shape.enum.join('\n')) : null
     shape.type.forEach(type => shape.deps.add(type))
-    code.push([...shape.deps].join('\n'))
+    shape.deps.size ? code.push([...shape.deps].join('\n')) : null
     code.join('\n')
     code.push(getStyleGuardClose())
   }
@@ -130,7 +130,7 @@ const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
       code.push(`\n}`)
   }
   if ((shape.deps.size) || (shape.type.length))  {
-    code.push(code.length === 0 ? header.join('\n') : null)
+    code.length === 0 ? code.push(header.join('\n')) : null
 
     code.push(getStyleGuardOpen(obj))
     shape.deps.size ? code.push([...shape.deps].join('\n')) : null

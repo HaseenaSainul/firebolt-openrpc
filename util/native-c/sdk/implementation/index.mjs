@@ -52,7 +52,7 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
   }
 
   if (jsonData.size > 0) {
-    code.push(code.length === 0 ? header.join('\n') : null)
+    code.length === 0 ? code.push(header.join('\n')) : null
     code.push(getNameSpaceOpen(obj))
     code.push([...jsonData].join('\n'))
     code.push(getNameSpaceClose(obj))
@@ -60,14 +60,14 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
 
   let enums = new Set ([...shape.enums, ...methods.enums])
   if (enums.size > 0) {
-    code.push(code.length === 0 ? header.join('\n') : null)
+    code.length === 0 ? code.push(header.join('\n')) : null
     code.push(`\nnamespace WPEFramework {\n`)
     code.push([...enums].join('\n\n'))
     code.push(`\n}`)
   }
   let deps = new Set ([...shape.deps, ...methods.deps])
   if (deps.size || shape.type.length || methods.type.length) {
-    code.push(code.length === 0 ? header.join('\n') : null)
+    code.length === 0 ? code.push(header.join('\n')) : null
     code.push(getStyleGuardOpen())
     deps.size ? code.push([...deps].join('\n')) : null
     code.join('\n')
