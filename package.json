@@ -22,7 +22,7 @@
     "thunder:prepare": "npm run thunder:clean && cd src/native-c/thunder && sh scripts/prepare.sh && cd -",
     "thunder:setup": "cd src/native-c/thunder && sh scripts/setup.sh && cd -",
     "build:csdk": "node ./src/cli.mjs --task sdk --lang native-c --source ./src/ --output ./build/sdk/native-c/ --shared-schemas test/sharedSchemas",
-    "nativesdk:prepare": "npm run thunder:prepare && npm run thunder:setup && npm run build:csdk",
+    "nativesdk:prepare": "npm run thunder:setup && npm run build:csdk",
     "nativesdk:configure": "cmake-js reconfigure --directory src/native-c --CDSYSROOT_PATH=${SYSROOT_PATH} --CDGENERATED_CODE_PATH=${PWD}/build/sdk/native-c --CDENABLE_TESTS=${ENABLE_TESTS} --CDFIREBOLT_SERVER_URL=${FIREBOLT_SERVER_URL}",
     "nativesdk:compile": "cmake-js build --directory src/native-c",
     "nativesdk:setup": "npm run nativesdk:configure && npm run nativesdk:compile",

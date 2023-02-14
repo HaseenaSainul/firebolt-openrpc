@@ -561,7 +561,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
 
   function getPropertyEventSignature(method, module) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${methodName}Changed, const void* userData, uint32_t* listenerId)`
+    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(On${methodName}Changed, const void* userData, uint32_t* listenerId);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(const uint32_t listenerId)`
   }
 
   export {

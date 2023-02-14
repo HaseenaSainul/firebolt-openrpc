@@ -33,7 +33,7 @@ const getJsonNativeType = json => {
         type = 'JSON::String'
     }
     else if (jsonType === 'number' || json.type === 'integer') { //Lets keep it simple for now
-        type = 'WPEFramework::Core::JSON::DecUInt32'
+        type = 'WPEFramework::Core::JSON::DecSInt32'
     }
     else if (jsonType === 'boolean') {
       type = 'WPEFramework::Core::JSON::Boolean'
@@ -456,7 +456,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, moduleNa
     }
   }
   else if ((json.type === 'number') || (json.type === 'integer')) {
-    result += `    WPEFramework::Core::JSON::DecUInt32 element(value);` + '\n'
+    result += `    WPEFramework::Core::JSON::DecSInt32 element(value);` + '\n'
   }
   else if (json.type === 'boolean') {
     result += `    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
@@ -514,7 +514,7 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
       result += `    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
     }
     else if ((json.type === 'number') || (json.type === 'integer')) {
-      result += `    WPEFramework::Core::JSON::DecUInt32 element(value);` + '\n'
+      result += `    WPEFramework::Core::JSON::DecSInt32 element(value);` + '\n'
     }
     result += `    (*var)->Add(const_cast<const char*>(key), &element);
 }` + '\n'
@@ -713,7 +713,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         if (type.type && type.type.length > 0) {
           let tName = getTypeName(getModuleName(moduleJson), name)
           structure.deps = type.deps
-          let t = description(name, json.description)
+          let t = description(name, json.description) + '\n'
           let containerType = 'WPEFramework::Core::JSON::VariantContainer'
           t += getObjectHandleImpl(tName, containerType) + '\n'
           t += getMapAccessorsImpl(tName, getModuleName(moduleJson), containerType, type.name, type.type, json.additionalProperties)
@@ -930,7 +930,7 @@ function getPropertyEventImpl(property, module, schemas) {
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
   let containerName = getContainerName(property, module, schemas, propType)
 
-  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Listen${capitalize(property.name)}Update(On${methodName}Changed userCB, const void* userData, uint32_t* listenerId)
+  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(property.name)}Update(On${methodName}Changed userCB, const void* userData, uint32_t* listenerId)
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
@@ -941,11 +941,14 @@ function getPropertyEventImpl(property, module, schemas) {
     impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
   }
   impl += `
-    } else {
-        status = ${getSdkNameSpace()}::Properties::Unsubscribe(eventName, *listenerId);
     }
     return status;
+}
+uint32_t ${moduleName}_Unregister_${capitalize(property.name)}Update(const uint32_t listenerId)
+{
+    return ${getSdkNameSpace()}::Properties::Unsubscribe(_T("${eventName}"), listenerId);
 }`
+
   return impl
 }
 
