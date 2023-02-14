@@ -2,7 +2,7 @@
 
 export THUNDER_ROOT="`pwd`"
 # Export and create thunder install path if not exist
-export THUNDER_INSTALL_DIR="${THUNDER_ROOT}/../firebolt/"
+export THUNDER_INSTALL_DIR="${THUNDER_ROOT}/../../../firebolt/"
 mkdir -p ${THUNDER_INSTALL_DIR}
 
 if [ ! -d "${THUNDER_ROOT}/build/ThunderTools" ]; then

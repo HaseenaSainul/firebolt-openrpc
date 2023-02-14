@@ -24,7 +24,7 @@ namespace FireboltSDK {
 
         Config()
             : WPEFramework::Core::JSON::Container()
-            , Url(_T(""))
+            , Url(_T("ws://127.0.0.1:9998"))
             , WaitTime(1000)
             , LogLevel(_T("Info"))
         {

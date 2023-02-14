@@ -20,13 +20,19 @@ project(Firebolt)
 
 set(FIREBOLT_TRANSPORT_WAITTIME 1000 CACHE STRING "Maximum time to wait for Transport layer to get response")
 set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
-
+option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" ON)
 option(ENABLE_TESTS "Build openrpc native test" ON)
 
 if (NOT SYSROOT_PATH)
     # Set sysroot to support PC builds, sysroot_path not configured case
     set(SYSROOT_PATH "${CMAKE_SOURCE_DIR}/../../firebolt")
 endif()
+
+if (FIREBOLT_ENABLE_STATIC_LIB)
+    set(FIREBOLT_LIBRARY_TYPE STATIC)
+else ()
+    set(FIREBOLT_LIBRARY_TYPE SHARED)
+endif ()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${SYSROOT_PATH}/usr" CACHE INTERNAL "" FORCE)

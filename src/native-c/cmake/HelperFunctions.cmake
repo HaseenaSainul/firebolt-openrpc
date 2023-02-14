@@ -72,7 +72,7 @@ function(InstallHeaders)
 endfunction(InstallHeaders)
 
 function(InstallLibraries)
-    set(optionsArgs SHARED)
+    set(optionsArgs SHARED STATIC)
     set(oneValueArgs TARGET DESTINATION)
     set(multiValueArgs LIBRARIES)
 
@@ -96,7 +96,7 @@ function(InstallLibraries)
                     COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR}
                     COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so
                 )
-             else()
+            elseif (Argument_STATIC)
                 add_custom_command(
                     TARGET ${Argument_TARGET}
                     POST_BUILD
