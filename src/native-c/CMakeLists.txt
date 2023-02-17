@@ -48,6 +48,12 @@ include(HelperFunctions)
 set(FIREBOLT_NAMESPACE ${PROJECT_NAME} CACHE STRING "Namespace of the project")
 
 find_package(WPEFramework CONFIG REQUIRED)
+find_package(CompileSettingsDebug CONFIG)
+find_package(LIBRT)
+find_package(ZLIB)
+find_package(Threads)
+
+list(APPEND CMAKE_MODULE_PATH "${SYSROOT_PATH}/usr/lib/cmake/${NAMESPACE}/modules")
 
 add_subdirectory(src)
 
