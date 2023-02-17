@@ -40,8 +40,8 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose,
          getIncludeGuardClose, getIncludeDefinitions, getSchemaShape, getSchemaType,
-	 getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventCallbackSignature,
-         getPropertyEventSignature, getModuleName, capitalize } from '../../shared/nativehelpers.mjs'
+	       getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventCallbackSignature,
+         getPropertyEventSignature, getModuleName, capitalize, getMethodSignature} from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../shared/cpphelpers.mjs'
 // Maybe an array of <key, value> from the schema
@@ -211,6 +211,24 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     if (setter(property)) {
       sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')
     }
+  })
+
+  //Generate methods that are not tagged with any of the below tags
+  const excludeTagNames = ['property','property:readonly','property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
+  const getNamesFromTags = tags => tags && tags.map(t => t.name)
+  const methods = json.methods.filter( m => {
+                                              const tNames = getNamesFromTags(m.tags)
+                                              if (tNames) {
+                                                return !(tNames.some(t => excludeTagNames.includes(t)))
+                                              }
+                                              return true
+                                            }) || []
+
+  methods.forEach(method => {
+    let structure = getMethodSignature(method, json, schemas)
+    structure.deps.forEach(dep => sig.deps.add(dep))
+    structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+    structure.signature && sig.type.push(structure.signature + ';\n')
   })
 
   return sig

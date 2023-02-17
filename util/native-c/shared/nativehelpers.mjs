@@ -564,6 +564,46 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(On${methodName}Changed, const void* userData, uint32_t* listenerId);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(const uint32_t listenerId)`
   }
 
+  function getMethodSignature(method, module, schemas) {
+    let methodName = `${capitalize(getModuleName(module))}_${capitalize(method.name)}`
+    let structure = {}
+    structure["deps"] = new Set() //To avoid duplication of local ref definitions
+    structure["params"] = []
+    structure["enum"] = []
+    
+
+    method.params.forEach(param => {
+      let schemaType = getSchemaType(module, param.schema, param.name, schemas)
+      schemaType.deps.forEach(d => structure.deps.add(d))
+      let p = {}
+      p["type"] = schemaType.type
+      p["name"] = param.name
+      structure.params.push(p)
+      schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+    })
+    let res
+    if(method.result.schema) {
+      res = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas)
+      res.deps.forEach(dep => structure.deps.add(dep))
+      res.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+      structure["result"] = res.type
+    }
+
+    const areParamsValid = params => params.every(p => p.type.length > 0)
+
+    if(areParamsValid(structure.params) && (res.type.length > 0)) {
+      structure["signature"] = `uint32_t ${methodName}(`
+      structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
+      if(structure.params.length > 0 && method.result.schema) {
+        structure.signature += ','
+      }
+      method.result.schema && (structure.signature += ` ${(res.type === 'char*' ? getFireboltStringType() : res.type)}* ${method.result.name || method.name}`)
+      structure.signature += ' )'
+    }
+    return structure
+
+  }
+
   export {
     getHeaderText,
     getIncludeGuardOpen,
@@ -586,4 +626,5 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     enumValue,
     getFireboltStringType,
     getArrayElementSchema,
+    getMethodSignature
   }
