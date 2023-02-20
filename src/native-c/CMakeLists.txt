@@ -20,7 +20,7 @@ project(Firebolt)
 
 set(FIREBOLT_TRANSPORT_WAITTIME 1000 CACHE STRING "Maximum time to wait for Transport layer to get response")
 set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
-option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" ON)
+option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OFF)
 option(ENABLE_TESTS "Build openrpc native test" ON)
 
 if (NOT SYSROOT_PATH)
@@ -48,12 +48,6 @@ include(HelperFunctions)
 set(FIREBOLT_NAMESPACE ${PROJECT_NAME} CACHE STRING "Namespace of the project")
 
 find_package(WPEFramework CONFIG REQUIRED)
-find_package(CompileSettingsDebug CONFIG)
-find_package(LIBRT)
-find_package(ZLIB)
-find_package(Threads)
-
-list(APPEND CMAKE_MODULE_PATH "${SYSROOT_PATH}/usr/lib/cmake/${NAMESPACE}/modules")
 
 add_subdirectory(src)
 

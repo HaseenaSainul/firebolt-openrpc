@@ -33,12 +33,10 @@ add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
 )
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
 
 target_link_libraries(${TARGET}
     PUBLIC
-        ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}WebSocket::${NAMESPACE}WebSocket
 )
 
