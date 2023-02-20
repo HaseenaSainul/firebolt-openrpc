@@ -20,7 +20,7 @@ project(Firebolt)
 
 set(FIREBOLT_TRANSPORT_WAITTIME 1000 CACHE STRING "Maximum time to wait for Transport layer to get response")
 set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
-option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" ON)
+option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OFF)
 option(ENABLE_TESTS "Build openrpc native test" ON)
 
 if (NOT SYSROOT_PATH)
