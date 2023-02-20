@@ -87,7 +87,7 @@ namespace FireboltSDK {
         static uint32_t SubscribeEventWithMultipleCallback();
 
         template <typename CALLBACK>
-        static uint32_t SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* usercb, const void* userdata, uint32_t& id);
+        static uint32_t SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* usercb, const void* userdata);
 
     protected:
         static void PrintJsonObject(const JsonObject::Iterator& iterator);

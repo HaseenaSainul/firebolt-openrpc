@@ -39,8 +39,8 @@ ENUM_CONVERSION_BEGIN(TestEnum)
 ENUM_CONVERSION_END(TestEnum)
 }
 
-typedef void (*OnNotifyDeviceNameChanged)(const char* data);
-static void NotifyEvent(const char* data)
+typedef void (*OnNotifyDeviceNameChanged)(const void* userData, const char* data);
+static void NotifyEvent(const void* userData, const char* data)
 {
     printf("NotifyEvent data : %s\n", data);
 }
@@ -160,7 +160,7 @@ namespace FireboltSDK {
         FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Received a new event: %s", jsonResponse->Value().c_str());
         FireboltSDK::Tests::EventControl* eventControl = reinterpret_cast<FireboltSDK::Tests::EventControl*>(const_cast<void*>(userData));
         OnNotifyDeviceNameChanged notifyDeviceNameChanged = reinterpret_cast<OnNotifyDeviceNameChanged>(userCB);
-        notifyDeviceNameChanged(jsonResponse->Value().c_str());
+        notifyDeviceNameChanged(userData, jsonResponse->Value().c_str());
         eventControl->NotifyEvent();
         jsonResponse.Release();
     }
@@ -170,10 +170,9 @@ namespace FireboltSDK {
         FireboltSDK::Tests::EventControl* eventControl = new FireboltSDK::Tests::EventControl();
         const string eventName = _T("device.Name");
         const void* userdata = static_cast<void*>(eventControl);
-        uint32_t id = 0;
 
         eventControl->ResetEvent();
-        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback,reinterpret_cast<const void *>(NotifyEvent), userdata, id);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback,reinterpret_cast<const void *>(NotifyEvent), userdata);
 
         EXPECT_EQ(status, FireboltSDKErrorNone);
         if (status != FireboltSDKErrorNone) {
@@ -185,16 +184,31 @@ namespace FireboltSDK {
             eventControl->WaitForEvent(WPEFramework::Core::infinite);
         }
 
-        EXPECT_EQ(Properties::Unsubscribe(eventName, id), FireboltSDKErrorNone);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
         delete eventControl;
 
         return status;
     }
 
-    template <typename CALLBACK>
-    /* static */ uint32_t Tests::SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* usercb, const void* userdata, uint32_t& id)
+    static void NotifyEvent1(const void* userData, const char* data)
     {
-        return Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, callbackFunc, usercb, userdata, id);;
+        printf("NotifyEvent1 data : %s\n", data);
+	if (userData) {
+	    printf("NotifyEvent1 userData : %s\n", static_cast<const char*>(userData));
+	}
+    }
+    static void NotifyEvent2(const void* userData, const char* data)
+    {
+        printf("NotifyEvent2 data : %s\n", data);
+	if (userData) {
+	    printf("NotifyEvent2 userData : %s\n", static_cast<const char*>(userData));
+	}
+    }
+
+    template <typename CALLBACK>
+    /* static */ uint32_t Tests::SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* usercb, const void* userdata)
+    {
+        return Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, callbackFunc, usercb, userdata);
     }
 
     static void deviceNameChangeMultipleCallback(const void* userCB, const void* userData, void* response)
@@ -203,6 +217,9 @@ namespace FireboltSDK {
         FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
         "Received a new event from deviceNameChangeMultipleCallback: %s", jsonResponse->Value().c_str());
         FireboltSDK::Tests::EventControl* eventControl = reinterpret_cast<FireboltSDK::Tests::EventControl*>(const_cast<void*>(userData));
+        OnNotifyDeviceNameChanged notifyDeviceNameChanged = reinterpret_cast<OnNotifyDeviceNameChanged>(userCB);
+        notifyDeviceNameChanged(userData, jsonResponse->Value().c_str());
+
         eventControl->NotifyEvent();
         jsonResponse.Release();
     }
@@ -212,10 +229,9 @@ namespace FireboltSDK {
         FireboltSDK::Tests::EventControl* eventControl1 = new FireboltSDK::Tests::EventControl();
         const string eventName = _T("device.Name");
         const void* userdata = static_cast<void*>(eventControl1);
-        uint32_t id1 = 0, id2 = 0;
 
         eventControl1->ResetEvent();
-        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallback, reinterpret_cast<const void *>(NotifyEvent), userdata, id1);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, reinterpret_cast<const void *>(NotifyEvent), userdata);
 
         EXPECT_EQ(status, FireboltSDKErrorNone);
         if (status != FireboltSDKErrorNone) {
@@ -230,7 +246,7 @@ namespace FireboltSDK {
             FireboltSDK::Tests::EventControl* eventControl2 = new FireboltSDK::Tests::EventControl();
             userdata = static_cast<void*>(eventControl2);
 
-            status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, reinterpret_cast<const void *>(NotifyEvent), userdata, id2);
+            status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeMultipleCallback, reinterpret_cast<const void *>(NotifyEvent), userdata);
 
             EXPECT_EQ(status, FireboltSDKErrorNone);
             if (status != FireboltSDKErrorNone) {
@@ -241,10 +257,10 @@ namespace FireboltSDK {
                 eventControl1->WaitForEvent(WPEFramework::Core::infinite);
                 eventControl2->WaitForEvent(WPEFramework::Core::infinite);
             }
-            EXPECT_EQ(Properties::Unsubscribe(eventName, id1), FireboltSDKErrorNone);
+            EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
             delete eventControl2;
         }
-        EXPECT_EQ(Properties::Unsubscribe(eventName, id2), FireboltSDKErrorNone);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
 
         delete eventControl1;
         return status;
@@ -323,10 +339,9 @@ uint32_t test_eventregister()
 
     const string eventName = _T("device.Name");
     const void* userdata = static_cast<void*>(eventControl);
-    uint32_t id = 0;
 
     eventControl->ResetEvent();
-    uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata, id);
+    uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata);
 
     EXPECT_EQ(status, FireboltSDKErrorNone);
     if (status != FireboltSDKErrorNone) {
@@ -339,7 +354,7 @@ uint32_t test_eventregister()
     }
 
     delete eventControl;
-    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDKErrorNone);
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
 
     return status;
 }
@@ -350,10 +365,9 @@ uint32_t test_eventregister_by_providing_callback()
 
     const string eventName = _T("device.Name");
     const void* userdata = static_cast<void*>(eventControl);
-    uint32_t id = 0;
 
     eventControl->ResetEvent();
-    uint32_t status = FireboltSDK::Tests::SubscribeEventForC(eventName, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata, id);
+    uint32_t status = FireboltSDK::Tests::SubscribeEventForC(eventName, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata);
 
     EXPECT_EQ(status, FireboltSDKErrorNone);
     if (status != FireboltSDKErrorNone) {
@@ -366,7 +380,7 @@ uint32_t test_eventregister_by_providing_callback()
     }
 
     delete eventControl;
-    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, id), FireboltSDKErrorNone);
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
 }
 
 #include "TypesPriv.h"
