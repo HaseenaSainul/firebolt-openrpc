@@ -24,6 +24,11 @@ export THUNDER_ROOT="`pwd`/src"
 mkdir -p ${THUNDER_ROOT}
 cd ${THUNDER_ROOT}
 
+if [ ! -d "${THUNDER_ROOT}/ThunderTools" ]; then
+    # Fetch thunder tools code
+    git clone git@github.com:rdkcentral/ThunderTools
+fi
+
 if [ ! -d "${THUNDER_ROOT}/Thunder" ]; then
     # Fetch thunder code
     git clone git@github.com:rdkcentral/Thunder 
