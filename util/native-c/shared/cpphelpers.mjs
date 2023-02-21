@@ -930,23 +930,23 @@ function getPropertyEventImpl(property, module, schemas) {
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
   let containerName = getContainerName(property, module, schemas, propType)
 
-  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(property.name)}Update(On${methodName}Changed userCB, const void* userData, uint32_t* listenerId)
+  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(property.name)}Update(On${methodName}Changed userCB, const void* userData)
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
     if (userCB != nullptr) {` + '\n'
   if ((propType.json.type === 'array') && (propType.json.items)) {
-    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<WPEFramework::Core::JSON::ArrayType<${containerName}>>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
+    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<WPEFramework::Core::JSON::ArrayType<${containerName}>>(eventName, ${methodName}ChangedCallback, reinterpret_cast<const void*>(userCB), userData);`
   } else {
-    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<void*>(userCB), userData, *listenerId);`
+    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<const void*>(userCB), userData);`
   }
   impl += `
     }
     return status;
 }
-uint32_t ${moduleName}_Unregister_${capitalize(property.name)}Update(const uint32_t listenerId)
+uint32_t ${moduleName}_Unregister_${capitalize(property.name)}Update(On${methodName}Changed userCB)
 {
-    return ${getSdkNameSpace()}::Properties::Unsubscribe(_T("${eventName}"), listenerId);
+    return ${getSdkNameSpace()}::Properties::Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
 }`
 
   return impl

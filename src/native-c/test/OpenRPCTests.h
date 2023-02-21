@@ -30,6 +30,12 @@ namespace FireboltSDK {
         public:
             EventControl()
                : _event(false, true)
+               , _name("EventControl")
+            {
+            }
+            EventControl(string name)
+               : _event(false, true)
+               , _name(name)
             {
             }
             ~EventControl() = default;
@@ -47,8 +53,13 @@ namespace FireboltSDK {
             {
                 _event.ResetEvent();
             }
+            string Name() const
+            {
+                return _name;
+            }
         private:
             WPEFramework::Core::Event _event;
+            string _name;
         };
 
     private:
@@ -84,10 +95,11 @@ namespace FireboltSDK {
         static uint32_t SetUnKnownMethod();
 
         static uint32_t SubscribeEvent();
+        static uint32_t SubscribeEventwithSameCallback();
         static uint32_t SubscribeEventWithMultipleCallback();
 
         template <typename CALLBACK>
-        static uint32_t SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* usercb, const void* userdata, uint32_t& id);
+        static uint32_t SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* usercb, const void* userdata);
 
     protected:
         static void PrintJsonObject(const JsonObject::Iterator& iterator);
