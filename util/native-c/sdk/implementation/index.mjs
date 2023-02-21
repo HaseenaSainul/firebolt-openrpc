@@ -31,8 +31,8 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions,
          getStyleGuardClose } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
-import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition,
-         getImplForSchema, getPropertyEventCallbackImpl, getPropertyEventImpl,
+import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema,
+         getEventCallbackImpl, getEventImpl, getPropertyEventCallbackImpl, getPropertyEventImpl,
          getPropertyGetterImpl, getPropertySetterImpl } from '../../shared/cpphelpers.mjs'
 
 const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
@@ -150,6 +150,12 @@ const generateMethods = (json, schemas = {}) => {
     if (setter(property)) {
       sig.type.push(getPropertySetterImpl(property, json, schemas))
     }
+  })
+
+  const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('event'))) || []
+  events.forEach(event => {
+    sig.type.push(getEventCallbackImpl(event, json, schemas))
+    sig.type.push(getEventImpl(event, json, schemas))
   })
 
   return sig

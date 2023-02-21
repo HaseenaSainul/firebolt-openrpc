@@ -564,6 +564,16 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(On${methodName}Changed, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(On${methodName}Changed)`
   }
 
+  function getEventCallbackSignature(method, module, paramType) {
+    let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+    return `typedef void (*${methodName}Callback)(const void* userData, ${paramType === 'char*' ? getFireboltStringType() : paramType})`
+  }
+
+  function getEventSignature(method, module) {
+    let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(${methodName}Callback, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(${methodName}Callback)`
+  }
+
   function getMethodSignature(method, module, schemas) {
     let methodName = `${capitalize(getModuleName(module))}_${capitalize(method.name)}`
     let structure = {}
@@ -617,8 +627,10 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     getIncludeDefinitions,
     getPropertyGetterSignature,
     getPropertySetterSignature,
-    getPropertyEventCallbackSignature,
     getPropertyEventSignature,
+    getPropertyEventCallbackSignature,
+    getEventSignature,
+    getEventCallbackSignature,
     capitalize,
     description,
     isOptional,

@@ -40,8 +40,9 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose,
          getIncludeGuardClose, getIncludeDefinitions, getSchemaShape, getSchemaType,
-	       getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventCallbackSignature,
-         getPropertyEventSignature, getModuleName, capitalize, getMethodSignature} from '../../shared/nativehelpers.mjs'
+         getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventSignature,
+         getPropertyEventCallbackSignature, getEventSignature, getEventCallbackSignature,
+         getModuleName, capitalize, getMethodSignature } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../shared/cpphelpers.mjs'
 // Maybe an array of <key, value> from the schema
@@ -213,8 +214,15 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     }
   })
 
+  const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('event'))) || []
+  events.forEach(event => {
+    let res = getSchemaType(json, event.result.schema, event.result.name || event.name, schemas,{descriptions: true, level: 0})
+    sig.type.push(getEventCallbackSignature(event, json, res.type) + ';')
+    sig.type.push(getEventSignature(event, json) + ';\n')
+  })
+
   //Generate methods that are not tagged with any of the below tags
-  const excludeTagNames = ['property','property:readonly','property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
+  const excludeTagNames = ['property', 'property:readonly', 'property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
   const getNamesFromTags = tags => tags && tags.map(t => t.name)
   const methods = json.methods.filter( m => {
                                               const tNames = getNamesFromTags(m.tags)

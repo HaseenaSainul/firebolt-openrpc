@@ -879,14 +879,31 @@ function getPropertySetterImpl(property, module, schemas = {}) {
 }
 
 function getPropertyEventCallbackImpl(property, module, schemas) {
+  return getEventCallbackLocalImpl(property, module, schemas, true)
+}
+
+function getPropertyEventImpl(property, module, schemas) {
+  return getEventLocalImpl(property, module, schemas, true)
+}
+
+function getEventCallbackImpl(event, module, schemas) {
+  return getEventCallbackLocalImpl(event, module, schemas, false)
+}
+
+function getEventImpl(event, module, schemas) {
+  return getEventLocalImpl(event, module, schemas, false)
+}
+
+function getEventCallbackLocalImpl(event, module, schemas, property) {
   let moduleName = capitalize(getModuleName(module));
-  let methodName = moduleName + capitalize(property.name)
-  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
-  let containerName = getContainerName(property, module, schemas, propType)
+  let methodName = moduleName + capitalize(event.name)
+  let propType = getSchemaType(module, event.result.schema, event.result.name || event.name, schemas, {descriptions: true, level: 0})
+  let containerName = getContainerName(event, module, schemas, propType)
   let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
 
-  let impl = `static void ${methodName}ChangedCallback(const void* userCB, const void* userData, void* response)
+  let impl = `static void ${methodName}InnerCallback(const void* userCB, const void* userData, void* response)
 {` + '\n'
+
   if ((propType.json.type === 'array') && (propType.json.items)) {
     impl +=`    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>*>(response));`
   }
@@ -905,17 +922,24 @@ function getPropertyEventCallbackImpl(property, module, schemas) {
         *jsonStrResponse = *jsonResponse;
         jsonResponse.Release();` + '\n\n'
     }
-    
-    impl +=`        On${methodName}Changed on${methodName}Changed = reinterpret_cast<On${methodName}Changed>(userCB);` + '\n'
+
+    let CallbackName = ''
+    if (property == true) {
+      CallbackName = `On${methodName}Changed`
+    } else {
+      CallbackName = `${methodName}Callback`
+    }
+
+    impl +=`        ${CallbackName} callback = reinterpret_cast<${CallbackName}>(userCB);` + '\n'
     
     if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
-      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
+      impl += `        callback(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
     }
     else if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
-      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
+      impl += `        callback(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
     }
     else {
-      impl += `        on${methodName}Changed(userData, static_cast<${paramType}>(response));` + '\n'
+      impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
     }
   }
   impl += `    }
@@ -923,35 +947,44 @@ function getPropertyEventCallbackImpl(property, module, schemas) {
   return impl;
 }
 
-function getPropertyEventImpl(property, module, schemas) {
-  let eventName = getModuleName(module).toLowerCase() + '.' + property.name
+function getEventLocalImpl(event, module, schemas, property) {
+  let eventName = getModuleName(module).toLowerCase() + '.' + event.name
   let moduleName = capitalize(getModuleName(module))
-  let methodName = moduleName + capitalize(property.name)
-  let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
-  let containerName = getContainerName(property, module, schemas, propType)
+  let methodName = moduleName + capitalize(event.name)
+  let propType = getSchemaType(module, event.result.schema, event.result.name || event.name, schemas, {descriptions: true, level: 0})
+  let containerName = getContainerName(event, module, schemas, propType)
 
-  let impl = `${description(property.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(property.name)}Update(On${methodName}Changed userCB, const void* userData)
+  let ClassName = ''
+  let CallbackName = ''
+  if (property) {
+    ClassName = "Properties::"
+    CallbackName = `On${methodName}Changed`
+  } else {
+    ClassName = "Event::Instance()."
+      CallbackName = `${methodName}Callback`
+  }
+
+  let impl = `${description(event.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(event.name)}Update(${CallbackName} userCB, const void* userData)
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
     if (userCB != nullptr) {` + '\n'
   if ((propType.json.type === 'array') && (propType.json.items)) {
-    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<WPEFramework::Core::JSON::ArrayType<${containerName}>>(eventName, ${methodName}ChangedCallback, reinterpret_cast<const void*>(userCB), userData);`
+    impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<WPEFramework::Core::JSON::ArrayType<${containerName}>>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);`
   } else {
-    impl += `        status = ${getSdkNameSpace()}::Properties::Subscribe<${containerName}>(eventName, ${methodName}ChangedCallback, reinterpret_cast<const void*>(userCB), userData);`
+    impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${containerName}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);`
   }
   impl += `
     }
     return status;
 }
-uint32_t ${moduleName}_Unregister_${capitalize(property.name)}Update(On${methodName}Changed userCB)
+uint32_t ${moduleName}_Unregister_${capitalize(event.name)}Update(${CallbackName} userCB)
 {
-    return ${getSdkNameSpace()}::Properties::Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
+    return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
 }`
 
   return impl
 }
-
 export {
     getSdkNameSpace,
     getNameSpaceOpen,
@@ -962,5 +995,7 @@ export {
     getPropertyGetterImpl,
     getPropertySetterImpl,
     getPropertyEventCallbackImpl,
-    getPropertyEventImpl
+    getPropertyEventImpl,
+    getEventCallbackImpl,
+    getEventImpl
 }
