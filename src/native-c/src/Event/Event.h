@@ -94,7 +94,7 @@ namespace FireboltSDK {
                 }
             }
 
-            return ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone: status);
+            return status;
         }
 
         uint32_t Unsubscribe(const string& eventName, const void* usercb);
