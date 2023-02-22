@@ -31,9 +31,10 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions,
          getStyleGuardClose } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
+
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema,
          getEventCallbackImpl, getEventImpl, getPropertyEventCallbackImpl, getPropertyEventImpl,
-         getPropertyGetterImpl, getPropertySetterImpl } from '../../shared/cpphelpers.mjs'
+         getPropertyGetterImpl, getPropertySetterImpl, getImplForMethodParam, getMethodImpl } from '../../shared/cpphelpers.mjs'
 
 const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
@@ -114,33 +115,15 @@ const generateMethods = (json, schemas = {}) => {
     const event = m => m.tags.find(t => t.name === 'property:readonly' || t.name === 'property')
     const setter = m => m.tags.find(t => t.name === 'property')
     
-    //Lets get the implementation for Result Schema if it is of type object
-    //If it is array then get Impl for the Array element if it is an object
-    let resJson = property.result.schema
-    if (property.result.schema.type === 'array' ) {
-      if (Array.isArray(json.items)) {
-        resJson = json.items[0]
-      }
-      else {
-        resJson = json.items
-      }
-    }
-    let res = {}
-    if ((resJson['$ref'] === undefined) || (resJson['$ref'][0] !== '#')) {
-      res = getImplForSchema(json, resJson, schemas, property.result.name || property.name, {descriptions: true, level: 0})
-      res.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
-      res.deps.forEach(dep => sig.deps.add(dep))
-      res.enums.forEach(e => sig.enums.add(e))
-    }
-
-    //Get the JsonData definition for the result schema
-    let jType = getJsonDefinition(json, resJson, schemas, property.result.name || property.name, {descriptions: true, level: 0})
-    jType.deps.forEach(j => sig.jsonData.add(j))
-    jType.type.forEach(t => sig.jsonData.add(t))
+    //Lets get the implementation for Result Schema 
+    let impl = getImplForMethodParam(property.result, json, property.result.name || property.name, schemas)
+    impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+    impl.deps.forEach(dep => sig.deps.add(dep))
+    impl.enums.forEach(e => sig.enums.add(e))
+    impl.jsonData.forEach(j => sig.jsonData.add(j))
 
     //Get the Implementation for the method
-    res.type = getPropertyGetterImpl(property, json, schemas)
-    sig.type.includes(res.type) === false ?  sig.type.push(res.type) : null
+    sig.type.push(getPropertyGetterImpl(property, json, schemas))
 
     if (event(property)) {
       sig.type.push(getPropertyEventCallbackImpl(property, json, schemas))
@@ -156,6 +139,38 @@ const generateMethods = (json, schemas = {}) => {
   events.forEach(event => {
     sig.type.push(getEventCallbackImpl(event, json, schemas))
     sig.type.push(getEventImpl(event, json, schemas))
+  })
+  
+ //Generate methods that are not tagged with any of the below tags
+ const excludeTagNames = ['property','property:readonly','property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
+ const getNamesFromTags = tags => tags && tags.map(t => t.name)
+ const methods = json.methods.filter( m => {
+                                             const tNames = getNamesFromTags(m.tags)
+                                             if (tNames) {
+                                               return !(tNames.some(t => excludeTagNames.includes(t)))
+                                             }
+                                             return true
+                                           }) || []
+
+ methods.forEach(method => {
+      //Lets get the implementation for each param params Schema 
+      method.params.forEach(param => {
+        let impl = getImplForMethodParam(param, json, param.name, schemas)
+        impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+        impl.deps.forEach(dep => sig.deps.add(dep))
+        impl.enums.forEach(e => sig.enums.add(e))
+        impl.jsonData.forEach(j => sig.jsonData.add(j))
+    })
+
+    //Lets get the implementation for Result Schema 
+    let impl = getImplForMethodParam(method.result, json, method.result.name, schemas)
+    impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+    impl.deps.forEach(dep => sig.deps.add(dep))
+    impl.enums.forEach(e => sig.enums.add(e))
+    impl.jsonData.forEach(j => sig.jsonData.add(j))
+
+    let mImpl = getMethodImpl(method, json, schemas)
+    sig.type.push(mImpl)
   })
 
   return sig

@@ -1,7 +1,7 @@
 import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName,getModuleName, description, getArrayElementSchema,
-         isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,getFireboltStringType} from "./nativehelpers.mjs"
+         isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,getFireboltStringType, getMethodSignature} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -833,6 +833,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
         impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(result);` + '\n'
       }
     }
+    //TODO Delete the new object for number, enum, boolean cases
   }
   impl += '    }' + '\n'
   impl += '    return status;' + '\n'
@@ -863,7 +864,7 @@ function getPropertySetterImpl(property, module, schemas = {}) {
         impl += `    WPEFramework::Core::JSON::ArrayType<${containerName}> param = *(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${containerName}>>*>(${paramName})));`
       } else {
         if (propType.json.type === 'string' && propType.json.enum) {
-          impl += `    WPEFramework::Core::JSON::Variant param(${containerType}(${paramName}));`
+          impl += `    WPEFramework::Core::JSON::Variant param(${containerName}(${paramName}));`
         }
         else {
           impl += `    WPEFramework::Core::JSON::Variant param(${paramName});`
@@ -985,6 +986,98 @@ uint32_t ${moduleName}_Unregister_${capitalize(event.name)}Update(${CallbackName
 
   return impl
 }
+
+function getImplForMethodParam(param, module, name, schemas) {
+
+  let impl = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set()}
+
+  let resJson = param.schema
+  if (resJson.type === 'array' ) {
+    if (Array.isArray(json.items)) {
+      resJson = resJson.items[0]
+    }
+    else {
+      resJson = resJson.items
+    }
+  }
+  let res = {}
+  if ((resJson['$ref'] === undefined) || (resJson['$ref'][0] !== '#')) {
+    res = getImplForSchema(module, resJson, schemas, param.name || name)
+    res.type.forEach(type => (impl.type.includes(type) === false) ?  impl.type.push(type) : null)
+    res.deps.forEach(dep => impl.deps.add(dep))
+    res.enums.forEach(e => impl.enums.add(e))
+  }
+
+  //Get the JsonData definition for the schema
+  let jType = getJsonDefinition(module, resJson, schemas, param.name || name)
+  jType.deps.forEach(j => impl.jsonData.add(j))
+  jType.type.forEach(t => impl.jsonData.add(t))
+
+  return impl
+}
+
+function getMethodImpl(method, module, schemas) {
+  let methodName = `${capitalize(getModuleName(module))}_${capitalize(method.name)}`
+  let structure = getMethodSignature(method, module, schemas)
+  let resultSchemaType = getSchemaType(module, method.result.schema, method.result.name, schemas)
+  let impl = ''
+
+  if(structure.signature) {
+
+    impl = `${structure.signature}\n{\n`
+
+    impl += `    uint32_t status = FireboltSDKErrorUnavailable;
+    Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
+    if (transport != nullptr) {
+        JsonObject parameters;\n`
+
+        method.params.forEach(param => {
+          /*
+          const getParamType = paramName => structure.params.find(p => p.name === paramName)
+          let type = getParamType(param.name)*/
+          const jsonType = getJsonType(module, param, param.name, schemas)
+          if ((param.schema.type === 'object') || (param.schema.type === 'array')) {
+            impl += `         parameters.Add("_T(${param.name})", static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>>(${param.name}))`
+          } 
+          else {
+              impl += `         parameters.Add("_T(${param.name})", ${jsonType.type}(${param.name})));`
+          }
+        })
+
+        let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas)
+
+        impl += `        ${resultJsonType.type} jsonResult;\n` 
+        impl += `        status = transport->Invoke(${methodName}, parameters, jsonResult);\n`
+
+        impl += `        if (status == FireboltSDKErrorNone) {\n`
+        
+        if ((method.result.schema.type === 'string') && (method.result.schema.enum !== true)) {
+            impl += `            ${resultJsonType.type}* result = new ${resultJsonType.type}(jsonResult);\n`
+            impl += `            *${method.result.name} = static_cast<${getFireboltStringType()}>(result)`
+        }
+        else {
+          if ((method.result.schema.type === 'object') || (method.result.schema.type === 'array')) {
+            impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* result = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
+            impl += `            *${method.result.name} = static_cast<${resultSchemaType.type}>(result)`
+          }
+          else {
+            impl += `            *${method.result.name} = jsonResult.Value();\n`
+          }
+        }
+
+        impl += '        }\n'
+
+      impl += `
+    } else {
+        FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Error in getting Transport err = %d", status);
+    }
+
+    return status;
+}`
+  }
+  return impl
+}
+
 export {
     getSdkNameSpace,
     getNameSpaceOpen,
@@ -998,4 +1091,6 @@ export {
     getPropertyEventImpl,
     getEventCallbackImpl,
     getEventImpl
+    getImplForMethodParam,
+    getMethodImpl
 }
