@@ -1017,7 +1017,7 @@ function getImplForMethodParam(param, module, name, schemas) {
 }
 
 function getMethodImpl(method, module, schemas) {
-  let methodName = `${capitalize(getModuleName(module))}_${capitalize(method.name)}`
+  let methodName = getModuleName(module).toLowerCase() + '.' + method.name
   let structure = getMethodSignature(method, module, schemas)
   let resultSchemaType = getSchemaType(module, method.result.schema, method.result.name, schemas)
   let impl = ''
@@ -1032,33 +1032,33 @@ function getMethodImpl(method, module, schemas) {
         JsonObject parameters;\n`
 
         method.params.forEach(param => {
-          /*
           const getParamType = paramName => structure.params.find(p => p.name === paramName)
-          let type = getParamType(param.name)*/
+          let nativeType = getParamType(param.name)
           const jsonType = getJsonType(module, param, param.name, schemas)
-          if ((param.schema.type === 'object') || (param.schema.type === 'array')) {
-            impl += `         parameters.Add("_T(${param.name})", static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>>(${param.name}))`
+          console.log(`Native Type of Method param - ${nativeType.type} - ${typeof nativeType.type}`)
+          if (nativeType.type.includes('Handle') && (!nativeType.type.includes('FireboltTypes_String'))) {
+            impl += `        parameters.Add("_T(${param.name})", static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>>(${param.name}));\n`
           } 
           else {
-              impl += `         parameters.Add("_T(${param.name})", ${jsonType.type}(${param.name})));`
+              impl += `        parameters.Add("_T(${param.name})", ${jsonType.type}(${param.name}));\n`
           }
         })
 
         let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas)
 
         impl += `        ${resultJsonType.type} jsonResult;\n` 
-        impl += `        status = transport->Invoke(${methodName}, parameters, jsonResult);\n`
+        impl += `        status = transport->Invoke("${methodName}", parameters, jsonResult);\n`
 
         impl += `        if (status == FireboltSDKErrorNone) {\n`
         
-        if ((method.result.schema.type === 'string') && (method.result.schema.enum !== true)) {
+        if (resultSchemaType.type.includes('FireboltTypes_String')) {
             impl += `            ${resultJsonType.type}* result = new ${resultJsonType.type}(jsonResult);\n`
-            impl += `            *${method.result.name} = static_cast<${getFireboltStringType()}>(result)`
+            impl += `            *${method.result.name} = static_cast<${getFireboltStringType()}>(result)\n`
         }
         else {
-          if ((method.result.schema.type === 'object') || (method.result.schema.type === 'array')) {
+          if (resultSchemaType.type.includes('Handle')) {
             impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* result = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
-            impl += `            *${method.result.name} = static_cast<${resultSchemaType.type}>(result)`
+            impl += `            *${method.result.name} = static_cast<${resultSchemaType.type}>(result)\n`
           }
           else {
             impl += `            *${method.result.name} = jsonResult.Value();\n`

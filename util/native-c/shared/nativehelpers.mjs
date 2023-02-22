@@ -255,7 +255,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
-  structure["type"] = []
+  structure["type"] = ''
   structure["json"] = []
   structure["enum"] = []
   structure["name"] = {}
@@ -312,7 +312,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     let typeName = getTypeName(getModuleName(module), name || json.title)
     let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
     structure.json = json
-    structure.type.push(typeName)
+    structure.type = typeName
     structure.namespace = getModuleName(module)
     res.length ? ((structure.enum.includes(res) === false) ? structure.enum.push(res): null) : null
     return structure
@@ -348,7 +348,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
        structure.name = capitalize(name)
     }
     structure.deps.add(def)
-    structure.type.push(n + 'ArrayHandle')
+    structure.type = n + 'ArrayHandle'
     structure.json = json
     structure.enum = res.enum
     structure.namespace = getModuleName(module)
@@ -376,7 +376,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     if (name) {
        structure.name = capitalize(name)
     }
-    structure.type.push(getTypeName(getModuleName(module), json.title || name) + 'Handle')
+    structure.type = getTypeName(getModuleName(module), json.title || name) + 'Handle'
     structure.json = json
     res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
     structure.namespace = getModuleName(module)
