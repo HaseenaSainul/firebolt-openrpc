@@ -1090,7 +1090,7 @@ export {
     getPropertyEventCallbackImpl,
     getPropertyEventImpl,
     getEventCallbackImpl,
-    getEventImpl
+    getEventImpl,
     getImplForMethodParam,
     getMethodImpl
 }
