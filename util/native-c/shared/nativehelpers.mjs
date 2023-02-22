@@ -584,34 +584,47 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
 
     method.params.forEach(param => {
       let schemaType = getSchemaType(module, param.schema, param.name, schemas)
+      console.log("schemaType = ")
+      console.log(schemaType)
+
       schemaType.deps.forEach(d => structure.deps.add(d))
       let p = {}
-      p["type"] = schemaType.type
+      if ((schemaType.json.type == 'object') && (!schemaType.json.properties)) {
+        p["type"] = getFireboltStringType()
+      }
+      else {
+        p["type"] = schemaType.type
+      }
+
       p["name"] = param.name
       structure.params.push(p)
       schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
     })
     let res
-    if(method.result.schema) {
+    if (method.result.schema) {
       res = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas)
       res.deps.forEach(dep => structure.deps.add(dep))
       res.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
-      structure["result"] = res.type
+      if ((res.json.type == 'object') && (!res.json.properties) || (res.json.type == 'string')) {
+        structure["result"] = getFireboltStringType()
+      }
+      else {
+        structure["result"] = res.type
+      }
     }
 
     const areParamsValid = params => params.every(p => p.type.length > 0)
 
-    if(areParamsValid(structure.params) && (res.type.length > 0)) {
+    if (areParamsValid(structure.params) && (res.type.length > 0)) {
       structure["signature"] = `uint32_t ${methodName}(`
       structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
-      if(structure.params.length > 0 && method.result.schema) {
+      if (structure.params.length > 0 && method.result.schema) {
         structure.signature += ','
       }
-      method.result.schema && (structure.signature += ` ${(res.type === 'char*' ? getFireboltStringType() : res.type)}* ${method.result.name || method.name}`)
+      method.result.schema && (structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`)
       structure.signature += ' )'
     }
     return structure
-
   }
 
   export {

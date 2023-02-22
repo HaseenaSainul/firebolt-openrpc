@@ -81,17 +81,22 @@ const generateHeaderForModules = (obj = {}, schemas = {}) => {
   const shape = generateTypesForModules(obj, schemas)
   const m = generateMethodPrototypes(obj, schemas)
 
-  if (m.deps.size || m.type.length || shape.type.length || shape.enum.length || shape.deps.size) {
+  if (m.deps.size || m.type.length || m.enum.length || shape.type.length || shape.enum.length || shape.deps.size) {
     code.push(getHeaderText())
     code.push(getIncludeGuardOpen(obj))
     const i = getIncludeDefinitions(obj, schemas)
     code.push(i.join('\n'))
     code.push(getStyleGuardOpen(obj))
+
     shape.enum.length ? code.push(shape.enum.join('\n')) : null
+    m.enum.length ? code.push(m.enum && m.enum.join('\n')) : null
+
     m.deps.forEach(dep => shape.deps.add(dep))
     shape.type.forEach(type => shape.deps.add(type))
     shape.deps.size ? code.push([...shape.deps].join('\n')) : null
+
     m.type.length ? code.push(m.type && m.type.join('\n')) : null
+
     code.push(getStyleGuardClose())
     code.push('\n' + getIncludeGuardClose())
     code.join('\n')
