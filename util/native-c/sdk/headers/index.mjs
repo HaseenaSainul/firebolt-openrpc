@@ -221,9 +221,11 @@ const generateMethodPrototypes = (json, schemas = {}) => {
 
   const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('event'))) || []
   events.forEach(event => {
-    let res = getSchemaType(json, event.result.schema, event.result.name || event.name, schemas,{descriptions: true, level: 0})
-    sig.type.push(getEventCallbackSignature(event, json, res.type) + ';')
-    sig.type.push(getEventSignature(event, json) + ';\n')
+    let res = getSchemaType(json, event.result.schema, event.result.name || event.name, schemas, {descriptions: true, level: 0})
+    if (res.type && res.type.length > 0) {
+      sig.type.push(getEventCallbackSignature(event, json, res.type) + ';')
+      sig.type.push(getEventSignature(event, json) + ';\n')
+    }
   })
 
   //Generate methods that are not tagged with any of the below tags

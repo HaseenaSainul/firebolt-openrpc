@@ -102,7 +102,7 @@ const getNativeType = json => {
         type = 'uint32_t'
         if (json.const < 0)
             type = 'int32_t'
-      } else if (typeof json.const === 'boolean'){
+      } else if (typeof json.const === 'boolean') {
         type = 'bool'
       }
     }
@@ -161,11 +161,12 @@ const getMapAccessors = (typeName, nativeType,  level=0) => {
   return res
 }
 
-const getTypeName = (moduleName, varName, upperCase = false) => {
+const getTypeName = (moduleName, varName, prefixName = '', upperCase = false) => {
   let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
-  let vName = upperCase ? varName.toUpperCase() : capitalize(varName) 
-
-  return `${mName}_${vName}`
+  let vName = upperCase ? varName.toUpperCase() : capitalize(varName)
+  prefixName = (prefixName.length > 0) ? (upperCase ? prefixName.toUpperCase() : capitalize(prefixName)) : prefixName
+  let name = (prefixName.length > 0) ? `${mName}_${prefixName}_${vName}` : `${mName}_${vName}`
+  return name
 }
 
 const getArrayAccessors = (arrayName, propertyName, propertyType, valueType) => {
@@ -259,7 +260,7 @@ const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}
   return headers
 }
 
-function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options = {level: 0, descriptions: true, title: false}) {
+function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixName = '', options = {level: 0, descriptions: true, title: false}) {
   if (json.schema) {
     json = json.schema
   }
@@ -278,7 +279,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       //Get Path to ref in this module and getSchemaType
       let definition = getPath(json['$ref'], module, schemas)
       let tName = definition.title || json['$ref'].split('/').pop()
-      const res = getSchemaType(module, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
+      const res = getSchemaType(module, definition, tName, schemas, '', {descriptions: options.descriptions, level: options.level})
       res.deps.forEach(dep => structure.deps.add(dep))
       structure.type = res.type
       structure.json = res.json
@@ -296,7 +297,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       //Get the schema of the definition
       const definition = getPath(json['$ref'], module, schemas)
       let tName = definition.title || json['$ref'].split('/').pop()
-      const res = getSchemaType(schema, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
+      const res = getSchemaType(schema, definition, tName, schemas, '', {descriptions: options.descriptions, level: options.level})
       //We are only interested in the type definition for external modules
       structure.type = res.type
       structure.json = res.json
@@ -320,7 +321,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
     if (name) {
        structure.name = capitalize(name)
     }
-    let typeName = getTypeName(getModuleName(module), name || json.title)
+    let typeName = getTypeName(getModuleName(module), name || json.title, prefixName)
     let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
     structure.json = json
     structure.type = typeName
@@ -340,15 +341,15 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getSchemaType(module, json.items[0],'',schemas)
+      res = getSchemaType(module, json.items[0], '', schemas, prefixName)
     }
     else {
       // grab the type for the non-array schema
-      res = getSchemaType(module, json.items, '', schemas)
+      res = getSchemaType(module, json.items, '', schemas, prefixName)
     }
 
     res.deps.forEach(dep => structure.deps.add(dep))
-    let n = getTypeName(getModuleName(module), name || json.title)
+    let n = getTypeName(getModuleName(module), name || json.title, prefixName)
     let def = description(name || json.title, json.description) + '\n'
     if (options.level === 0) {
       def += getObjectHandleManagement(n + 'Array') + '\n'
@@ -374,20 +375,20 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
       union['title'] = name
     }
     delete union['$ref']
-    return getSchemaType(module, union, '',schemas, options)
+    return getSchemaType(module, union, '', schemas, prefixName, options)
   }
   else if (json.oneOf || json.anyOf) {
     return structure
     //TODO
   }
   else if (json.type === 'object') {
-    let res = getSchemaShape(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
+    let res = getSchemaShape(module, json, schemas, json.title || name, prefixName, {descriptions: options.descriptions, level: 0})
     res.deps.forEach(dep => structure.deps.add(dep))
     res.type.forEach(t => structure.deps.add(t))
     if (name) {
        structure.name = capitalize(name)
     }
-    structure.type = getTypeName(getModuleName(module), json.title || name) + 'Handle'
+    structure.type = getTypeName(getModuleName(module), json.title || name, prefixName) + 'Handle'
     structure.json = json
     res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
     structure.namespace = getModuleName(module)
@@ -403,7 +404,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, options 
   return structure
 }
 
-function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
+function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', prefixName = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
     let level = options.level
     let descriptions = options.descriptions
@@ -420,7 +421,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         
         const schema = getPath(json['$ref'], module, schemas)
         const tname = schema.title || json['$ref'].split('/').pop()
-        res = getSchemaShape(module, schema, schemas, tname, {descriptions: descriptions, level: level})
+        res = getSchemaShape(module, schema, schemas, tname, prefixName, {descriptions: descriptions, level: level})
         res.deps.forEach(dep => structure.deps.add(dep))
         structure.type = res.type
       }
@@ -435,7 +436,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         const definition = getPath(json['$ref'], schema, schemas)
         const pname = (json.title || name) + (definition.title || json['$ref'].split('/').pop())
   
-        res = getSchemaShape(schema, definition, schemas, pname,{descriptions: descriptions, level: level})
+        res = getSchemaShape(schema, definition, schemas, pname, prefixName, {descriptions: descriptions, level: level})
         //We are only interested in the type definition for external modules
         structure.type = res.type
       }
@@ -445,7 +446,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       if (level > 0) {
 
         let t = description(name, json.description)
-        typeName = getTypeName(getModuleName(moduleJson), name)
+        typeName = getTypeName(getModuleName(moduleJson), name, prefixName)
         t += getPropertyAccessors(typeName, capitalize(name), typeof json.const, {level: level, readonly:true, optional:false})
         structure.type.push(t)
       }
@@ -453,7 +454,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     else if (json.type === 'object') {
 
       if (json.properties) {
-        let tName = getTypeName(getModuleName(moduleJson), name)
+        let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
         let t = description(name, json.description)
         t += '\n' +  getObjectHandleManagement(tName)
         Object.entries(json.properties).forEach(([pname, prop]) => {
@@ -466,11 +467,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               if (!IsHomogenous(prop.items)) {
                 throw 'Heterogenous Arrays not supported yet'
               }
-              res = getSchemaType(moduleJson, prop.items[0],pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              res = getSchemaType(moduleJson, prop.items[0], pname, schemas, prefixName, {level : options.level, descriptions: options.descriptions, title: true})
             }
             else {
               // grab the type for the non-array schema
-              res = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              res = getSchemaType(moduleJson, prop.items, pname, schemas, prefixName, {level : options.level, descriptions: options.descriptions, title: true})
             }
             if (res.type && res.type.length > 0) {
 
@@ -481,7 +482,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
           } else {
-            res = getSchemaType(moduleJson, prop, pname,schemas, {descriptions: descriptions, level: level + 1, title: true})
+            res = getSchemaType(moduleJson, prop, pname, schemas, prefixName, {descriptions: descriptions, level: level + 1, title: true})
             if (res.type && res.type.length > 0) {
               if (res.json.type === 'object' && !res.json.properties) {
                 console.log(`WARNING: Type undetermined for ${name}:${pname}`)
@@ -490,7 +491,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
               }
             }
             else {
-              console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
           }
           res.deps.forEach(dep => structure.deps.add(dep))
@@ -504,17 +504,17 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
         //This is a map of string to type in schema
         //Get the Type
-        let type = getSchemaType(moduleJson, json.additionalProperties, name, schemas)
+        let type = getSchemaType(moduleJson, json.additionalProperties, name, schemas, prefixName)
         if (!type.type || (type.type.length === 0)) {
             type.type = 'char*'
         }
 
-        let tName = getTypeName(getModuleName(moduleJson), name)
+        let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
         type.deps.forEach(dep => structure.deps.add(dep))
 
         let t = description(name, json.description)
         t += '\n' + getObjectHandleManagement(tName) + '\n'
-        t += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type, {descriptions: descriptions, level: level})
+        t += getMapAccessors(getTypeName(getModuleName(moduleJson), name, prefixName), type.type, {descriptions: descriptions, level: level})
         structure.type.push(t)
         type.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
       }
@@ -527,7 +527,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
 
     }
     else if (json.oneOf) {
-      
     }
     else if (json.allOf) {
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
@@ -538,16 +537,16 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         union['title'] = name
       }
       delete union['$ref']
-      return getSchemaShape(moduleJson, union, schemas, name, options)
+      return getSchemaShape(moduleJson, union, schemas, name, prefixName, options)
 
     }
     else if (json.type === 'array') {
-      let res = getSchemaType(moduleJson, json, name, schemas, {level: 0, descriptions: descriptions})
+      let res = getSchemaType(moduleJson, json, name, schemas, prefixName, {level: 0, descriptions: descriptions})
       res.deps.forEach(dep => structure.deps.add(dep))
       res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
     }
     else {
-      let res = getSchemaType(moduleJson, json, name, schemas, {level: level, descriptions: descriptions})
+      let res = getSchemaType(moduleJson, json, name, schemas, prefixName, {level: level, descriptions: descriptions})
       res.deps.forEach(dep => structure.deps.add(dep))
       structure.enum = res.enum
       res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
@@ -602,11 +601,13 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       structure.params.push(p)
       schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
     })
-    if (method.result.schema) {
-      let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas)
+    if (method.result.schema) { // && (method.result.schema['$ref'] === undefined || method.result.schema['$ref'][0] !== '#')) {
+
+      let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, method.name)
       result.deps.forEach(dep => structure.deps.add(dep))
       result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
       structure["result"] = getParamType(result)
+      console.log(result)
     }
 
     const areParamsValid = params => params.every(p => p.type.length > 0)

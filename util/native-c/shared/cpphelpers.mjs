@@ -1,7 +1,8 @@
 import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName,getModuleName, description, getArrayElementSchema,
-         isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,getFireboltStringType, getMethodSignature} from "./nativehelpers.mjs"
+         isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,
+         getFireboltStringType, getMethodSignature} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -28,7 +29,10 @@ const getJsonNativeTypeForOpaqueString = () => {
     return getJsonNativeType(resultJson)
 }
 
-const getJsonDataStructName = (modName, name) => `${capitalize(modName)}::${capitalize(name)}`
+const getJsonDataStructName = (modName, name, prefixName = '') => {
+    let result = (prefixName.length > 0) ? `${capitalize(modName)}::${capitalize(prefixName)}_${capitalize(name)}` : `${capitalize(modName)}::${capitalize(name)}`
+    return result
+}
 
 const getJsonNativeType = json => {
     let type
@@ -49,7 +53,7 @@ const getJsonNativeType = json => {
     return type
 }
 
-function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = {descriptions: false, level: 0}) {
+function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName = '', options = {descriptions: false, level: 0}) {
 
   if (json.schema) {
     json = json.schema
@@ -65,7 +69,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
       //Get Path to ref in this module and getSchemaType
       let definition = getPath(json['$ref'], module, schemas)
       let tName = definition.title || json['$ref'].split('/').pop()
-      const res = getJsonType(module, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
+      const res = getJsonType(module, definition, tName, schemas, '', {descriptions: options.descriptions, level: options.level})
       structure.deps = res.deps
       structure.type = res.type
       return structure
@@ -80,7 +84,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
       //Get the schema of the definition
       const definition = getPath(json['$ref'], module, schemas)
       let tName = definition.title || json['$ref'].split('/').pop()
-      const res = getJsonType(schema, definition, tName, schemas, {descriptions: options.descriptions, level: options.level})
+      const res = getJsonType(schema, definition, tName, schemas, '', {descriptions: options.descriptions, level: options.level})
       //We are only interested in the type definition for external modules
       structure.type = res.type
       return structure
@@ -97,7 +101,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
    else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
       //This is a map of string to type in schema
       //Get the Type
-      let type = getJsonType(module, json.additionalProperties, name,schemas)
+      let type = getJsonType(module, json.additionalProperties, name, schemas, prefixName)
       if (type.type && type.type.length > 0) {
           structure.type = 'WPEFramework::Core::JSON::VariantContainer';
           return structure
@@ -125,11 +129,11 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getJsonType(module, json.items[0],'',schemas)
+      res = getJsonType(module, json.items[0], '', schemas, prefixName)
     }
     else {
       // grab the type for the non-array schema
-      res = getJsonType(module, json.items, '', schemas)
+      res = getJsonType(module, json.items, '', schemas, prefixName)
     }
 
     structure.deps = res.deps
@@ -146,7 +150,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
       union['title'] = name
     }
     delete union['$ref']
-    return getJsonType(module, union, '',schemas, options)
+    return getJsonType(module, union, '',schemas, options, prefixName)
   }
   else if (json.oneOf || json.anyOf) {
     structure.type = getJsonNativeTypeForOpaqueString()
@@ -161,7 +165,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
       let res = getJsonDefinition(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
       structure.deps = res.deps
       structure.deps.add(res.type.join('\n'))
-      let containerType = getJsonDataStructName(getModuleName(module), json.title || name)
+      let containerType = getJsonDataStructName(getModuleName(module), json.title || name, prefixName)
       structure.type.push((containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`)
     }
     return structure
@@ -214,7 +218,7 @@ function getJsonContainerDefinition (name, props = []) {
     return c
 }
 
-function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
+function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', prefixName = '', options = {level: 0, descriptions: true}) {
 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
@@ -223,7 +227,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
 
   if (json.type === 'object') {
     if (json.properties) {
-        let tName = capitalize( name)
+        let tName = (prefixName.length > 0) ? (prefixName + '_' + capitalize(name)) : capitalize(name)
         let props = []
         Object.entries(json.properties).forEach(([pname, prop]) => {
         if (prop.type === 'array') {
@@ -338,16 +342,15 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, modulePropertyType,
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
 ` + '\n'
-  if (json.type === 'object') {
-
+  if ((json.type === 'object') || (json.type === 'array' && json.items)) {
     result += `    WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
     *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
     *(*element) = (*var)->${subPropertyName};
     return (static_cast<${accessorPropertyType}>(element));` + '\n'
   }
   else if (json.type === 'array' && json.items) {
-    result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>* element = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>();
-    *element = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>::Create();
+    result += `    WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
+    *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
     *(*element) = (*var)->${subPropertyName}.Element();
     return (static_cast<${accessorPropertyType}>(element));` + '\n'
   }
@@ -480,6 +483,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
 }
 
 const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType, accessorPropertyType, json = {}) => {
+
   let result = `uint32_t ${objName}_KeysCount(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
@@ -542,8 +546,8 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
     }
     else if (json.type === 'array' && json.items) {
       result += `
-        WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>* element = new WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>();
-        *element = WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>::Create();
+        WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
+        *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
         *(*element) = (*var)->Get(key).Array();
         return (static_cast<${accessorPropertyType}>(element));` + '\n'
     }
@@ -584,7 +588,7 @@ function getEnumConversionImpl(name, json) {
 }
 
 
-function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
+function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', prefixName = '', options = {level: 0, descriptions: true}) {
     json = JSON.parse(JSON.stringify(json))
     let level = options.level 
     let descriptions = options.descriptions
@@ -601,7 +605,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         
         const schema = getPath(json['$ref'], moduleJson, schemas)
         const tname = schema.title || json['$ref'].split('/').pop()
-        let res = getImplForSchema(moduleJson, schema, schemas, tname, {descriptions: descriptions, level: level})
+        let res = getImplForSchema(moduleJson, schema, schemas, tname, prefixName, {descriptions: descriptions, level: level})
         res.deps.forEach(dep => structure.deps.add(dep))
         res.enums.forEach(e => structure.enums.add(e))
         structure.type = res.type
@@ -614,9 +618,9 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     else if (json.hasOwnProperty('const')) {
       if (level > 0) {
         let impl = description(name, json.description)
-        typeName = getTypeName(getModuleName(moduleJson), name)
+        typeName = getTypeName(getModuleName(moduleJson), name, prefixName)
 
-        let moduleProperty = getJsonType(moduleJson, json, name, schemas)
+        let moduleProperty = getJsonType(moduleJson, json, name, schemas, prefixName)
         impl += getObjectPropertyAccessorsImpl(typeName, getModuleName(moduleJson), moduleProperty.type, '', '', '', typeof json.const, {level: level, readonly:true, optional:false})
         structure.type.push(impl)
       }
@@ -631,8 +635,8 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
     else if (json.type === 'object') {
 
       if (json.properties) {
-        let tName = getTypeName(getModuleName(moduleJson), name)
-        let t = getObjectHandleImpl(tName, getJsonDataStructName(getModuleName(moduleJson), name))
+        let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
+        let t = getObjectHandleImpl(tName, getJsonDataStructName(getModuleName(moduleJson), name, prefixName))
         Object.entries(json.properties).forEach(([pname, prop]) => {
           let desc = '\n' + description(pname, prop.description)
           let nativeType
@@ -661,8 +665,8 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             if (nativeType.type && nativeType.type.length > 0) {
               let type = getArrayElementSchema(json, moduleJson, schemas)
               let moduleName = getModuleName(moduleJson)
-              let moduleProperty = getJsonType(moduleJson, json, json.title || name, schemas)
-              let subModuleProperty = getJsonType(moduleJson, nativeType.json, nativeType.name, schemas)
+              let moduleProperty = getJsonType(moduleJson, json, json.title || name, schemas, prefixName)
+              let subModuleProperty = getJsonType(moduleJson, nativeType.json, nativeType.name, schemas, prefixName)
               let def = getArrayAccessorsImpl(tName, moduleName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), nativeType.type, type)
               t += desc + '\n' + def
             }
@@ -679,13 +683,13 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
 
               nativeType = getSchemaType(moduleJson, prop, pname, schemas, {descriptions: descriptions, level: level + 1, title: true})
               if (nativeType.type && nativeType.type.length > 0) {
-                let jtype = getJsonType(moduleJson, prop, pname, schemas)
+                let jtype = getJsonType(moduleJson, prop, pname, schemas, prefixName)
                 let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : nativeType.name)
                 let subPropertyType = ((!prop.title) ? nativeType.name : capitalize(prop.title))
 
                 let nativeTypeNameSpace = (`${getSdkNameSpace()}` + '::' + nativeType.namespace)
-                let moduleProperty = getJsonType(moduleJson, json, name, schemas)
-                let subProperty = getJsonType(moduleJson, prop, pname, schemas)
+                let moduleProperty = getJsonType(moduleJson, json, name, schemas, prefixName)
+                let subProperty = getJsonType(moduleJson, prop, pname, schemas, prefixName)
                 t += desc + '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), moduleProperty.type, subProperty.type, subPropertyName, nativeType.type, nativeType.json, {readonly:false, optional:isOptional(pname, json)})
 
               }
@@ -694,7 +698,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
               }
             }
             if (prop.type === 'object' && prop.properties) {
-              let res = getImplForSchema(moduleJson, prop, schemas, (prop.title || pname), {descriptions: descriptions, level: level})
+              let res = getImplForSchema(moduleJson, prop, schemas, (prop.title || pname), prefixName, {descriptions: descriptions, level: level})
               res.type.forEach(t => structure.deps.add(t))
               res.enums.forEach(e => structure.enums.add(e))
             }
@@ -721,11 +725,11 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
             type.json.type = 'string'
         }
 
-        let tName = getTypeName(getModuleName(moduleJson), name)
+        let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
         structure.deps = type.deps
         let t = description(name, json.description) + '\n'
         let containerType = 'WPEFramework::Core::JSON::VariantContainer'
-        let subModuleProperty = getJsonType(moduleJson, type.json, type.name, schemas)
+        let subModuleProperty = getJsonType(moduleJson, type.json, type.name, schemas, prefixName)
 
         t += getObjectHandleImpl(tName, containerType) + '\n'
         t += getMapAccessorsImpl(tName, getModuleName(moduleJson), containerType, subModuleProperty.type, type.type, type.json)
@@ -750,7 +754,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         union['title'] = name
       }
       delete union['$ref']
-      return getImplForSchema(moduleJson, union, schemas, name, options)
+      return getImplForSchema(moduleJson, union, schemas, name, prefixName, options)
 
     }
     else if (json.type === 'array') {
@@ -768,8 +772,8 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
       }
   
       let res = getSchemaType(moduleJson, j,'',schemas)
-      let jsonType = getJsonType(moduleJson, j, '', schemas)
-      let n = getTypeName(getModuleName(moduleJson), name || json.title)
+      let jsonType = getJsonType(moduleJson, j, '', schemas, prefixName)
+      let n = getTypeName(getModuleName(moduleJson), name || json.title, prefixName)
       let def = ''
       let modulePropertyName = `WPEFramework::Core::JSON::ArrayType<${jsonType.type}>`
 
@@ -781,7 +785,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
       let moduleNameSpace = (capitalize(name).includes(wpeJsonNameSpace() === true) ? `${moduleName}` : `${getSdkNameSpace()}::${moduleName}`)
 
       res.name = (res.name !== '') ? (moduleNameSpace + '::' + res.name) : res.name
-      def += getArrayAccessorsImpl(n, moduleName, modulePropertyName, (n + 'ArrayHandle'), res.name, "", res.type, j)
+      def += getArrayAccessorsImpl(n, moduleName, modulePropertyName, (n + 'ArrayHandle'), res.name, "", res.type, res.json)
       structure.type.push(def)
       return structure
     }
@@ -843,7 +847,7 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   impl += `    const string method = _T("${methodName}");` + '\n'
 
   if (propType.json) {
-    if (propType.json.type === 'object'){
+    if (propType.json.type === 'object') {
       impl += `    ${container.type}& parameters = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
     }
     else {
@@ -888,47 +892,51 @@ function getEventCallbackLocalImpl(event, module, schemas, property) {
   let moduleName = capitalize(getModuleName(module));
   let methodName = moduleName + capitalize(event.name)
   let propType = getSchemaType(module, event.result.schema, event.result.name || event.name, schemas, {descriptions: true, level: 0})
-  let container = getJsonType(module, propType.json, event.result.name || event.name, schemas)
-  let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
 
-  let impl = `static void ${methodName}InnerCallback(const void* userCB, const void* userData, void* response)
+  let impl = ''
+  if (propType.type && (propType.type.length > 0)) {
+    let container = getJsonType(module, propType.json, event.result.name || event.name, schemas)
+    let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
+
+    impl += `static void ${methodName}InnerCallback(const void* userCB, const void* userData, void* response)
 {` + '\n'
 
-  impl +=`    WPEFramework::Core::ProxyType<${container.type}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response));`
+    impl +=`    WPEFramework::Core::ProxyType<${container.type}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response));`
   
-  if (propType.json) {
-    impl +=`
+    if (propType.json) {
+      impl +=`
 
-    ASSERT(jsonResponse.IsValid() == true);
-    if (jsonResponse.IsValid() == true) {` + '\n'
+      ASSERT(jsonResponse.IsValid() == true);
+      if (jsonResponse.IsValid() == true) {` + '\n'
     
-    if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
-       impl +=`        ${container.type}* jsonStrResponse = new ${container.type}();
-        *jsonStrResponse = *jsonResponse;
-        jsonResponse.Release();` + '\n\n'
-    }
+      if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
+         impl +=`        ${container.type}* jsonStrResponse = new ${container.type}();
+          *jsonStrResponse = *jsonResponse;
+          jsonResponse.Release();` + '\n\n'
+      }
 
-    let CallbackName = ''
-    if (property == true) {
-      CallbackName = `On${methodName}Changed`
-    } else {
-      CallbackName = `${methodName}Callback`
-    }
+      let CallbackName = ''
+      if (property == true) {
+        CallbackName = `On${methodName}Changed`
+      } else {
+        CallbackName = `${methodName}Callback`
+      }
 
-    impl +=`        ${CallbackName} callback = reinterpret_cast<${CallbackName}>(userCB);` + '\n'
+      impl +=`        ${CallbackName} callback = reinterpret_cast<${CallbackName}>(userCB);` + '\n'
     
-    if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
-      impl += `        callback(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
+      if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
+        impl += `        callback(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
+      }
+      else if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
+        impl += `        callback(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
+      }
+      else {
+        impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
+      }
     }
-    else if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
-      impl += `        callback(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
-    }
-    else {
-      impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
-    }
-  }
-  impl += `    }
+    impl += `    }
 }`
+  }
   return impl;
 }
 
@@ -937,24 +945,26 @@ function getEventLocalImpl(event, module, schemas, property) {
   let moduleName = capitalize(getModuleName(module))
   let methodName = moduleName + capitalize(event.name)
   let propType = getSchemaType(module, event.result.schema, event.result.name || event.name, schemas, {descriptions: true, level: 0})
-  let container = getJsonType(module, propType.json, event.result.name || event.name, schemas)
 
-  let ClassName = ''
-  let CallbackName = ''
-  if (property) {
-    ClassName = "Properties::"
-    CallbackName = `On${methodName}Changed`
-  } else {
-    ClassName = "Event::Instance()."
+  let impl = ''
+  if (propType.type && (propType.type.length > 0)) {
+    let container = getJsonType(module, propType.json, event.result.name || event.name, schemas)
+    let ClassName = ''
+    let CallbackName = ''
+    if (property) {
+      ClassName = "Properties::"
+      CallbackName = `On${methodName}Changed`
+    } else {
+      ClassName = "Event::Instance()."
       CallbackName = `${methodName}Callback`
-  }
+    }
 
-  let impl = `${description(event.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(event.name)}Update(${CallbackName} userCB, const void* userData)
+    impl += `${description(event.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(event.name)}Update(${CallbackName} userCB, const void* userData)
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
     if (userCB != nullptr) {` + '\n'
-    impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);
+      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);
     }
     return status;
 }
@@ -962,33 +972,24 @@ uint32_t ${moduleName}_Unregister_${capitalize(event.name)}Update(${CallbackName
 {
     return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
 }`
-
+  }
   return impl
 }
 
-function getImplForMethodParam(param, module, name, schemas) {
-
+function getImplForMethodParam(param, module, name, schemas, prefixName = '') {
   let impl = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set()}
 
   let resJson = param.schema
-  if (resJson.type === 'array' ) {
-    if (Array.isArray(resJson.items)) {
-      resJson = resJson.items[0]
-    }
-    else {
-      resJson = resJson.items
-    }
-  }
-  let res = {}
   if ((resJson['$ref'] === undefined) || (resJson['$ref'][0] !== '#')) {
-    res = getImplForSchema(module, resJson, schemas, param.name || name)
+    let res = {}
+    res = getImplForSchema(module, resJson, schemas, param.name || name, prefixName)
     res.type.forEach(type => (impl.type.includes(type) === false) ?  impl.type.push(type) : null)
     res.deps.forEach(dep => impl.deps.add(dep))
     res.enums.forEach(e => impl.enums.add(e))
   }
 
   //Get the JsonData definition for the schema
-  let jType = getJsonDefinition(module, resJson, schemas, param.name || name)
+  let jType = getJsonDefinition(module, resJson, schemas, param.name || name, prefixName)
   jType.deps.forEach(j => impl.jsonData.add(j))
   jType.type.forEach(t => impl.jsonData.add(t))
 
@@ -998,11 +999,9 @@ function getImplForMethodParam(param, module, name, schemas) {
 function getMethodImpl(method, module, schemas) {
   let methodName = getModuleName(module).toLowerCase() + '.' + method.name
   let structure = getMethodSignature(method, module, schemas)
-  console.log("getMethodImpl =")
-  console.log(structure)
   let impl = ''
 
-  if(structure.signature) {
+  if (structure.signature) {
 
     impl = `${structure.signature}\n{\n`
 
@@ -1030,21 +1029,20 @@ function getMethodImpl(method, module, schemas) {
             impl += `        jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n\n`
           }
         })
-
-        let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas)
+        let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
 
         impl += `        ${resultJsonType.type} jsonResult;\n` 
         impl += `        status = transport->Invoke("${methodName}", jsonParameters, jsonResult);\n`
         impl += `        if (status == FireboltSDKErrorNone) {\n`
 
         if (structure.result.includes('FireboltTypes_StringHandle')) {
-            impl += `            ${resultJsonType.type}* result = new ${resultJsonType.type}(jsonResult);\n`
-            impl += `            *${method.result.name} = static_cast<${structure.result}>(result);\n`
+            impl += `            ${resultJsonType.type}* resultPtr = new ${resultJsonType.type}(jsonResult);\n`
+            impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
         }
         else {
           if (structure.result.includes('Handle')) {
-            impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* result = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
-            impl += `            *${method.result.name} = static_cast<${structure.result}>(result);\n`
+            impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* resultPtr = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
+            impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
           }
           else {
             impl += `            *${method.result.name} = jsonResult.Value();\n`
