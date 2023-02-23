@@ -29,9 +29,6 @@ cd ${THUNDER_ROOT}
 if [ ! -d "${THUNDER_ROOT}/ThunderTools" ]; then
     # Fetch thunder tools code
     git clone git@github.com:rdkcentral/ThunderTools
-    #cd ThunderTools
-    #git checkout 2f3cff3b647a9a37b595fb1602d2808ab81b5cef
-    #cd -
 fi
 
 if [ "$toolsBranch" != "master" ]; then
@@ -50,9 +47,6 @@ fi
 if [ ! -d "${THUNDER_ROOT}/Thunder" ]; then
     # Fetch thunder code
     git clone git@github.com:rdkcentral/Thunder
-    #cd Thunder
-    #git checkout 208f3739c9d759517cbe32a8ae914bca51c6f227
-    #cd -
 fi
 
 if [ "$branch" != "master" ]; then
