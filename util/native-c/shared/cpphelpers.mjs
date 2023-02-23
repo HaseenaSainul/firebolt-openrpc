@@ -22,6 +22,11 @@ const getNameSpaceClose = (module = {}) => {
   result += `} // ${getSdkNameSpace()}`
   return result
 }
+const getJsonNativeTypeForOpaqueString = () => {
+    let resultJson = {type: {}}
+    resultJson.type = 'string'
+    return getJsonNativeType(resultJson)
+}
 
 const getJsonDataStructName = (modName, name) => `${capitalize(modName)}::${capitalize(name)}`
 
@@ -144,14 +149,13 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, options = 
     return getJsonType(module, union, '',schemas, options)
   }
   else if (json.oneOf || json.anyOf) {
+    structure.type = getJsonNativeTypeForOpaqueString()
     return structure
     //TODO
   }
   else if (json.type === 'object') {
     if (!json.properties) {
-        let resultJson = {type: {}}
-        resultJson.type = 'string'
-        structure.type = getJsonNativeType(resultJson)
+      structure.type = getJsonNativeTypeForOpaqueString()
     }
     else {
       let res = getJsonDefinition(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
@@ -711,20 +715,21 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', o
         //This is a map of string to type in schema
         //Get the Type
         let type = getSchemaType(moduleJson, json.additionalProperties, name,schemas)
-        if (type.type && type.type.length > 0) {
-          let tName = getTypeName(getModuleName(moduleJson), name)
-          structure.deps = type.deps
-          let t = description(name, json.description) + '\n'
-          let containerType = 'WPEFramework::Core::JSON::VariantContainer'
-          let subModuleProperty = getJsonType(moduleJson, type.json, type.name, schemas)
+        if (!type.type || (type.type.length === 0)) {
+            type.type = 'char*'
+            type.json = json.additionalProperties
+            type.json.type = 'string'
+        }
 
-          t += getObjectHandleImpl(tName, containerType) + '\n'
-          t += getMapAccessorsImpl(tName, getModuleName(moduleJson), containerType, subModuleProperty.type, type.type, json.additionalProperties)
-          structure.type.push(t)
-        }
-        else {
-          console.log(`WARNING: Type undetermined for ${name}`)
-        }
+        let tName = getTypeName(getModuleName(moduleJson), name)
+        structure.deps = type.deps
+        let t = description(name, json.description) + '\n'
+        let containerType = 'WPEFramework::Core::JSON::VariantContainer'
+        let subModuleProperty = getJsonType(moduleJson, type.json, type.name, schemas)
+
+        t += getObjectHandleImpl(tName, containerType) + '\n'
+        t += getMapAccessorsImpl(tName, getModuleName(moduleJson), containerType, subModuleProperty.type, type.type, type.json)
+        structure.type.push(t)
       }
       else if (json.patternProperties) {
         throw "patternProperties are not supported by Firebolt"
@@ -1003,33 +1008,35 @@ function getMethodImpl(method, module, schemas) {
 
     impl += `    uint32_t status = FireboltSDKErrorUnavailable;
     ${getSdkNameSpace()}::Transport<WPEFramework::Core::JSON::IElement>* transport = ${getSdkNameSpace()}::Accessor::Instance().GetTransport();
-    if (transport != nullptr) {
-        JsonObject parameters;\n`
+    if (transport != nullptr) {\n
+        JsonObject jsonParameters;\n`
 
         method.params.forEach(param => {
           const getParamType = paramName => structure.params.find(p => p.name === paramName)
           let nativeType = getParamType(param.name)
-          const jsonType = getJsonType(module, param, param.name, schemas)
           console.log(`Native Type of Method param - ${nativeType.type} - ${typeof nativeType.type}`)
-          if (nativeType.type.includes('FireboltTypes_StringHandle')) {
-            impl += `        ${jsonType.type}& ${param.name}Param = ${param.name};\n`
+
+          const jsonType = getJsonType(module, param, param.name, schemas)
+          if (jsonType.type.length) {
+            if (nativeType.type.includes('FireboltTypes_StringHandle')) {
+              impl += `        ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+            }
+            else if (nativeType.type.includes('Handle')) {
+              impl += `        ${jsonType.type}& ${capitalize(param.name)} = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${param.name})));\n`
+            }
+            else {
+                impl += `        ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
+            }
+            impl += `        jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n\n`
           }
-          else if (nativeType.type.includes('Handle')) {
-            impl += `        ${jsonType.type}& ${param.name}Param = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${param.name})));\n`
-          } 
-          else {
-              impl += `        ${jsonType.type} ${param.name}Param = ${param.name};\n`
-          }
-          impl += `        parameters.Add("_T(${param.name})", &${param.name}Param);\n`
         })
 
         let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas)
 
         impl += `        ${resultJsonType.type} jsonResult;\n` 
-        impl += `        status = transport->Invoke("${methodName}", parameters, jsonResult);\n`
-
+        impl += `        status = transport->Invoke("${methodName}", jsonParameters, jsonResult);\n`
         impl += `        if (status == FireboltSDKErrorNone) {\n`
-      
+
         if (structure.result.includes('FireboltTypes_StringHandle')) {
             impl += `            ${resultJsonType.type}* result = new ${resultJsonType.type}(jsonResult);\n`
             impl += `            *${method.result.name} = static_cast<${structure.result}>(result);\n`

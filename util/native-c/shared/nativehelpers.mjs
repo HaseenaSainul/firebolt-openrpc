@@ -81,6 +81,17 @@ const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
 
+const getParamType = (type) => {
+    let res = {}
+    if (((type.json.type === 'object') && (!type.json.properties) && (!type.json.additionalProperties)) || (type.type === 'char*')) {
+      res = getFireboltStringType()
+    }
+    else {
+      res = type.type
+    }
+    return res;
+}
+
 const getNativeType = json => {
     let type
     if (json.const) {
@@ -494,18 +505,18 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         //This is a map of string to type in schema
         //Get the Type
         let type = getSchemaType(moduleJson, json.additionalProperties, name, schemas)
-        if (type.type && type.type.length > 0) {
-          let tName = getTypeName(getModuleName(moduleJson), name)
-          type.deps.forEach(dep => structure.deps.add(dep))
-          let t = description(name, json.description)
-          t += '\n' + getObjectHandleManagement(tName) + '\n'
-          t += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type,{descriptions: descriptions, level: level})
-          structure.type.push(t)
-          type.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
+        if (!type.type || (type.type.length === 0)) {
+            type.type = 'char*'
         }
-        else {
-          console.log(`WARNING: Type undetermined for ${name}`)
-        }
+
+        let tName = getTypeName(getModuleName(moduleJson), name)
+        type.deps.forEach(dep => structure.deps.add(dep))
+
+        let t = description(name, json.description)
+        t += '\n' + getObjectHandleManagement(tName) + '\n'
+        t += getMapAccessors(getTypeName(getModuleName(moduleJson), name), type.type, {descriptions: descriptions, level: level})
+        structure.type.push(t)
+        type.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
       }
       else if (json.patternProperties) {
         throw "patternProperties are not supported by Firebolt"
@@ -580,42 +591,27 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["params"] = []
     structure["enum"] = []
-    
 
     method.params.forEach(param => {
       let schemaType = getSchemaType(module, param.schema, param.name, schemas)
-      console.log("schemaType = ")
-      console.log(schemaType)
-
       schemaType.deps.forEach(d => structure.deps.add(d))
-      let p = {}
-      if ((schemaType.json.type == 'object') && (!schemaType.json.properties)) {
-        p["type"] = getFireboltStringType()
-      }
-      else {
-        p["type"] = schemaType.type
-      }
 
+      let p = {}
+      p["type"] = getParamType(schemaType)
       p["name"] = param.name
       structure.params.push(p)
       schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
     })
-    let res
     if (method.result.schema) {
-      res = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas)
-      res.deps.forEach(dep => structure.deps.add(dep))
-      res.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
-      if ((res.json.type == 'object') && (!res.json.properties) || (res.json.type == 'string')) {
-        structure["result"] = getFireboltStringType()
-      }
-      else {
-        structure["result"] = res.type
-      }
+      let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas)
+      result.deps.forEach(dep => structure.deps.add(dep))
+      result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+      structure["result"] = getParamType(result)
     }
 
     const areParamsValid = params => params.every(p => p.type.length > 0)
 
-    if (areParamsValid(structure.params) && (res.type.length > 0)) {
+    if (areParamsValid(structure.params) && (structure["result"].length > 0)) {
       structure["signature"] = `uint32_t ${methodName}(`
       structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
       if (structure.params.length > 0 && method.result.schema) {
