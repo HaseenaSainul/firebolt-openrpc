@@ -19,7 +19,7 @@
     "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/wiki --shared-schemas test/sharedSchemas",
     "dist": "npm run validate && npm run build:jssdk && npm run build:nativesdk && npm run build:docs && npm run test",
     "thunder:clean": "cd src/native-c/thunder && sh scripts/clean.sh && cd -",
-    "thunder:prepare": "npm run thunder:clean && cd src/native-c/thunder && sh scripts/prepare.sh && cd -",
+    "thunder:prepare": "npm run thunder:clean && cd src/native-c/thunder && sh scripts/prepare.sh -b 208f3739c9d759517cbe32a8ae914bca51c6f227 -t 2f3cff3b647a9a37b595fb1602d2808ab81b5cef&& cd -",
     "thunder:setup": "cd src/native-c/thunder && sh scripts/setup.sh && cd -",
     "build:csdk": "node ./src/cli.mjs --task sdk --lang native-c --source ./src/ --output ./build/sdk/native-c/ --shared-schemas test/sharedSchemas",
     "nativesdk:prepare": "npm run thunder:prepare && npm run thunder:setup && npm run build:csdk",
