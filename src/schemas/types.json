@@ -34,13 +34,52 @@
                 },
                 "readable": {
                     "type": "string"
+                },
+                "testEnum": {
+                    "type": "string",
+                    "enum": [
+                      "test0",
+                      "test1",
+                      "test2"
+                    ]
+                },
+		"testArrayString": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "string"
+                      }
+                   ]
+                },
+                "testArrayString": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "boolean"
+                      }
+                   ]
+                },
+                "testArrayEnum": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "string",
+			"enum": [
+                          "testArrayEnum0",
+                          "testArrayEnum1",
+                          "testArrayEnum2"
+                        ]
+                      }
+                   ]
                 }
             },
             "required": [
                 "major",
                 "minor",
                 "patch",
-                "readable"
+                "readable",
+                "testEnum",
+                "testArray"
             ],
             "additionalProperties": false
         },
@@ -60,6 +99,43 @@
             "type": "object",
             "additionalProperties": {
                 "type": "boolean"
+            }
+        },
+        "IntegerMap": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "integer"
+            }
+        },
+        "StringMap": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "ObjectMap": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "field1": {
+                        "type": "integer"
+                    },
+                    "field2": {
+                        "type": "string"
+                    },
+                    "field3": {
+                        "type": "boolean"
+		    },
+                    "field4": {
+                        "type": "string",
+			"enum": [
+                          "TestObjectMap0",
+                          "TestObjectMap1",
+                          "TestObjectMap2"
+			]
+                    }
+		}
             }
         },
         "FlatMap": {
