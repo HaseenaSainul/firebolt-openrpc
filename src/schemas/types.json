@@ -138,6 +138,22 @@
 		}
             }
         },
+        "ArrayMap": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "testArrayMapEnum0",
+                      "testArrayMapEnum1",
+                      "testArrayMapEnum2"
+                    ]
+                  }
+                ]
+            }
+        },
         "FlatMap": {
             "type": "object",
             "additionalProperties": {

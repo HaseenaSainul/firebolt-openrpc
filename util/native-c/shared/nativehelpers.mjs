@@ -345,7 +345,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getSchemaType(module, json.items[0], '', schemas, prefixName)
+      res = getSchemaType(module, json.items[0], name, schemas, prefixName) //TOBE Checked
     }
     else {
       // grab the type for the non-array schema

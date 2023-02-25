@@ -185,7 +185,6 @@ const generateTypesForModules = (json,  schemas = {}) => compose(
 const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   reduce((acc, val) => {
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
-
     if (shape.type.length > 0) {
       shape.type.forEach(type => { (acc.deps.has(type) === false) ? acc.type.push(type) : acc.type})
       shape.deps.forEach(dep => { (acc.type.includes(dep) === false) ? acc.deps.add(dep) : acc.deps})
@@ -194,7 +193,6 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   }, {type: [], deps: new Set()}),
   getDefinitions //Get schema under Definitions
 )(json)
-
 
 const generateMethodPrototypes = (json, schemas = {}) => {
   

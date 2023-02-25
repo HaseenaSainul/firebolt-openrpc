@@ -129,7 +129,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getJsonType(module, json.items[0], '', schemas, prefixName)
+      res = getJsonType(module, json.items[0], name, schemas, prefixName) //TOBE Checked
     }
     else {
       // grab the type for the non-array schema
@@ -519,13 +519,9 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
     ASSERT(var->IsValid());
 ` + '\n'
 
-    if (json.type === 'object') {
-// CHECK_EXECUTION_REACHED_HERE it is executed
-      result += `    WPEFramework::Core::ProxyType<${subPropertyType}>& element = *(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value));` + '\n'
-    }
-    else if (json.type === 'array' && json.items) {
-CHECK_EXECUTION_REACHED_HERE
-      result += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>& element = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${subPropertyType}>>*>(value));` + '\n'
+    if ((json.type === 'object') || (json.type === 'array' && json.items)) {
+// CHECK_EXECUTION_REACHED_HERE it is executed for array and object
+      result += `    ${subPropertyType}& element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
     }
     else if (json.type === 'string') {
       if (json.enum) {
@@ -568,13 +564,19 @@ CHECK_EXECUTION_REACHED_HERE
     if (json.type === 'object') {
 // CHECK_EXECUTION_REACHED_HERE it is executed
       result += `
+        string objectStr;
+        (*var)->Get(key).Object().ToString(objectStr);
+        ${subPropertyType} objectMap;
+        objectMap.FromString(objectStr);
+
         WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
-       *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
-       *(*element) = (*var)->Get(key).Object();
-       return (static_cast<${accessorPropertyType}>(object));` + '\n'
+        *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
+        *(*element) = objectMap;
+
+        return (static_cast<${accessorPropertyType}>(element));` + '\n'
     }
     else if (json.type === 'array' && json.items) {
-CHECK_EXECUTION_REACHED_HERE
+// CHECK_EXECUTION_REACHED_HERE it is executed
       result += `
         WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
         *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
@@ -586,12 +588,12 @@ CHECK_EXECUTION_REACHED_HERE
         if (json.enum) {
 // CHECK_EXECUTION_REACHED_HERE it is executed
           result += `
-          return (const_cast<${accessorPropertyType}>((*var)->Get(key).));` + '\n'
+        return (const_cast<${accessorPropertyType}>((*var)->Get(key).));` + '\n'
         }
         else {
 // CHECK_EXECUTION_REACHED_HERE it is executed
           result += `
-          return (const_cast<${accessorPropertyType}>((*var)->Get(key).String().c_str()));` + '\n'
+        return (const_cast<${accessorPropertyType}>((*var)->Get(key).String().c_str()));` + '\n'
         }
       }
       else if (json.type === 'boolean') {
@@ -664,6 +666,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
       let typeName = getTypeName(getModuleName(moduleJson), name || json.title)
       let res = description(capitalize(name || json.title), json.description) + getEnumConversionImpl(typeName, json)
       structure.enums.add(res)
+
       return structure
     }
     else if (json.type === 'object') {
@@ -673,7 +676,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
         let t = getObjectHandleImpl(tName, getJsonDataStructName(getModuleName(moduleJson), name, prefixName))
         Object.entries(json.properties).forEach(([pname, prop]) => {
           let desc = '\n' + description(pname, prop.description)
-          let nativeType
+          let schema = ''
           let j
           if (prop.type === 'array') {
             if (Array.isArray(prop.items)) {
@@ -682,12 +685,12 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
               if (!IsHomogenous(prop.items)) {
                 throw 'Heterogenous Arrays not supported yet'
               }
-              nativeType = getSchemaType(moduleJson, prop.items[0],pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              schema = getSchemaType(moduleJson, prop.items[0],pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
               j = prop.items[0]
             }
             else {
               // grab the type for the non-array schema
-              nativeType = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
+              schema = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
               j = prop.items
               if (prop.type === 'string' && prop.enum) {
 CHECK_EXECUTION_REACHED_HERE
@@ -697,19 +700,17 @@ CHECK_EXECUTION_REACHED_HERE
                 structure.enums.add(res)
               }
             }
-            if (nativeType.type && nativeType.type.length > 0) {
-              let type = getArrayElementSchema(json, moduleJson, schemas, nativeType.name)
+            if (schema.type && schema.type.length > 0) {
+              let type = getArrayElementSchema(json, moduleJson, schemas, schema.name)
               if (type.type === 'string' && type.enum) {
-                //Enum
-                let typeName = getTypeName(getModuleName(moduleJson), nativeType.name)
-                let res = description(nativeType.name, nativeType.json.description) + getEnumConversionImpl(typeName, type)
-                structure.enums.add(res)
+                let typeName = getTypeName(getModuleName(moduleJson), schema.name)
+                structure.enums.add(description(schema.name, schema.json.description) + getEnumConversionImpl(typeName, type))
               }
 
               let moduleName = getModuleName(moduleJson)
               let moduleProperty = getJsonType(moduleJson, json, json.title || name, schemas, prefixName)
-              let subModuleProperty = getJsonType(moduleJson, nativeType.json, nativeType.name, schemas, prefixName)
-              let def = getArrayAccessorsImpl(tName, moduleName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), nativeType.type, type)
+              let subModuleProperty = getJsonType(moduleJson, schema.json, schema.name, schemas, prefixName)
+              let def = getArrayAccessorsImpl(tName, moduleName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), schema.type, type)
               t += desc + '\n' + def
             }
             else {
@@ -723,16 +724,16 @@ CHECK_EXECUTION_REACHED_HERE
             }
             else {
 
-              nativeType = getSchemaType(moduleJson, prop, pname, schemas, {descriptions: descriptions, level: level + 1, title: true})
-              if (nativeType.type && nativeType.type.length > 0) {
+              schema = getSchemaType(moduleJson, prop, pname, schemas, {descriptions: descriptions, level: level + 1, title: true})
+              if (schema.type && schema.type.length > 0) {
                 let jtype = getJsonType(moduleJson, prop, pname, schemas, prefixName)
-                let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : nativeType.name)
-                let subPropertyType = ((!prop.title) ? nativeType.name : capitalize(prop.title))
+                let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : schema.name)
+                let subPropertyType = ((!prop.title) ? schema.name : capitalize(prop.title))
 
-                let nativeTypeNameSpace = (`${getSdkNameSpace()}` + '::' + nativeType.namespace)
+                let schemaNameSpace = (`${getSdkNameSpace()}` + '::' + schema.namespace)
                 let moduleProperty = getJsonType(moduleJson, json, name, schemas, prefixName)
                 let subProperty = getJsonType(moduleJson, prop, pname, schemas, prefixName)
-                t += desc + '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), moduleProperty.type, subProperty.type, subPropertyName, nativeType.type, nativeType.json, {readonly:false, optional:isOptional(pname, json)})
+                t += desc + '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), moduleProperty.type, subProperty.type, subPropertyName, schema.type, schema.json, {readonly:false, optional:isOptional(pname, json)})
 
               }
               else {
@@ -777,9 +778,12 @@ CHECK_EXECUTION_REACHED_HERE
           let typeName = getTypeName(getModuleName(moduleJson), name)
           let res = description(name, json.description) + getEnumConversionImpl(typeName, type.json)
           structure.enums.add(res)
+        } else if ((type.json.type === 'object' && type.json.properties) || type.json.type === 'array') {
+          let res = getImplForSchema(moduleJson, type.json, schemas, name, prefixName, {descriptions: descriptions, level: level})
+          res.type.forEach(t => structure.deps.add(t))
+          res.enums.forEach(e => structure.enums.add(e))
         }
 
-        t += getObjectHandleImpl(tName, containerType) + '\n'
         t += getMapAccessorsImpl(tName, getModuleName(moduleJson), containerType, subModuleProperty.type, type.type, type.json)
         structure.type.push(t)
       }
@@ -819,8 +823,16 @@ CHECK_EXECUTION_REACHED_HERE
         j = json.items
       }
   
-      let res = getSchemaType(moduleJson, j,'',schemas)
-      let jsonType = getJsonType(moduleJson, j, '', schemas, prefixName)
+      let schema = getSchemaType(moduleJson, j, name ,schemas)
+      if (schema.type && schema.type.length > 0) {
+        let type = getArrayElementSchema(json, moduleJson, schemas, schema.name)
+        if (type.type === 'string' && type.enum) {
+          let typeName = getTypeName(getModuleName(moduleJson), schema.name)
+          structure.enums.add(description(schema.name, schema.json.description) + getEnumConversionImpl(typeName, type))
+        }
+      }
+
+      let jsonType = getJsonType(moduleJson, j, name, schemas, prefixName)
       let n = getTypeName(getModuleName(moduleJson), name || json.title, prefixName)
       let def = ''
       let modulePropertyName = `WPEFramework::Core::JSON::ArrayType<${jsonType.type}>`
@@ -832,7 +844,7 @@ CHECK_EXECUTION_REACHED_HERE
       let moduleName = getModuleName(moduleJson)
       let moduleNameSpace = (capitalize(name).includes(wpeJsonNameSpace() === true) ? `${moduleName}` : `${getSdkNameSpace()}::${moduleName}`)
 
-      def += getArrayAccessorsImpl(n, moduleName, modulePropertyName, (n + 'ArrayHandle'), jsonType.type, "", res.type, res.json)
+      def += getArrayAccessorsImpl(n, moduleName, modulePropertyName, (n + 'ArrayHandle'), jsonType.type, "", schema.type, schema.json)
       structure.type.push(def)
       return structure
     }
@@ -852,34 +864,22 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   impl += `    const string method = _T("${methodName}");` + '\n'
 
   if (propType.json) {
-    if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
-      impl += `    ${container.type}* result = new ${container.type}();`
-    }
-    else {
-      impl += `    WPEFramework::Core::ProxyType<${container.type}>* result = new WPEFramework::Core::ProxyType<${container.type}>();`
-    }
+    impl += `    ${container.type} jsonResult;`
   }
   
-  impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, *result);
+  impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonResult);
     if (status == FireboltSDKErrorNone) {\n`
   if (propType.json) {
     if ((propType.json.type === 'string') && (propType.type === 'char*')) {
 // CHECK_EXECUTION_REACHED_HERE it is executed
-      impl += `        *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(result);` + '\n'
+      impl += `    ${container.type}* strResult = new ${container.type}();`
+      impl += `        *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
+    } else if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
+impl += `    WPEFramework::Core::ProxyType<${container.type}>* resultPtr = new WPEFramework::Core::ProxyType<${container.type}>();`
+      impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(resultPtr);` + '\n'
     } else {
-      impl += `        ASSERT(result->IsValid() == true);\n`
-      if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
-CHECK_EXECUTION_REACHED_HERE
-        impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>((*result)->Value());` + '\n'
-      } else {
-      if (propType.json.type !== 'object' && propType.json.type !== 'array') {
-      console.log("json.type = " + propType.json.type)
-CHECK_EXECUTION_REACHED_HERE
-      }
-        impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(result);` + '\n'
-      }
+      impl += `        *${property.name || property.result.name} = jsonResult.Value();` + '\n'
     }
-    //TODO Delete the new object for number, enum, boolean cases
   }
   impl += '    }' + '\n'
   impl += '    return status;' + '\n'
@@ -901,22 +901,22 @@ function getPropertySetterImpl(property, module, schemas = {}) {
 
   if (propType.json) {
     if (propType.json.type === 'object') {
-CHECK_EXECUTION_REACHED_HERE
+//CHECK_EXECUTION_REACHED_HERE it is executed
       impl += `    ${container.type}& parameters = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
     }
     else {
       //ToDo Map?
       impl += `    WPEFramework::Core::JSON::VariantContainer parameters;` + '\n'
       if ((propType.json.type === 'array') && (propType.json.items))  {
-CHECK_EXECUTION_REACHED_HERE
+//CHECK_EXECUTION_REACHED_HERE
         impl += `    WPEFramework::Core::JSON::ArrayType<${container.type}> param = *(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${container.type}>>*>(${paramName})));`
       } else {
         if (propType.json.type === 'string' && propType.json.enum) {
-CHECK_EXECUTION_REACHED_HERE
+//CHECK_EXECUTION_REACHED_HERE it is executed
           impl += `    WPEFramework::Core::JSON::Variant param(${container.type}(${paramName}));`
         }
         else {
-CHECK_EXECUTION_REACHED_HERE
+// CHECK_EXECUTION_REACHED_HERE, it is executed
           impl += `    WPEFramework::Core::JSON::Variant param(${paramName});`
         }
       }
@@ -963,13 +963,14 @@ function getEventCallbackLocalImpl(event, module, schemas, property) {
     if (propType.json) {
       impl +=`
 
-      ASSERT(jsonResponse.IsValid() == true);
-      if (jsonResponse.IsValid() == true) {` + '\n'
+    ASSERT(jsonResponse.IsValid() == true);
+    if (jsonResponse.IsValid() == true) {` + '\n'
     
-      if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
+      if ((propType.json.type === 'string') && (!propType.json.enum)) {
+         console.log(propType)
          impl +=`        ${container.type}* jsonStrResponse = new ${container.type}();
-          *jsonStrResponse = *jsonResponse;
-          jsonResponse.Release();` + '\n\n'
+        *jsonStrResponse = *jsonResponse;
+        jsonResponse.Release();` + '\n\n'
       }
 
       let CallbackName = ''
@@ -981,18 +982,18 @@ function getEventCallbackLocalImpl(event, module, schemas, property) {
 
       impl +=`        ${CallbackName} callback = reinterpret_cast<${CallbackName}>(userCB);` + '\n'
     
-      if ((propType.json.type === 'number') || (propType.json.const === 'enum')) {
-CHECK_EXECUTION_REACHED_HERE
+      if ((propType.json.type === 'number') || (propType.json.type === 'integer') || (propType.json.const === 'enum') || propType.json.enum) {
+//CHECK_EXECUTION_REACHED_HERE it is executed
         impl += `        callback(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
       }
-      else if ((propType.json.type === 'string') && (propType.json.enum !== true)) {
+      else if ((propType.json.type === 'string') && (!propType.json.enum)) {
 // CHECK_EXECUTION_REACHED_HERE it is executed
         impl += `        callback(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
       }
       else {
       if (propType.json.type !== 'object' && propType.json.type !== 'array') {
         console.log("propType.json.type = " + propType.json.type)
-CHECK_EXECUTION_REACHED_HERE
+//CHECK_EXECUTION_REACHED_HERE
       }
         impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
       }
