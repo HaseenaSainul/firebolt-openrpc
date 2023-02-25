@@ -1,0 +1,504 @@
+{
+  "openrpc": "1.2.4",
+  "info": {
+    "title": "Test",
+    "description": "A module to validate generation of get/set/event for different types",
+    "version": "0.0.0"
+  },
+  "methods": [
+    {
+      "name": "StringType",
+      "summary": "Test string type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:string:test"
+          ]
+        }
+      ],
+      "result": {
+        "name": "StringTypeResult",
+        "summary": "test string",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "Hello"
+          }
+        }
+      ]
+    },
+    {
+      "name": "IntegerType",
+      "summary": "Test integer type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:integer:test"
+          ]
+        }
+      ],
+      "result": {
+        "name": "IntegerTypeResult",
+        "summary": "test integer",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "1234"
+          }
+        }
+      ]
+    },
+    {
+      "name": "BooleanType",
+      "summary": "Test boolean type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:boolean:test"
+          ]
+        }
+      ],
+      "result": {
+        "name": "BooleanTypeResult",
+        "summary": "test boolean",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "EnumType",
+      "summary": "Test enum type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:enum:test"
+          ]
+        }
+      ],
+      "result": {
+        "name": "EnumTypeResult",
+        "summary": "test enum",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "EnumTypeResult0",
+            "EnumTypeResult1",
+            "EnumTypeResult2"
+          ]
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "EnumTypeResult1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ObjectType",
+      "summary": "Test object type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:object:test"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ObjectTypeResult",
+        "summary": "test object",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "testInteger": {
+                    "type": "integer"
+                },
+                "testBoolean": {
+                    "type": "boolean"
+                },
+                "testString": {
+                    "type": "string"
+                },
+                "testEnum": {
+                    "type": "string",
+                    "enum": [
+                      "testEnum0",
+                      "testEnum1",
+                      "testEnum2"
+                    ]
+                },
+                "testArrayString": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "string"
+                      }
+                   ]
+                },
+                "testArrayString": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "boolean"
+                      }
+                   ]
+                },
+                "testArrayEnum": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "testArrayEnum0",
+                          "testArrayEnum1",
+                          "testArrayEnum2"
+                        ]
+                      }
+                    ]
+                }
+            }
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ObjectTypeRef",
+      "summary": "Test object ref type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:object:ref:test"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ObjectTypeRefResult",
+        "summary": "test object",
+        "schema": {
+           "$ref": "https://meta.comcast.com/firebolt/types#/definitions/SemanticVersion"
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArrayOfStringType",
+      "summary": "Test Array of String type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:array:string:type"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ArrayOfStringResult",
+        "summary": "test array of string",
+        "schema": {
+          "type": "array",
+          "items": [
+          {
+            "type": "string"
+          }
+        ]
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "HaiArrayString"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArrayOfIntegerType",
+      "summary": "Test Array of Integer type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:array:integer:type"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ArrayOfIntegerResult",
+        "summary": "test array of integer",
+        "schema": {
+          "type": "array",
+          "items": [
+          {
+            "type": "integer"
+          }
+        ]
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "HaiArrayInteger"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArrayOfBooleanType",
+      "summary": "Test Array of Boolean type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:array:boolean:type"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ArrayOfBooleanResult",
+        "summary": "test array of boolean",
+        "schema": {
+          "type": "array",
+          "items": [
+          {
+            "type": "boolean"
+          }
+        ]
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "HaiArrayBoolean"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArrayOfEnumType",
+      "summary": "Test Array of Enum type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:array:enum:type"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ArrayOfEnumResult",
+        "summary": "test array of enum",
+        "schema": {
+          "type": "array",
+          "items": [
+          {
+            "type": "string",
+            "enum": [
+              "ArrayOfEnumResult0",
+              "ArrayOfEnumResult1",
+              "ArrayOfEnumResult2"
+            ]
+          }
+        ]
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "ArrayOfEnumResult2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArrayOfObjectType",
+      "summary": "Test Array of Object type property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:array:object:type"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ArrayOfObjectResult",
+        "summary": "test array of object",
+        "schema": {
+          "type": "array",
+          "items": [
+           {
+              "type": "object",
+              "properties": {
+                  "testInteger": {
+                      "type": "integer"
+                  },
+                  "testBoolean": {
+                      "type": "boolean"
+                  },
+                  "testString": {
+                      "type": "string"
+                  },
+                  "testEnum": {
+                      "type": "string",
+                      "enum": [
+                        "testEnum0",
+                        "testEnum1",
+                        "testEnum2"
+                      ]
+                  },
+                  "testArrayString": {
+                      "type": "array",
+                      "items": [
+                        {
+                          "type": "string"
+                        }
+                      ]
+                  },
+                  "testArrayString": {
+                      "type": "array",
+                      "items": [
+                        {
+                          "type": "boolean"
+                        }
+                     ]
+                  },
+                  "testArrayEnum": {
+                      "type": "array",
+                      "items": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "testArrayEnum0",
+                            "testArrayEnum1",
+                            "testArrayEnum2"
+                          ]
+                        }
+                      ]
+                  }
+              }
+	   }
+          ]
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result"
+          }
+        }
+      ]
+    }
+
+  ]
+}
