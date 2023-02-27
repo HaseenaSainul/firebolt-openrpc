@@ -361,11 +361,7 @@ CHECK_EXECUTION_REACHED_HERE // Seems this flow is not required, we are not call
       result += `    return (const_cast<${accessorPropertyType}>((*var)->${subPropertyName}.Value().c_str()));` + '\n'
     }
     else {
-    if (json.type !== 'integer' && json.type !== 'boolean' && json.type !== 'number' && json.type !== 'string') {
-       console.log("json.type")
-       console.log(json.type)
-       CHECK_EXECUTION_REACHED_HERE
-    }
+// CHECK_EXECUTION_REACHED_HERE, it is executed for integer/number/boolean/enum
       result += `    return (static_cast<${accessorPropertyType}>((*var)->${subPropertyName}.Value()));` + '\n'
     }
   }
@@ -389,12 +385,7 @@ CHECK_EXECUTION_REACHED_HERE // Seems this flow is not required, we are not call
     (*var)->${subPropertyName} = *(*object);` + '\n'
     }
     else {
-    if (json.type !== 'integer' && json.type !== 'string' && json.type !== 'boolean' && json.type !== 'number') {
-       console.log("json.type")
-       console.log(json.type)
-       CHECK_EXECUTION_REACHED_HERE
-    }
-
+// CHECK_EXECUTION_REACHED_HERE, it is executed for integer/number/boolean/enum
       result += `    (*var)->${subPropertyName} = value;` + '\n'
     }
     result += `}` + '\n'
@@ -444,9 +435,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
     ASSERT(var->IsValid());` + '\n'
 
   if ((json.type === 'object') || (json.type === 'array')) {
-    if (json.type !== 'object') {
-CHECK_EXECUTION_REACHED_HERE
-    }
+// CHECK_EXECUTION_REACHED_HERE it is executed for array and object
     result += `WPEFramework::Core::ProxyType<${subPropertyType}>* object = new WPEFramework::Core::ProxyType<${subPropertyType}>();
     *object = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
     *(*object) = ${propertyName}.Get(index);
@@ -459,10 +448,7 @@ CHECK_EXECUTION_REACHED_HERE
       result += `    return (const_cast<${accessorPropertyType}>(${propertyName}.Get(index).Value().c_str()));` + '\n'
     }
     else {
-    if (json.type !== 'integer' && json.type !== 'string' && json.type !== 'number' && json.type !== 'boolean') {
-       console.log("json.type = " + json.type)
-CHECK_EXECUTION_REACHED_HERE
-    }
+// CHECK_EXECUTION_REACHED_HERE, it is executed for integer/number/boolean/enum
       result += `    return (static_cast<${accessorPropertyType}>(${propertyName}.Get(index)));` + '\n'
     }
   }
@@ -474,9 +460,7 @@ CHECK_EXECUTION_REACHED_HERE
     ASSERT(var->IsValid());` + '\n'
 
   if ((json.type === 'object') || (json.type === 'array')) {
-    if (json.type !== 'object') {
-CHECK_EXECUTION_REACHED_HERE
-    }
+// CHECK_EXECUTION_REACHED_HERE it is executed for array and object
     result += `    ${subPropertyType}& element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
   }
   else {
@@ -686,13 +670,6 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
               // grab the type for the non-array schema
               schema = getSchemaType(moduleJson, prop.items, pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
               j = prop.items
-              if (prop.type === 'string' && prop.enum) {
-CHECK_EXECUTION_REACHED_HERE
-                //Enum
-                let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title)
-                let res = description((capitalize(name) + "::" + capitalize(pname)), prop.description) + getEnumConversionImpl(typeName, prop)
-                structure.enums.add(res)
-              }
             }
             if (schema.type && schema.type.length > 0) {
               let type = getArrayElementSchema(json, moduleJson, schemas, schema.name)

@@ -189,7 +189,7 @@
                       }
                    ]
                 },
-                "testArrayString": {
+                "testArrayBoolean": {
                     "type": "array",
                     "items": [
                       {
@@ -485,7 +485,7 @@
                       ]
                   }
               }
-	   }
+            }
           ]
         }
       },
@@ -498,7 +498,49 @@
           }
         }
       ]
+    },
+    {
+      "name": "ArrayOfBooleanTypeArray",
+      "summary": "Test Array of Boolean type array property get/set/event",
+      "params": [],
+      "tags": [
+        {
+          "name": "property"
+        },
+        {
+          "name": "capabilities",
+          "x-uses": [
+            "xrn:firebolt:capability:array:boolean:type:array"
+          ]
+        }
+      ],
+      "result": {
+        "name": "ArrayOfBooleanArrayResult",
+        "summary": "test array of boolean array",
+        "schema": {
+          "type": "array",
+          "items": [
+          {
+            "type": "array",
+            "items": [
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        ]
+        }
+      },
+      "examples": [
+        {
+          "name": "Default Example",
+          "params": [],
+          "result": {
+            "name": "Default Result",
+            "value": "HaiArrayBoolean"
+          }
+        }
+      ]
     }
-
   ]
 }
