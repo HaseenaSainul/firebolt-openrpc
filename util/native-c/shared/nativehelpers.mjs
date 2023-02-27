@@ -94,29 +94,17 @@ const getParamType = (type) => {
 
 const getNativeType = json => {
     let type
-    if (json.const) {
-      if (typeof json.const === 'string') {
-        type = 'char*'
-      }
-      else if (typeof json.const === 'number') {
-        type = 'uint32_t'
-        if (json.const < 0)
-            type = 'int32_t'
-      } else if (typeof json.const === 'boolean') {
-        type = 'bool'
-      }
-    }
-    else if (json.type === 'string') {
+    let jsonType = json.const ? typeof json.const : json.type
+    if (jsonType === 'string') {
         type = 'char*'
     }
-    else if (json.type === 'number' || json.type === 'integer') { //Lets keep it simple for now
-        type = 'uint32_t'
-        if ((json.minimum && json.minimum < 0)
-             || (json.exclusiveMinimum && json.exclusiveMinimum < 0)) {
-            type = 'int32_t'
-        }
+    else if (jsonType === 'number') {
+        type = 'float'
     }
-    else if (json.type === 'boolean') {
+    else if (jsonType === 'integer') {
+        type = 'int32_t'
+    }
+    else if (jsonType === 'boolean') {
       type = 'bool'
     }
     return type

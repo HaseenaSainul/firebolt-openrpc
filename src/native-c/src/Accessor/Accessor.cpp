@@ -32,8 +32,13 @@ namespace FireboltSDK {
         LoadConfigs(config);
 
         Logger::SetLogLevel(WPEFramework::Core::EnumerateType<Logger::LogLevel>(config.LogLevel.Value().c_str()).Value());
-        FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Url = %s", config.Url.Value().c_str());
-        CreateTransport(config.Url.Value(), config.WaitTime.Value());
+        string url;
+        WPEFramework::Core::SystemInfo::GetEnvironment("FIREBOLT_SDK_ACCESSOR_URL", url);
+        if (url.empty() == true) {
+            url = _T("ws://127.0.0.1:9998");
+        }
+        FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Url = %s", url.c_str());
+        CreateTransport(url, config.WaitTime.Value());
         CreateEventHandler();
 
         _workerPool = WPEFramework::Core::ProxyType<WorkerPoolImplementation>::Create(_threadCount, WPEFramework::Core::Thread::DefaultStackSize(), _queueSize);
@@ -53,7 +58,7 @@ namespace FireboltSDK {
     void Accessor::LoadConfigs(Config& config)
     {
         string prefixPath;
-        WPEFramework::Core::SystemInfo::GetEnvironment("OPENRPC_NATIVE_SDK_PREFIX", prefixPath);
+        WPEFramework::Core::SystemInfo::GetEnvironment("FIREBOLT_SDK_PREFIX", prefixPath);
         string configFilePath = (prefixPath.empty() != true) ?
                                 (prefixPath + '/' + Accessor::ConfigFile) : Accessor::ConfigFile;
         WPEFramework::Core::File configFile(configFilePath);

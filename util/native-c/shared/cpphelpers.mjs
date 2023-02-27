@@ -41,7 +41,10 @@ const getJsonNativeType = json => {
     if (jsonType === 'string') {
         type = getSdkNameSpace() + '::JSON::String'
     }
-    else if (jsonType === 'number' || json.type === 'integer') { //Lets keep it simple for now
+    else if (jsonType === 'number') {
+        type = 'WPEFramework::Core::JSON::Float'
+    }
+    else if (json.type === 'integer') {
         type = 'WPEFramework::Core::JSON::DecSInt32'
     }
     else if (jsonType === 'boolean') {
@@ -462,6 +465,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
 
 const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType, accessorPropertyType, json = {}) => {
 
+  console.log("getMapAccessorsImpl = " + subPropertyType)
   let result = `uint32_t ${objName}_KeysCount(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
@@ -481,20 +485,8 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
 
     if ((json.type === 'object') || (json.type === 'array' && json.items)) {
       result += `    ${subPropertyType}& element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
-    }
-    else if (json.type === 'string') {
-      if (json.enum) {
-        result += `    WPEFramework::Core::JSON::EnumType<${subPropertyType}> element(value);` + '\n'
-      }
-      else {
-        result += `    WPEFramework::Core::JSON::String element(value);` + '\n'
-      }
-    }
-    else if (json.type === 'boolean') {
-      result += `    WPEFramework::Core::JSON::Boolean element(value);` + '\n'
-    }
-    else if ((json.type === 'number') || (json.type === 'integer')) {
-      result += `    WPEFramework::Core::JSON::DecSInt32 element(value);` + '\n'
+    } else {
+      result += `    ${subPropertyType} element(value);` + '\n'
     }
     result += `    (*var)->Add(const_cast<const char*>(key), &element);
 }` + '\n'
@@ -547,7 +539,11 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
         result += `
         return (static_cast<${accessorPropertyType}>((*var)->Get(key).Boolean()));` + '\n'
       }
-      else if ((json.type === 'number') || (json.type === 'integer')) {
+      else if (json.type === 'number') {
+        result += `
+        return (static_cast<${accessorPropertyType}>((*var)->Get(key).Float()));` + '\n'
+      }
+      else if (json.type === 'integer') {
         result += `
         return (static_cast<${accessorPropertyType}>((*var)->Get(key).Number()));` + '\n' 
       }
