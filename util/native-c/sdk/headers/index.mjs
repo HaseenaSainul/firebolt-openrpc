@@ -194,7 +194,6 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
   getDefinitions //Get schema under Definitions
 )(json)
 
-
 const generateMethodPrototypes = (json, schemas = {}) => {
   
   let sig = {type: [], enum: [], deps: new Set()}

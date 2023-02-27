@@ -196,9 +196,9 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-const getArrayElementSchema = (json, module, schemas = {}) => {
+const getArrayElementSchema = (json, module, schemas = {}, name) => {
   let result = ''
-  if (json.type == 'array' && json.items) {
+  if (json.type === 'array' && json.items) {
     if (Array.isArray(json.items)) {
       result = json.items[0]
     }
@@ -212,10 +212,14 @@ const getArrayElementSchema = (json, module, schemas = {}) => {
   }
   else if (json.type == 'object') {
     if (json.properties) {
-      Object.entries(json.properties).forEach(([pname, prop]) => {
+      Object.entries(json.properties).every(([pname, prop]) => {
         if (prop.type === 'array') {
           result = getArrayElementSchema(prop, module, schemas)
-        }
+          if (name === capitalize(pname)) {
+             return false
+	  }
+	}
+        return true
       })
     }
   }
@@ -341,7 +345,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getSchemaType(module, json.items[0], '', schemas, prefixName)
+      res = getSchemaType(module, json.items[0], name, schemas, prefixName) //TOBE Checked
     }
     else {
       // grab the type for the non-array schema
@@ -386,7 +390,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     res.deps.forEach(dep => structure.deps.add(dep))
     res.type.forEach(t => structure.deps.add(t))
     if (name) {
-       structure.name = capitalize(name)
+      structure.name = capitalize(name)
     }
     structure.type = getTypeName(getModuleName(module), json.title || name, prefixName) + 'Handle'
     structure.json = json
@@ -399,6 +403,10 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   else if (json.type) {
     structure.type = getNativeType(json)
     structure.json = json
+    if (name || json.title) {
+      structure.name = capitalize(name || json.title)
+    }
+    structure.namespace = getModuleName(module)
     return structure
   }
   return structure
@@ -607,7 +615,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       result.deps.forEach(dep => structure.deps.add(dep))
       result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
       structure["result"] = getParamType(result)
-      console.log(result)
     }
 
     const areParamsValid = params => params.every(p => p.type.length > 0)
