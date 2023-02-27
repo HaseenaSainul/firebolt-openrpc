@@ -480,9 +480,7 @@ CHECK_EXECUTION_REACHED_HERE
     result += `    ${subPropertyType}& element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
   }
   else {
-    if (json.type !== 'string' && json.type !== 'number' && json.type !== 'integer' && json.type !== 'boolean') {
-CHECK_EXECUTION_REACHED_HERE
-    }
+// CHECK_EXECUTION_REACHED_HERE it is executed for string/number/integer/boolean/enum
     result += `    ${subPropertyType} element(value);` + '\n'
   }
   result += `
@@ -529,11 +527,7 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
         result += `    WPEFramework::Core::JSON::EnumType<${subPropertyType}> element(value);` + '\n'
       }
       else {
-      if (json.type !== 'string') {
-      console.log(" json.type ")
-      console.log(json.type)
-CHECK_EXECUTION_REACHED_HERE
-      }
+// CHECK_EXECUTION_REACHED_HERE it is executed
         result += `    WPEFramework::Core::JSON::String element(value);` + '\n'
       }
     }
@@ -875,9 +869,11 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
       impl += `    ${container.type}* strResult = new ${container.type}();`
       impl += `        *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
     } else if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
+// CHECK_EXECUTION_REACHED_HERE it is executed for object & array
 impl += `    WPEFramework::Core::ProxyType<${container.type}>* resultPtr = new WPEFramework::Core::ProxyType<${container.type}>();`
       impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(resultPtr);` + '\n'
     } else {
+// CHECK_EXECUTION_REACHED_HERE it is executed for integer/boolean/enum
       impl += `        *${property.name || property.result.name} = jsonResult.Value();` + '\n'
     }
   }
@@ -916,7 +912,7 @@ function getPropertySetterImpl(property, module, schemas = {}) {
           impl += `    WPEFramework::Core::JSON::Variant param(${container.type}(${paramName}));`
         }
         else {
-// CHECK_EXECUTION_REACHED_HERE, it is executed
+// CHECK_EXECUTION_REACHED_HERE, it is executed for integer/boolean/enum
           impl += `    WPEFramework::Core::JSON::Variant param(${paramName});`
         }
       }
@@ -981,21 +977,17 @@ function getEventCallbackLocalImpl(event, module, schemas, property) {
       }
 
       impl +=`        ${CallbackName} callback = reinterpret_cast<${CallbackName}>(userCB);` + '\n'
-    
-      if ((propType.json.type === 'number') || (propType.json.type === 'integer') || (propType.json.const === 'enum') || propType.json.enum) {
-//CHECK_EXECUTION_REACHED_HERE it is executed
-        impl += `        callback(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
+      if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
+//CHECK_EXECUTION_REACHED_HERE
+        impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
       }
       else if ((propType.json.type === 'string') && (!propType.json.enum)) {
 // CHECK_EXECUTION_REACHED_HERE it is executed
         impl += `        callback(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
       }
       else {
-      if (propType.json.type !== 'object' && propType.json.type !== 'array') {
-        console.log("propType.json.type = " + propType.json.type)
-//CHECK_EXECUTION_REACHED_HERE
-      }
-        impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
+//CHECK_EXECUTION_REACHED_HERE it is executed for enum, integer, boolean
+        impl += `        callback(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
       }
     }
     impl += `    }
