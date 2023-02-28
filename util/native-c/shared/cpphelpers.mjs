@@ -31,6 +31,7 @@ const getJsonNativeTypeForOpaqueString = () => {
 
 const getJsonDataStructName = (modName, name, prefixName = '') => {
     let result = (prefixName.length > 0) ? `${capitalize(modName)}::${capitalize(prefixName)}_${capitalize(name)}` : `${capitalize(modName)}::${capitalize(name)}`
+    console.log("getJsonDataStructName name = " + name + " result = " + result)
     return result
 }
 
@@ -162,6 +163,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
   }
   else if (json.type === 'object') {
     if (!json.properties) {
+      console.log("Calling ------ getJsonNativeTypeForOpaqueString for name = " + name)
       structure.type = getJsonNativeTypeForOpaqueString()
     }
     else {
@@ -230,7 +232,8 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     if (json.properties || json.additonalProperties) {
         let tName = (prefixName.length > 0) ? (prefixName + '_' + capitalize(name)) : capitalize(name)
         let props = []
-        Object.entries(json.properties || json.additonalProperties).forEach(([pname, prop]) => {
+        Object.entries(json.properties || json.additonalProperties).every(([pname, prop]) => {
+        console.log("pname = " + pname)
         if (prop.type === 'array') {
             let res
             if (Array.isArray(prop.items)) {
@@ -250,33 +253,38 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
                 res.deps.forEach(t => structure.deps.add(t))
             }
             else {
-                console.log(`WARNING: getJsonDefinition: Type undetermined for ${name}:${pname}`)
+                props = [] //Flush all stored property details, since it contains undefined properties too
+                console.log(`WARNING: getJsonDefinition: Type undetermined for 123 ${name}:${pname}`)
+                return false
             }
         }
         else {
             if (prop.type === 'object' && !prop.properties && !prop.additionalProperties) {
-                console.log(`WARNING: getJsonDefinition: properties undetermined for ${pname}`)
+                props.push({name: `${pname}`, type: `${getJsonNativeTypeForOpaqueString()}`})
             }
-            else {
+            else if (pname !== 'additionalProperties') {
                 let res = getJsonType(moduleJson, prop, pname, schemas)
                 if (res.type && res.type.length > 0) {
                     props.push({name: `${pname}`, type: `${res.type}`})
                     res.deps.forEach(t => structure.deps.add(t))
                 }
                 else {
-                    console.log(`WARNING: getJsonDefinition: Type undetermined for ${name}:${pname}`)
+                    props = [] //Flush all stored property details, since it contains undefined properties too
+                    console.log(`WARNING: getJsonDefinition: Type undetermined for 234 ${name}:${pname}`)
+                    return false
                 }
             }
         }
+        return true
         })
-        structure.type.push(getJsonContainerDefinition(tName, props))
+        props.length ? structure.type.push(getJsonContainerDefinition(tName, props)) : null
     }
     else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
       //This is a map of string to type in schema
       //Get the Type
       let type = getJsonType(moduleJson, json.additionalProperties, name, schemas)
       if (!type.type || type.type.length === 0) {
-        console.log(`WARNING: getJsonDefinition: Type undetermined for ${name}`)
+        console.log(`WARNING: getJsonDefinition: Type undetermined for 456 ${name}`)
       } else {
          type.deps.forEach(t => structure.type.push(t))
       }
@@ -464,8 +472,6 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
 }
 
 const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType, accessorPropertyType, json = {}) => {
-
-  console.log("getMapAccessorsImpl = " + subPropertyType)
   let result = `uint32_t ${objName}_KeysCount(${objName}Handle handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
@@ -614,6 +620,10 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
 
       if (json.properties) {
         let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
+        let definition = getJsonDefinition(getModuleName(moduleJson), json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
+        console.log("definition = ");
+        console.log(definition);
+        if (definition.type.length > 0) {
         let t = getObjectHandleImpl(tName, getJsonDataStructName(getModuleName(moduleJson), name, prefixName))
         Object.entries(json.properties).forEach(([pname, prop]) => {
           let desc = '\n' + description(pname, prop.description)
@@ -654,7 +664,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
           else {
 
             if (prop.type === 'object' && !prop.properties) {
-                console.log(`WARNING: properties undetermined for ${pname}`)
+                console.log(`WARNING: Calling Haseena ----> properties undetermined for ${pname}`)
             }
             else {
 
@@ -688,6 +698,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
           }
         })
         structure.type.push(t)
+	}
       }
       else if (json.parameterNames && json.parameterNames.enum) {
         // parameterNames in object not handled yet
@@ -896,7 +907,6 @@ function getEventCallbackLocalImpl(event, module, schemas, property) {
     if (jsonResponse.IsValid() == true) {` + '\n'
     
       if ((propType.json.type === 'string') && (!propType.json.enum)) {
-         console.log(propType)
          impl +=`        ${container.type}* jsonStrResponse = new ${container.type}();
         *jsonStrResponse = *jsonResponse;
         jsonResponse.Release();` + '\n\n'
