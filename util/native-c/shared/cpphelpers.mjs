@@ -1,6 +1,6 @@
 import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { getSchemaType, capitalize, getTypeName,getModuleName, description, getArrayElementSchema,
+import { getSchemaType, capitalize, getTypeName, getModuleName, description, getArrayElementSchema,
          isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,
          getFireboltStringType, getMethodSignature, validJsonObjectProperties, hasProperties} from "./nativehelpers.mjs"
 
@@ -63,6 +63,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
 
+  console.log("Calling getJsonType for name = " + name)
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
@@ -78,6 +79,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
       // External dependency.
       // e.g, "https://meta.comcast.com/firebolt/entertainment#/definitions/ProgramType"
 
+      console.log("Calling ref for jsonType name = " + name)
       //Get the module of this definition
       const schema = getSchema(json['$ref'].split('#')[0], schemas) || module
 
@@ -112,8 +114,8 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     }
   else if (json.type === 'string' && json.enum) {
     //Enum
-    let t = getSchemaType(module, json, name, schemas).type
-    t = 'WPEFramework::Core::JSON::EnumType<' + getModuleName(module) + '_' + capitalize(name) + '>'
+    //ddlet t = getSchemaType(module, json, name, schemas).type
+    let t = 'WPEFramework::Core::JSON::EnumType<' + getModuleName(module) + '_' + capitalize(name) + '>'
     structure.type.push(t)
     return structure
   }
@@ -163,14 +165,19 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     console.log(json)
     if (hasProperties(json) !== true) {
 	    //!json.properties && (!json.additionalProperties || (json.additionalProperties && !json.additionalProperties.properties))) {
-      console.log("Calling ------ getJsonNativeTypeForOpaqueString for name = " + name)
       structure.type = getJsonNativeTypeForOpaqueString()
     }
     else {
+      console.log("Before getJsonDefinition = ")
+      console.log(json)
       let res = getJsonDefinition(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
+      let schema = getSchemaType(module, json, name, schemas)
+      console.log("After getJsonDefinition = ")
+      console.log(schema)
       structure.deps = res.deps
       structure.deps.add(res.type.join('\n'))
-      let containerType = getJsonDataStructName(getModuleName(module), json.title || name, prefixName)
+      let containerType = getJsonDataStructName(schema.namespace, json.title || name, prefixName)
+      console.log(containerType)
       structure.type.push((containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`)
     }
     return structure
@@ -229,6 +236,8 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
+
+  console.log("Calling getJsonDefinition for name = " + name)
   if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
     if ((json.properties || json.additonalProperties) && (validJsonObjectProperties(json) === true)) {
         let tName = (prefixName.length > 0) ? (prefixName + '_' + capitalize(name)) : capitalize(name)
@@ -287,6 +296,8 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
       //This is a map of string to type in schema
       //Get the Type
       let type = getJsonType(moduleJson, json.additionalProperties, name, schemas)
+      console.log("getJsonType = ")
+      console.log(type)
       if (!type.type || type.type.length === 0) {
         console.log(`WARNING: getJsonDefinition: Type undetermined for 456 ${name}`)
       } else {
@@ -683,6 +694,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
                 let subPropertyType = ((!prop.title) ? schema.name : capitalize(prop.title))
 
                 let schemaNameSpace = (`${getSdkNameSpace()}` + '::' + schema.namespace)
+                console.log("getImplForSchema schemaNameSpace = " + schemaNameSpace)
                 let moduleProperty = getJsonType(moduleJson, json, name, schemas, prefixName)
                 let subProperty = getJsonType(moduleJson, prop, pname, schemas, prefixName)
                 console.log("subProperty")
@@ -814,10 +826,15 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
   }
 
 function getPropertyGetterImpl(property, module, schemas = {}) {
+
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let moduleName = capitalize(getModuleName(module))
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
-  let container = getJsonType(module, propType.json, property.result.name || property.name, schemas)
+  console.log("getPropertyGetterImpl property.name 123 = " + property.name)
+  let container = getJsonType(module, property.result.schema, property.result.name || property.name, schemas)
+  console.log(propType)
+  console.log("getPropertyGetterImpl container ")
+  console.log(container)
 
   let impl = `${getPropertyGetterSignature(property, module, propType.type)} {\n`
   impl += `    const string method = _T("${methodName}");` + '\n'
@@ -851,7 +868,9 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let paramName = property.name || property.result.name
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
-  let container = getJsonType(module, propType.json, property.result.name || property.name, schemas)
+  console.log("getPropertySetterImpl property.name = " + property.name)
+  console.log(propType)
+  let container = getJsonType(module, propperty.result.schema, property.result.name || property.name, schemas)
 
   let impl = `${getPropertySetterSignature(property, module, propType.type)} {\n`
 

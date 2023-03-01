@@ -302,10 +302,11 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   structure["enum"] = []
   structure["name"] = {}
   structure["namespace"] = {}
-  console.log("name = " + name)
+  console.log("getSchemaType --- name 123 = " + name)
   console.log(json)
 
   if (json['$ref']) {
+    console.log("getSchemaType ref -- ")
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
       //Get Path to ref in this module and getSchemaType
@@ -335,10 +336,12 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
       structure.json = res.json
       structure.name = res.name
       structure.namespace = res.namespace
+      console.log("Inside ref namespace = " + structure.namespace)
       return structure
     }
   }
   else if (json.const) {
+    console.log("getSchemaType const -- ")
     structure.type = getNativeType(json)
     structure.json = json
     return structure
@@ -362,10 +365,12 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (Array.isArray(json.type)) {
+    console.log("getSchemaType array --- ")
     let type = json.type.find(t => t !== 'null')
     console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
   }
   else if (json.type === 'array' && json.items && (validJsonObjectProperties(json) === true)) {
+    console.log("getSchemaType array2 --- ")
     let res
     if (Array.isArray(json.items)) {
       //TODO
@@ -399,6 +404,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.allOf) {
+    console.log("getSchemaType allOf --- ")
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
     if (json.title) {
       union['title'] = json.title
@@ -422,9 +428,12 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
 
 
     console.log("hasProperties = " + hasProperties(json))
-    if (hasProperties(json)) { 
+    if (hasProperties(json)) {
+      console.log("Calling --- getSchemaShape")
 	    //json.properties || (json.additionalProperties && (typeof json.additionalProperties !== 'object'))) {
       let res = getSchemaShape(module, json, schemas, json.title || name, prefixName, {descriptions: options.descriptions, level: 0})
+      console.log("Res after getSchemaShape")
+      console.log(res)
       res.deps.forEach(dep => structure.deps.add(dep))
       res.type.forEach(t => structure.deps.add(t))
       structure.type = getTypeName(getModuleName(module), json.title || name, prefixName) + 'Handle'
@@ -469,7 +478,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       if (json['$ref'][0] === '#') {
         //Ref points to local schema 
         //Get Path to ref in this module and getSchemaType
-        
+        console.log("getSchemaShape --- ref name = " + name)
         const schema = getPath(json['$ref'], module, schemas)
         const tname = schema.title || json['$ref'].split('/').pop()
         res = getSchemaShape(module, schema, schemas, tname, prefixName, {descriptions: descriptions, level: level})
@@ -477,6 +486,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         structure.type = res.type
       }
       else {
+        console.log("getSchemaShape --- external ref name = " + name)
         // External dependency. Return only type
         // e.g, "https://meta.comcast.com/firebolt/entertainment#/definitions/ProgramType"
   
