@@ -35,6 +35,24 @@ const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.t
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
+const hasProperties = (prop) => {
+   console.log("prop.additionalProperties = " + prop.additionalProperties)
+//   console.log("prop.additionalPropertie.type  = " + prop.additionalProperties.type)
+/*   console.log("prop.properties = " + prop.properties)
+   console.log("!prop.additionalProperties = " + !prop.additionalProperties)
+   console.log("prop.additionalProperties.type = " + prop.additionalProperties.type)
+   console.log("prop.additionalProperties.properties = " + prop.additionalProperties.properties)*/
+  let hasProperty = false
+  if (prop.properties) {
+     hasProperty = true
+  } else if (prop.additionalProperties && ( prop.additionalProperties.type && (((prop.additionalProperties.type === 'object') && prop.additionalProperties.properties) || (prop.additionalProperties.type !== 'object')))) {
+     hasProperty = true
+  }
+   console.log("hasProperty = " + hasProperty)
+//   return (prop.properties || (!prop.additionalProperties || (prop.additionalProperties && (((prop.additionalProperties.type === 'object') && prop.additionalProperties.properties) || (prop.additionalProperties.type !== 'object'))))) ? true : false
+  return hasProperty
+}
+
 const getHeaderText = () => {
 
     return `/*
@@ -252,6 +270,26 @@ const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}
   return headers
 }
 
+function validJsonObjectProperties(json = {}) {
+
+  let valid = true
+  console.log(json)
+  if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
+    if (json.properties || json.additonalProperties) {
+      Object.entries(json.properties || json.additonalProperties).every(([pname, prop]) => {
+        if (!prop['$ref'] && (pname !== 'additionalProperties') &&
+           (!prop.type || (Array.isArray(prop.type) && (prop.type.find(t => t === 'null'))))) {
+          console.log("validJsonObjectProperties pname = " + pname)
+          console.log(prop)
+          valid = false
+        }
+        return valid
+      })
+    }
+  }
+  return valid
+}
+
 function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixName = '', options = {level: 0, descriptions: true, title: false}) {
   if (json.schema) {
     json = json.schema
@@ -264,6 +302,8 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   structure["enum"] = []
   structure["name"] = {}
   structure["namespace"] = {}
+  console.log("name = " + name)
+  console.log(json)
 
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
@@ -325,7 +365,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     let type = json.type.find(t => t !== 'null')
     console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
   }
-  else if (json.type === 'array' && json.items) {
+  else if (json.type === 'array' && json.items && (validJsonObjectProperties(json) === true)) {
     let res
     if (Array.isArray(json.items)) {
       //TODO
@@ -374,16 +414,30 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     //TODO
   }
   else if (json.type === 'object') {
-    let res = getSchemaShape(module, json, schemas, json.title || name, prefixName, {descriptions: options.descriptions, level: 0})
-    res.deps.forEach(dep => structure.deps.add(dep))
-    res.type.forEach(t => structure.deps.add(t))
+    console.log("1. json.type")
+    console.log(json.type)
+    structure.json = json
+  console.log("name = " + name)
+  console.log(json)
+
+
+    console.log("hasProperties = " + hasProperties(json))
+    if (hasProperties(json)) { 
+	    //json.properties || (json.additionalProperties && (typeof json.additionalProperties !== 'object'))) {
+      let res = getSchemaShape(module, json, schemas, json.title || name, prefixName, {descriptions: options.descriptions, level: 0})
+      res.deps.forEach(dep => structure.deps.add(dep))
+      res.type.forEach(t => structure.deps.add(t))
+      structure.type = getTypeName(getModuleName(module), json.title || name, prefixName) + 'Handle'
+      res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
+      structure.namespace = getModuleName(module)
+    console.log("inside getSchemaType " )
+    } else {
+      structure.type = getFireboltStringType() 
+    }
+    console.log("1. structure type = "  +structure.type)
     if (name) {
       structure.name = capitalize(name)
     }
-    structure.type = getTypeName(getModuleName(module), json.title || name, prefixName) + 'Handle'
-    structure.json = json
-    res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
-    structure.namespace = getModuleName(module)
 
     return structure
     //TODO
@@ -405,6 +459,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     let level = options.level
     let descriptions = options.descriptions
 
+    console.log("getSchemaShape name = " + name)
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
@@ -449,7 +504,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     }
     else if (json.type === 'object') {
 
-      if (json.properties) {
+      console.log("1. name = " + name)
+      if (json.properties && (validJsonObjectProperties(json) === true)) {
         let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
         let t = description(name, json.description)
         t += '\n' +  getObjectHandleManagement(tName)
@@ -475,16 +531,15 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
               t += desc + '\n' + def
             }
             else {
-              console.log(`WARNING: Type undetermined for ${name}:${pname}`)
+              console.log(`WARNING: Type undetermined for 555 ${name}:${pname}`)
             }
           } else {
             res = getSchemaType(moduleJson, prop, pname, schemas, prefixName, {descriptions: descriptions, level: level + 1, title: true})
             if (res.type && res.type.length > 0) {
               if (res.json.type === 'object' && !res.json.properties) {
-                console.log(`WARNING: Type undetermined for ${name}:${pname}`)
-              } else {
-                t += desc + '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
+                res.type = getParamType(res)
               }
+              t += desc + '\n' + getPropertyAccessors(tName, capitalize(pname), res.type, {level: level, readonly:false, optional:isOptional(pname, json)})
             }
             else {
             }
@@ -497,12 +552,13 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       else if (json.propertyNames && json.propertyNames.enum) {
         //propertyNames in object not handled yet
       }
-      else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
+      else if (json.additionalProperties && (typeof json.additionalProperties === 'object') && (validJsonObjectProperties(json) === true)) {
+        console.log("2. after name = " + name)
         //This is a map of string to type in schema
         //Get the Type
         let type = getSchemaType(moduleJson, json.additionalProperties, name, schemas, prefixName)
         if (!type.type || (type.type.length === 0)) {
-            type.type = 'char*'
+            type.type = 'char*'//getFireboltStringType();
         }
 
         let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
@@ -605,9 +661,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       structure["result"] = getParamType(result)
     }
 
-    const areParamsValid = params => params.every(p => p.type.length > 0)
+    const areParamsValid = params => params.every(p => p.type && (p.type.length > 0))
 
-    if (areParamsValid(structure.params) && (structure["result"].length > 0)) {
+    if (areParamsValid(structure.params) && (structure["result"] && structure["result"].length > 0)) {
       structure["signature"] = `uint32_t ${methodName}(`
       structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
       if (structure.params.length > 0 && method.result.schema) {
@@ -643,5 +699,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     enumValue,
     getFireboltStringType,
     getArrayElementSchema,
-    getMethodSignature
+    getMethodSignature,
+    validJsonObjectProperties,
+    hasProperties
   }
