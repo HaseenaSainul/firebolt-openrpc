@@ -43,14 +43,14 @@ class String : public WPEFramework::Core::JSON::String {
         }
 
     public:
-        const string& Value()
+        const string& Value() const
         {
             _value = Base::Value();
             return _value;
         }
 
     private:
-        std::string _value;
+        mutable std::string _value;
     };
 }
 }

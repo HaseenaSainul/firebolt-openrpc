@@ -204,7 +204,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     const event = m => m.tags.find(t => t.name === 'property:readonly' || t.name === 'property')
     const setter = m => m.tags.find(t => t.name === 'property')
     
-    let res = getSchemaType(json, property.result.schema, property.result.name || property.name, schemas,{descriptions: true, level: 0})
+    let res = getSchemaType(json, property.result.schema, property.result.name || property.name, schemas, '', {descriptions: true, level: 0})
     res.deps.forEach(dep => sig.deps.add(dep))
     res.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
     sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')
@@ -220,7 +220,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
 
   const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('event'))) || []
   events.forEach(event => {
-    let res = getSchemaType(json, event.result.schema, event.result.name || event.name, schemas, {descriptions: true, level: 0})
+    let res = getSchemaType(json, event.result.schema, event.result.name || event.name, schemas, '', {descriptions: true, level: 0})
     if (res.type && res.type.length > 0) {
       sig.type.push(getEventCallbackSignature(event, json, res.type) + ';')
       sig.type.push(getEventSignature(event, json) + ';\n')
