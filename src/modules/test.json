@@ -173,12 +173,12 @@
                 "testString": {
                     "type": "string"
                 },
-                "testEnum": {
+                "testEnumeration": {
                     "type": "string",
                     "enum": [
-                      "testEnum0",
-                      "testEnum1",
-                      "testEnum2"
+                      "testEnumeration0",
+                      "testEnumeration1",
+                      "testEnumeration2"
                     ]
                 },
                 "testArrayString": {
@@ -197,15 +197,15 @@
                       }
                    ]
                 },
-                "testArrayEnum": {
+                "testEnumInsideArray": {
                     "type": "array",
                     "items": [
                       {
                         "type": "string",
                         "enum": [
-                          "testArrayEnum0",
-                          "testArrayEnum1",
-                          "testArrayEnum2"
+                          "testEnumInsideArray0",
+                          "testEnumInsideArray1",
+                          "testEnumInsideArray2"
                         ]
                       }
                     ]
@@ -435,56 +435,11 @@
         "schema": {
           "type": "array",
           "items": [
-           {
+            {
               "type": "object",
-              "properties": {
-                  "testInteger": {
-                      "type": "integer"
-                  },
-                  "testBoolean": {
-                      "type": "boolean"
-                  },
-                  "testString": {
-                      "type": "string"
-                  },
-                  "testEnum": {
-                      "type": "string",
-                      "enum": [
-                        "testEnum0",
-                        "testEnum1",
-                        "testEnum2"
-                      ]
-                  },
-                  "testArrayString": {
-                      "type": "array",
-                      "items": [
-                        {
-                          "type": "string"
-                        }
-                      ]
-                  },
-                  "testArrayString": {
-                      "type": "array",
-                      "items": [
-                        {
-                          "type": "boolean"
-                        }
-                     ]
-                  },
-                  "testArrayEnum": {
-                      "type": "array",
-                      "items": [
-                        {
-                          "type": "string",
-                          "enum": [
-                            "testArrayEnum0",
-                            "testArrayEnum1",
-                            "testArrayEnum2"
-                          ]
-                        }
-                      ]
-                  }
-              }
+	      "schema": {
+                "$ref": "#/components/schemas/TestObjectFoo"
+	      }
             }
           ]
         }
@@ -542,5 +497,62 @@
         }
       ]
     }
-  ]
+  ],
+  "components": {
+    "schemas": {
+      "TestObjectFoo": {
+        "title": "TestObjectFoo",
+        "type": "object",
+        "properties": {
+          "testInteger": {
+            "type": "integer"
+          },
+          "testBoolean": {
+            "type": "boolean"
+          },
+          "testString": {
+            "type": "string"
+          },
+          "testEnum": {
+            "type": "string",
+            "enum": [
+              "testEnum0",
+              "testEnum1",
+              "testEnum2"
+            ]
+          },
+          "testArrayString": {
+            "type": "array",
+            "items": [
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "testArrayString": {
+            "type": "array",
+            "items": [
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "testArrayEnum": {
+            "type": "array",
+            "items": [
+              {
+                "type": "string",
+                "enum": [
+                  "testArrayEnum0",
+                  "testArrayEnum1",
+                  "testArrayEnum2"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
 }
+
