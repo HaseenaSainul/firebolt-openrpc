@@ -152,10 +152,12 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     delete union['$ref']
     return getJsonType(module, union, '',schemas, options, prefixName)
   }
-  else if (json.oneOf || json.anyOf) {
+  else if (json.oneOf) {
     structure.type = getJsonNativeTypeForOpaqueString()
     return structure
-    //TODO
+  }
+  else if (json.anyOf) {
+    return structure //TODO
   }
   else if (json.type === 'object') {
     if (hasProperties(json) !== true) {
@@ -709,7 +711,6 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
           res.type.forEach(t => structure.deps.add(t))
           res.enums.forEach(e => structure.enums.add(e))
         }
-
         t += getMapAccessorsImpl(tName, getModuleName(moduleJson), containerType, subModuleProperty.type, type.type, type.json)
         structure.type.push(t)
       }
@@ -721,7 +722,6 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
 
     }
     else if (json.oneOf) {
-      
     }
     else if (json.allOf) {
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)

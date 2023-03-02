@@ -360,7 +360,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getSchemaType(module, json.items[0], json.items[0].name || name, schemas, prefixName) //TOBE Checked
+      res = getSchemaType(module, json.items[0], json.items[0].name || name, schemas, prefixName)
     }
     else {
       // grab the type for the non-array schema
@@ -397,7 +397,13 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     delete union['$ref']
     return getSchemaType(module, union, '', schemas, prefixName, options)
   }
-  else if (json.oneOf || json.anyOf) {
+  else if (json.oneOf) {
+    console.log("getSchemaType json.oneOf = ------> " + name)
+    structure.type = 'char*'
+    structure.json.type = 'string'
+    return structure
+  }
+  else if (json.anyOf) {
     return structure
     //TODO
   }
@@ -532,7 +538,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         //Get the Type
         let type = getSchemaType(moduleJson, json.additionalProperties, name, schemas, prefixName)
         if (!type.type || (type.type.length === 0)) {
-            type.type = 'char*'//getFireboltStringType();
+            type.type = 'char*'
         }
 
         let tName = getTypeName(getModuleName(moduleJson), name, prefixName)
@@ -553,6 +559,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
     }
     else if (json.oneOf) {
+      console.log("getSchemaShape json.oneOf = ------> " + name)
+      return structure
     }
     else if (json.allOf) {
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
