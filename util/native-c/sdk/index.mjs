@@ -26,8 +26,8 @@ import {getModuleName} from '../shared/nativehelpers.mjs'
 
 
 const filterBlackListedSchemas = (module) => {
-    const blackList = ["FireboltOpenRPC", "Discovery", "Entertainment", "Intents", "Parameters"]
-    return blackList.includes(getModuleName(module))
+  const blackList = ["FireboltOpenRPC", "Discovery", "Entertainment", "Intents", "Parameters"]
+  return blackList.includes(getModuleName(module))
 }
 
 const generateHeaders = ({

@@ -42,7 +42,8 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClo
          getIncludeGuardClose, getIncludeDefinitions, getSchemaShape, getSchemaType,
          getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventSignature,
          getPropertyEventCallbackSignature, getEventSignature, getEventCallbackSignature,
-         getModuleName, capitalize, getMethodSignature } from '../../shared/nativehelpers.mjs'
+         getModuleName, capitalize, getMethodSignature, getPolymorphicMethodSignature,
+         getPolymorphicEventCallbackSignature, getPolymorphicEventSignature } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../shared/cpphelpers.mjs'
 // Maybe an array of <key, value> from the schema
@@ -227,23 +228,42 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     }
   })
 
-  //Generate methods that are not tagged with any of the below tags
-  const excludeTagNames = ['property', 'property:readonly', 'property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
-  const getNamesFromTags = tags => tags && tags.map(t => t.name)
-  const methods = json.methods.filter( m => {
-                                              const tNames = getNamesFromTags(m.tags)
-                                              if (tNames) {
-                                                return !(tNames.some(t => excludeTagNames.includes(t)))
-                                              }
-                                              return true
-                                            }) || []
+  {
+    //Generate methods that are not tagged with any of the below tags
+    const excludeTagNames = ['property', 'property:readonly', 'property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
+    const getNamesFromTags = tags => tags && tags.map(t => t.name)
+    const methods = json.methods.filter( m => {
+      const tNames = getNamesFromTags(m.tags)
+      if (tNames) {
+        return !(tNames.some(t => excludeTagNames.includes(t)))
+      }
+      return true
+    }) || []
 
-  methods.forEach(method => {
-    let structure = getMethodSignature(method, json, schemas)
-    structure.deps.forEach(dep => sig.deps.add(dep))
-    structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
-    structure.signature && sig.type.push(structure.signature + ';\n')
-  })
+    methods.forEach(method => {
+      let structure = getMethodSignature(method, json, schemas)
+      structure.deps.forEach(dep => sig.deps.add(dep))
+      structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+      structure.signature && sig.type.push(structure.signature + ';\n')
+    })
+  }
+  {
+    const getNamesFromTags = tags => tags && tags.map(t => t.name)
+    const methods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-pull')))
+    methods.forEach(method => {
+      let structure = getPolymorphicMethodSignature(method, json, schemas)
+      structure.deps.forEach(dep => sig.deps.add(dep))
+      structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+      structure.signature && sig.type.push(structure.signature + ';')
+
+      structure = getPolymorphicEventCallbackSignature(method, json, schemas)
+      structure.deps.forEach(dep => sig.deps.add(dep))
+      structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+      structure.signature && sig.type.push(structure.signature + ';')
+
+      sig.type.push(getPolymorphicEventSignature(method, json, schemas) + ';\n')
+   })
+  }
 
   return sig
 }

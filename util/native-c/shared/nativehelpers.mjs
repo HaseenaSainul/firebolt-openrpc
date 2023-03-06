@@ -45,6 +45,42 @@ const hasProperties = (prop) => {
   return hasProperty
 }
 
+const getPolymorphicSchema = (method, module, federatedType, schemas) => {
+  let structure = {}
+  structure["deps"] = new Set() //To avoid duplication of local ref definitions
+  structure["param"] = []
+  structure["enum"] = []
+  method.params.every(param => {
+    if (param.name === 'result') {
+      if (param.schema['$ref']) {
+        if (param.schema['$ref'][0] === '#') {
+          let name = param.schema['$ref'].split('/').pop()
+          const index = name.indexOf('Result');
+          const prefix = name.slice(0, index);
+          let paramName = prefix + federatedType
+          let schema = {}
+          let ref = param.schema['$ref']
+          schema['$ref'] = ref.replace(name, paramName)
+          let schemaType = getSchemaType(module, schema, schema['$ref'].split('/').pop(), schemas)
+          schemaType.deps.forEach(d => structure.deps.add(d))
+          schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+          if (schemaType.type && (schemaType.type.length > 0)) {
+            let p = {}
+            p["type"] = getParamType(schemaType)
+            p["name"] = param.name
+            structure.param = p
+          }
+
+          return false
+        }
+      }
+    }
+    return true
+  })
+
+  return structure
+}
+
 const getHeaderText = () => {
 
     return `/*
@@ -215,8 +251,8 @@ const getArrayElementSchema = (json, module, schemas = {}, name) => {
           result = getArrayElementSchema(prop, module, schemas)
           if (name === capitalize(pname)) {
              return false
-	  }
-	}
+          }
+        }
         return true
       })
     }
@@ -631,7 +667,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       structure.params.push(p)
       schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
     })
-    if (method.result.schema) { // && (method.result.schema['$ref'] === undefined || method.result.schema['$ref'][0] !== '#')) {
+    if (method.result.schema) {
 
       let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, method.name)
       result.deps.forEach(dep => structure.deps.add(dep))
@@ -651,6 +687,29 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       structure.signature += ' )'
     }
     return structure
+  }
+
+  function getPolymorphicMethodSignature(method, module, schemas) {
+    let structure = getPolymorphicSchema(method, module, 'FederatedResponse', schemas)
+    if (structure.param.type.length > 0) {
+      structure["signature"] = `uint32_t ${capitalize(getModuleName(module))}_Push${capitalize(method.name)}(`
+      structure.signature += ` ${structure.param.type} ${structure.param.name} )`
+    }
+    return structure
+  }
+
+  function getPolymorphicEventCallbackSignature(method, module, schemas) {
+    let structure = getPolymorphicSchema(method, module, 'FederatedRequest', schemas)
+    let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+    if (structure.param.type.length > 0) {
+      structure["signature"] = `typedef void (*OnPull${methodName}Callback)(const void* userData, ${structure.param.type})`
+    }
+    return structure
+  }
+
+  function getPolymorphicEventSignature(method, module) {
+    let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Pull(${methodName}Callback, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Pull(${methodName}Callback)`
   }
 
   export {
@@ -680,4 +739,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getMethodSignature,
     validJsonObjectProperties,
     hasProperties,
+    getPolymorphicMethodSignature,
+    getPolymorphicEventCallbackSignature,
+    getPolymorphicEventSignature
   }
