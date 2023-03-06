@@ -2,7 +2,8 @@ import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName, getModuleName, description, getArrayElementSchema,
          isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,
-         getFireboltStringType, getMethodSignature, validJsonObjectProperties, hasProperties} from "./nativehelpers.mjs"
+         getFireboltStringType, getMethodSignature, validJsonObjectProperties, hasProperties,
+         isOneOfSchemaType} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -63,7 +64,11 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
 
-  if (json['$ref']) {
+  if (module.oneOf || (isOneOfSchemaType(module, name) === true)) {
+    structure.type = getJsonNativeTypeForOpaqueString()
+    return structure
+  }
+  else if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
       //Get Path to ref in this module and getSchemaType
@@ -168,8 +173,10 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
       let schema = getSchemaType(module, json, name, schemas)
       structure.deps = res.deps
       structure.deps.add(res.type.join('\n'))
-      let containerType = getJsonDataStructName(schema.namespace, json.title || name, prefixName)
-      structure.type.push((containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`)
+      if (schema.namespace && schema.namespace.length > 0) {
+        let containerType = getJsonDataStructName(schema.namespace, json.title || name, prefixName)
+        structure.type.push((containerType.includes(wpeJsonNameSpace()) === true) ? `${containerType}` : `${getSdkNameSpace()}::${containerType}`)
+      }
     }
     return structure
     //TODO
@@ -227,7 +234,10 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
 
-  if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
+  if (moduleJson.oneOf || (isOneOfSchemaType(moduleJson, name) === true)) {
+    return structure
+  }
+  else if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
     if ((json.properties || json.additonalProperties) && (validJsonObjectProperties(json) === true)) {
         let tName = (prefixName.length > 0) ? (prefixName + '_' + capitalize(name)) : capitalize(name)
         let props = []
@@ -289,7 +299,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
 
   }
   else if (json.oneOf) {
-  
+    //Just ignore schema shape, since this has to be treated as string
   }
   else if (json.allOf) {
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
@@ -576,11 +586,13 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
     structure["type"] = []
     structure["enums"] = new Set()
 
-    if (json['$ref']) {
+    if (moduleJson.oneOf || (isOneOfSchemaType(moduleJson, name) === true)) {
+      return structure
+    }
+    else if (json['$ref']) {
       if (json['$ref'][0] === '#') {
         //Ref points to local schema 
         //Get Path to ref in this module and getSchemaType
-        
         const schema = getPath(json['$ref'], moduleJson, schemas)
         const tname = schema.title || json['$ref'].split('/').pop()
         let res = getImplForSchema(moduleJson, schema, schemas, tname, prefixName, {descriptions: descriptions, level: level})
@@ -589,7 +601,8 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
         structure.type = res.type
       }
       else {
-        //External schemas - No action
+        return structure
+
       }
     }
     //If the schema is a const, 
@@ -637,7 +650,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
             }
             if (schema.type && schema.type.length > 0) {
               let type = getArrayElementSchema(json, moduleJson, schemas, schema.name)
-              if (type.type === 'string' && type.enum) {
+              if (type.type === 'string' && type.enum && schema.name && schema.name.length > 0) {
                 let typeName = getTypeName(getModuleName(moduleJson), schema.name)
                 structure.enums.add(description(schema.name, schema.json.description) + getEnumConversionImpl(typeName, type))
               }

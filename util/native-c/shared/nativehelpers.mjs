@@ -35,6 +35,17 @@ const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.t
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
+const isOneOfSchemaType = (schema, name) => {
+  let oneOfType = false
+  if (schema.oneOf) {
+    Object.entries(schema.oneOf).every((ref) => {
+      oneOfType = (ref[1]['$ref'].split('/').pop() === name) ? true : false
+      return !oneOfType
+    })
+  }
+  return oneOfType
+}
+
 const hasProperties = (prop) => {
   let hasProperty = false
   if (prop.properties) {
@@ -292,7 +303,12 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   structure["name"] = {}
   structure["namespace"] = {}
 
-  if (json['$ref']) {
+  if (module.oneOf || (isOneOfSchemaType(module, name) === true)) {
+    structure.type = 'char*'
+    structure.json.type = 'string'
+    return structure
+  }
+  else if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
       //Get Path to ref in this module and getSchemaType
@@ -398,7 +414,6 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return getSchemaType(module, union, '', schemas, prefixName, options)
   }
   else if (json.oneOf) {
-    console.log("getSchemaType json.oneOf = ------> " + name)
     structure.type = 'char*'
     structure.json.type = 'string'
     return structure
@@ -442,13 +457,15 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     json = JSON.parse(JSON.stringify(json))
     let level = options.level
     let descriptions = options.descriptions
-
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["type"] = []
     structure["enum"] = []
 
-    if (json['$ref']) {
+    if (moduleJson.oneOf || (isOneOfSchemaType(moduleJson, name) === true)) {
+      //Just ignore schema shape, since this has to be treated as string
+    }
+    else if (json['$ref']) {
       if (json['$ref'][0] === '#') {
         //Ref points to local schema 
         //Get Path to ref in this module and getSchemaType
@@ -556,11 +573,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     }
     else if (json.anyOf) {
      console.log("json.anyOf = ------>");
-
     }
     else if (json.oneOf) {
-      console.log("getSchemaShape json.oneOf = ------> " + name)
-      return structure
+      //Just ignore schema shape, since this has to be treated as string
     }
     else if (json.allOf) {
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
@@ -683,5 +698,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getArrayElementSchema,
     getMethodSignature,
     validJsonObjectProperties,
-    hasProperties
+    hasProperties,
+    isOneOfSchemaType
   }
