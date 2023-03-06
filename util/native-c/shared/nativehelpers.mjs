@@ -35,17 +35,6 @@ const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.t
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
-const isOneOfSchemaType = (schema, name) => {
-  let oneOfType = false
-  if (schema.oneOf) {
-    Object.entries(schema.oneOf).every((ref) => {
-      oneOfType = (ref[1]['$ref'].split('/').pop() === name) ? true : false
-      return !oneOfType
-    })
-  }
-  return oneOfType
-}
-
 const hasProperties = (prop) => {
   let hasProperty = false
   if (prop.properties) {
@@ -303,12 +292,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   structure["name"] = {}
   structure["namespace"] = {}
 
-  if (module.oneOf || (isOneOfSchemaType(module, name) === true)) {
-    structure.type = 'char*'
-    structure.json.type = 'string'
-    return structure
-  }
-  else if (json['$ref']) {
+  if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
       //Get Path to ref in this module and getSchemaType
@@ -462,10 +446,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     structure["type"] = []
     structure["enum"] = []
 
-    if (moduleJson.oneOf || (isOneOfSchemaType(moduleJson, name) === true)) {
-      //Just ignore schema shape, since this has to be treated as string
-    }
-    else if (json['$ref']) {
+    if (json['$ref']) {
       if (json['$ref'][0] === '#') {
         //Ref points to local schema 
         //Get Path to ref in this module and getSchemaType
@@ -699,5 +680,4 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getMethodSignature,
     validJsonObjectProperties,
     hasProperties,
-    isOneOfSchemaType
   }

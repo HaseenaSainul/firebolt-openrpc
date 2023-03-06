@@ -1,9 +1,9 @@
 import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { getSchemaType, capitalize, getTypeName, getModuleName, description, getArrayElementSchema,
-         isOptional, enumValue, getPropertyGetterSignature, getPropertySetterSignature,
-         getFireboltStringType, getMethodSignature, validJsonObjectProperties, hasProperties,
-         isOneOfSchemaType} from "./nativehelpers.mjs"
+import { getSchemaType, capitalize, getTypeName, getModuleName, description, 
+         getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature,
+         getPropertySetterSignature, getFireboltStringType, getMethodSignature,
+         validJsonObjectProperties, hasProperties} from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -64,11 +64,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
 
-  if (module.oneOf || (isOneOfSchemaType(module, name) === true)) {
-    structure.type = getJsonNativeTypeForOpaqueString()
-    return structure
-  }
-  else if (json['$ref']) {
+  if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
       //Get Path to ref in this module and getSchemaType
@@ -234,10 +230,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
   structure["type"] = []
 
-  if (moduleJson.oneOf || (isOneOfSchemaType(moduleJson, name) === true)) {
-    return structure
-  }
-  else if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
+  if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
     if ((json.properties || json.additonalProperties) && (validJsonObjectProperties(json) === true)) {
         let tName = (prefixName.length > 0) ? (prefixName + '_' + capitalize(name)) : capitalize(name)
         let props = []
@@ -586,10 +579,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
     structure["type"] = []
     structure["enums"] = new Set()
 
-    if (moduleJson.oneOf || (isOneOfSchemaType(moduleJson, name) === true)) {
-      return structure
-    }
-    else if (json['$ref']) {
+    if (json['$ref']) {
       if (json['$ref'][0] === '#') {
         //Ref points to local schema 
         //Get Path to ref in this module and getSchemaType
