@@ -709,7 +709,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
   function getPolymorphicEventSignature(method, module) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Pull(${methodName}Callback, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Pull(${methodName}Callback)`
+    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Pull(OnPull${methodName}Callback, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Pull(${methodName}Callback)`
   }
 
   export {
