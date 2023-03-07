@@ -248,7 +248,6 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     })
   }
   {
-    const getNamesFromTags = tags => tags && tags.map(t => t.name)
     const methods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-pull')))
     methods.forEach(method => {
       let structure = getPolymorphicMethodSignature(method, json, schemas)

@@ -3,7 +3,8 @@ import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName, getModuleName, description, 
          getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature,
          getPropertySetterSignature, getFireboltStringType, getMethodSignature,
-         validJsonObjectProperties, hasProperties} from "./nativehelpers.mjs"
+         validJsonObjectProperties, hasProperties, getPolymorphicSchema,
+         getPolymorphicMethodSignature } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -852,24 +853,23 @@ function getPropertySetterImpl(property, module, schemas = {}) {
 }
 
 function getPropertyEventCallbackImpl(property, module, schemas) {
-  return getEventCallbackLocalImpl(property, module, schemas, true)
+  return getEventCallbackImplInternal(property, module, schemas, true)
 }
 
 function getPropertyEventImpl(property, module, schemas) {
-  return getEventLocalImpl(property, module, schemas, true)
+  return getEventImplInternal(property, module, schemas, true)
 }
 
 function getEventCallbackImpl(event, module, schemas) {
-  return getEventCallbackLocalImpl(event, module, schemas, false)
+  return getEventCallbackImplInternal(event, module, schemas, false)
 }
 
 function getEventImpl(event, module, schemas) {
-  return getEventLocalImpl(event, module, schemas, false)
+  return getEventImplInternal(event, module, schemas, false)
 }
 
-function getEventCallbackLocalImpl(event, module, schemas, property) {
-  let moduleName = capitalize(getModuleName(module));
-  let methodName = moduleName + capitalize(event.name)
+function getEventCallbackImplInternal(event, module, schemas, property) {
+  let methodName = capitalize(getModuleName(module)) + capitalize(event.name)
   let propType = getSchemaType(module, event.result.schema, event.result.name || event.name, schemas, {descriptions: true, level: 0})
 
   let impl = ''
@@ -918,7 +918,7 @@ function getEventCallbackLocalImpl(event, module, schemas, property) {
   return impl;
 }
 
-function getEventLocalImpl(event, module, schemas, property) {
+function getEventImplInternal(event, module, schemas, property, prefix = '') {
   let eventName = getModuleName(module).toLowerCase() + '.' + event.name
   let moduleName = capitalize(getModuleName(module))
   let methodName = moduleName + capitalize(event.name)
@@ -937,7 +937,7 @@ function getEventLocalImpl(event, module, schemas, property) {
       CallbackName = `${methodName}Callback`
     }
 
-    impl += `${description(event.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(event.name)}Update(${CallbackName} userCB, const void* userData)
+    impl += `${description(event.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(event.name)}${prefix}Update(${prefix}${CallbackName} userCB, const void* userData)
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
@@ -1039,6 +1039,117 @@ function getMethodImpl(method, module, schemas) {
   return impl
 }
 
+function getImplForPolymorphicMethodParamInternal(method, module, impl, federatedType, schemas, prefixName = '') {
+
+  let name = capitalize(method.name + federatedType)
+  let schema = getPolymorphicSchema(method, module, name, schemas)
+  if (schema['$ref']) {
+    let res = {}
+    res = getImplForSchema(module, schema, schemas, name, prefixName)
+    res.deps.forEach(dep => impl.deps.add(dep))
+    res.enums.forEach(e => impl.enums.add(e))
+    //Get the JsonData definition for the schema
+    const json = getPath(schema['$ref'], module, schemas)
+    let jType = getJsonDefinition(module, json, schemas, name, prefixName)
+    jType.deps.forEach(j => impl.jsonData.add(j))
+    jType.type.forEach(t => impl.jsonData.add(t))
+  }
+}
+
+function getImplForPolymorphicMethodParam(method, module, schemas, prefixName = '') {
+  let impl = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set()}
+  getImplForPolymorphicMethodParamInternal(method, module, impl, 'FederatedResponse', schemas)
+  getImplForPolymorphicMethodParamInternal(method, module, impl, 'FederatedRequest', schemas)
+  return impl
+}
+
+function getPolymorphicMethodImpl(method, module, schemas) {
+  let methodName = getModuleName(module).toLowerCase() + '.' + method.name
+  let structure = getPolymorphicMethodSignature(method, module, schemas)
+  let impl = ''
+
+  if (structure.signature) {
+
+    const jsonType = getJsonType(module, structure.json, structure.param.name, schemas)
+    impl = `${structure.signature}\n{\n`
+    impl += `    uint32_t status = FireboltSDKErrorUnavailable;
+    ${getSdkNameSpace()}::Transport<WPEFramework::Core::JSON::IElement>* transport = ${getSdkNameSpace()}::Accessor::Instance().GetTransport();
+    if (transport != nullptr) {
+        ${jsonType.type} jsonParameters = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${structure.param.name})));
+        WPEFramework::Core::JSON::Boolean jsonResult;
+        status = transport->Invoke("${methodName}", jsonParameters, jsonResult);
+        if (status == FireboltSDKErrorNone) {
+            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully pushed with status as %d", jsonResult.Value());
+        }
+    } else {
+        FIREBOLT_LOG_ERROR(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "Error in getting Transport err = %d", status);
+    }
+
+    return status;
+}`
+  }
+  return impl
+}
+
+function getPolymorphicEventImpl(method, module, schemas) {
+  let name = capitalize(method.name + 'FederatedRequest')
+  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let propType = getSchemaType(module, schema, name, schemas, {descriptions: true, level: 0})
+
+  let impl = ''
+  if (propType.type && (propType.type.length > 0)) {
+    let eventName = getModuleName(module).toLowerCase() + '.' + method.name
+    let moduleName = capitalize(getModuleName(module))
+    let methodName = moduleName + capitalize(method.name)
+    let container = getJsonType(module, schema, name, schemas)
+
+    impl += `${description(method.name, 'Listen to pull request')}\n` + `uint32_t ${moduleName}_Register_${capitalize(method.name)}Pull(OnPull${methodName}Callback userCB, const void* userData)
+{
+    const string eventName = _T("${eventName}");
+    uint32_t status = FireboltSDKErrorNone;
+    if (userCB != nullptr) {` + '\n'
+      impl += `        status = ${getSdkNameSpace()}::Event::Instance().Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);
+    }
+    return status;
+}
+uint32_t ${moduleName}_Unregister_${capitalize(method.name)}Pull(OnPull${methodName}Callback userCB)
+{
+    return ${getSdkNameSpace()}::Event::Instance().Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
+}`
+  }
+  return impl
+}
+
+function getPolymorphicEventCallbackImpl(method, module, schemas) {
+  let name = capitalize(method.name + 'FederatedRequest')
+  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let propType = getSchemaType(module, schema, name, schemas, {descriptions: true, level: 0})
+
+  let impl = ''
+  if (propType.type && (propType.type.length > 0)) {
+    let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+    let container = getJsonType(module, schema, name, schemas)
+
+    impl += `static void ${methodName}InnerCallback(const void* userCB, const void* userData, void* response)
+{` + '\n'
+
+    impl +=`    WPEFramework::Core::ProxyType<${container.type}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response));`
+
+    if (propType.json) {
+      impl +=`
+
+    ASSERT(jsonResponse.IsValid() == true);
+    if (jsonResponse.IsValid() == true) {` + '\n'
+
+      impl +=`        OnPull${methodName}Callback callback = reinterpret_cast<OnPull${methodName}Callback>(userCB);` + '\n'
+      impl +=`       callback(userData, static_cast<${propType.type}>(response));` + '\n'
+    }
+    impl += `    }
+}`
+  }
+  return impl;
+}
+
 export {
     getSdkNameSpace,
     getNameSpaceOpen,
@@ -1053,5 +1164,9 @@ export {
     getEventCallbackImpl,
     getEventImpl,
     getImplForMethodParam,
-    getMethodImpl
+    getMethodImpl,
+    getImplForPolymorphicMethodParam,
+    getPolymorphicMethodImpl,
+    getPolymorphicEventImpl,
+    getPolymorphicEventCallbackImpl
 }

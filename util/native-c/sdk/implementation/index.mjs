@@ -34,7 +34,9 @@ import { getSchemas } from '../../../shared/modules.mjs'
 
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema,
          getEventCallbackImpl, getEventImpl, getPropertyEventCallbackImpl, getPropertyEventImpl,
-         getPropertyGetterImpl, getPropertySetterImpl, getImplForMethodParam, getMethodImpl } from '../../shared/cpphelpers.mjs'
+         getPropertyGetterImpl, getPropertySetterImpl, getImplForMethodParam, getMethodImpl,
+         getImplForPolymorphicMethodParam, getPolymorphicMethodImpl, getPolymorphicEventImpl,
+	 getPolymorphicEventCallbackImpl } from '../../shared/cpphelpers.mjs'
 
 const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
@@ -140,18 +142,19 @@ const generateMethods = (json, schemas = {}) => {
     sig.type.push(getEventCallbackImpl(event, json, schemas))
     sig.type.push(getEventImpl(event, json, schemas))
   })
-  
- //Generate methods that are not tagged with any of the below tags
- const excludeTagNames = ['property','property:readonly','property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
- const getNamesFromTags = tags => tags && tags.map(t => t.name)
- const methods = json.methods.filter( m => {
-                                             const tNames = getNamesFromTags(m.tags)
-                                             if (tNames) {
-                                               return !(tNames.some(t => excludeTagNames.includes(t)))
-                                             }
-                                             return true
-                                           }) || []
- methods.forEach(method => {
+ 
+  {
+    //Generate methods that are not tagged with any of the below tags
+    const excludeTagNames = ['property','property:readonly','property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
+    const getNamesFromTags = tags => tags && tags.map(t => t.name)
+    const methods = json.methods.filter( m => {
+      const tNames = getNamesFromTags(m.tags)
+      if (tNames) {
+        return !(tNames.some(t => excludeTagNames.includes(t)))
+      }
+      return true
+    }) || []
+    methods.forEach(method => {
       //Lets get the implementation for each param params Schema 
       method.params.forEach(param => {
         let impl = getImplForMethodParam(param, json, param.name, schemas)
@@ -159,18 +162,37 @@ const generateMethods = (json, schemas = {}) => {
         impl.deps.forEach(dep => sig.deps.add(dep))
         impl.enums.forEach(e => sig.enums.add(e))
         impl.jsonData.forEach(j => sig.jsonData.add(j))
+      })
+
+      //Lets get the implementation for Result Schema 
+      let impl = getImplForMethodParam(method.result, json, method.result.name, schemas, method.name)
+      impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+      impl.deps.forEach(dep => sig.deps.add(dep))
+      impl.enums.forEach(e => sig.enums.add(e))
+      impl.jsonData.forEach(j => sig.jsonData.add(j))
+
+      let mImpl = getMethodImpl(method, json, schemas)
+      sig.type.push(mImpl)
     })
+  }
 
-    //Lets get the implementation for Result Schema 
-    let impl = getImplForMethodParam(method.result, json, method.result.name, schemas, method.name)
-    impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
-    impl.deps.forEach(dep => sig.deps.add(dep))
-    impl.enums.forEach(e => sig.enums.add(e))
-    impl.jsonData.forEach(j => sig.jsonData.add(j))
-
-    let mImpl = getMethodImpl(method, json, schemas)
-    sig.type.push(mImpl)
-  })
+  {
+    const getNamesFromTags = tags => tags && tags.map(t => t.name)
+    const methods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-pull')))
+    methods.forEach(method => {
+      let impl = getImplForPolymorphicMethodParam(method, json, schemas)
+      impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+      impl.deps.forEach(dep => sig.deps.add(dep))
+      impl.enums.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+      impl.jsonData.forEach(j => sig.jsonData.add(j))
+      let mImpl = getPolymorphicMethodImpl(method, json, schemas)
+      sig.type.push(mImpl)
+      mImpl = getPolymorphicEventCallbackImpl(method, json, schemas)
+      sig.type.push(mImpl)
+      mImpl = getPolymorphicEventImpl(method, json, schemas)
+      sig.type.push(mImpl)
+    })
+  }
 
   return sig
 }
