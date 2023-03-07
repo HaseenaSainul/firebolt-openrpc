@@ -265,6 +265,31 @@ const generateMethodPrototypes = (json, schemas = {}) => {
    })
   }
 
+  //Generate Polymorphic Reducer Methods - Generate single method that take an array of all params listed
+  const reducerMethods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-reducer'))) || []
+
+  reducerMethods.forEach(method => {
+    let reducedParamSchema = {
+      name: `${method.name}Params`,
+      schema: {
+        type: "array",
+        items: {
+          title: `${method.name}Param`,
+          type: "object",
+          properties: {}
+        }
+      },
+      required: true
+    }
+    method.params.forEach(p => reducedParamSchema.schema.items.properties[p.name] = p)
+    method.params = [reducedParamSchema]
+    console.log(`Reduced params schema - ${JSON.stringify(method, null, 4)}`)
+    let structure = getMethodSignature(method, json, schemas)
+    structure.deps.forEach(dep => sig.deps.add(dep))
+    structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+    structure.signature && sig.type.push(structure.signature + ';\n')
+  })
+
   return sig
 }
 
