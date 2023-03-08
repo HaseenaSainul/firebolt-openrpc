@@ -236,7 +236,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         structure.push(getSchemaShape(moduleJson, {type: type}, schemas, '[property: string]', {descriptions: descriptions, level: level+1}))
       }
       else if (json.patternProperties) {
-        throw "patternProperties are not supported by Firebolt"
+        throw "patternProperties are not supported by Firebolt typescript"
       }
   
       structure.push('  '.repeat(level) + '}')

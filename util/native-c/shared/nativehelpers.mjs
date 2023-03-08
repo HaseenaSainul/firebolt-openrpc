@@ -593,7 +593,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         type.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
       }
       else if (json.patternProperties) {
-        throw "patternProperties are not supported by Firebolt"
+        console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(moduleJson):${name})`)
       }
     }
     else if (json.anyOf) {

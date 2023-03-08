@@ -719,7 +719,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
         structure.type.push(t)
       }
       else if (json.patternProperties) {
-        throw "patternProperties are not supported by Firebolt"
+        console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(moduleJson):${name})`)
       }
     }
     else if (json.anyOf) {
