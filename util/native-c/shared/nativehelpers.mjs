@@ -313,7 +313,7 @@ function validJsonObjectProperties(json = {}) {
     if (json.properties || json.additonalProperties) {
       Object.entries(json.properties || json.additonalProperties).every(([pname, prop]) => {
         if (!prop['$ref'] && (pname !== 'additionalProperties') &&
-           (!prop.type || (Array.isArray(prop.type) && (prop.type.find(t => t === 'null'))))) {
+           ((!prop.type && !prop.const) || (Array.isArray(prop.type) && (prop.type.find(t => t === 'null'))))) {
           valid = false
         }
         return valid

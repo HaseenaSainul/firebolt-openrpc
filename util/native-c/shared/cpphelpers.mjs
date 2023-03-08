@@ -114,7 +114,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     }
   else if (json.type === 'string' && json.enum) {
     //Enum
-    let t = 'WPEFramework::Core::JSON::EnumType<' + getModuleName(module) + '_' + capitalize(name) + '>'
+    let t = 'WPEFramework::Core::JSON::EnumType<' + (json.namespace ? json.namespace : getModuleName(module)) + '_' + capitalize(name) + '>'
     structure.type.push(t)
     return structure
   }
@@ -358,7 +358,7 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, modulePropertyType,
     return (static_cast<${accessorPropertyType}>(element));` + '\n'
   }
   else {
-    if (json.type === 'string' && !json.enum) {
+    if (json.const || (json.type === 'string' && !json.enum)) {
       result += `    return (const_cast<${accessorPropertyType}>((*var)->${subPropertyName}.Value().c_str()));` + '\n'
     }
     else {
@@ -435,7 +435,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
     return (static_cast<${accessorPropertyType}>(object));` + '\n'
   }
   else {
-    if (json.type === 'string' && !json.enum) {
+    if (json.const || (json.type === 'string' && !json.enum)) {
       result += `    return (const_cast<${accessorPropertyType}>(${propertyName}.Get(index).Value().c_str()));` + '\n'
     }
     else {
@@ -530,7 +530,7 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
         return (static_cast<${accessorPropertyType}>(element));` + '\n'
     }
     else {
-      if (json.type === 'string') {
+      if (json.type === 'string' || json.const) {
         if (json.enum) {
           result += `
         return (const_cast<${accessorPropertyType}>((*var)->Get(key).));` + '\n'
@@ -641,13 +641,13 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
             }
             if (schema.type && schema.type.length > 0) {
               let type = getArrayElementSchema(json, moduleJson, schemas, schema.name)
-              if (type.type === 'string' && type.enum && schema.name && schema.name.length > 0) {
-                let typeName = getTypeName(getModuleName(moduleJson), schema.name)
-                structure.enums.add(description(schema.name, schema.json.description) + getEnumConversionImpl(typeName, type))
+              if (type.type === 'string' && type.enum && schema.name && schema.name.length > 0 && (getModuleName(moduleJson) === schema.namespace)) {
+                structure.enums.add(description(schema.name, schema.json.description) + getEnumConversionImpl(schema.type, type))
               }
 
               let moduleName = getModuleName(moduleJson)
               let moduleProperty = getJsonType(moduleJson, json, json.title || name, schemas, prefixName)
+              schema.json.namespace = schema.namespace
               let subModuleProperty = getJsonType(moduleJson, schema.json, schema.name, schemas, prefixName)
               let def = getArrayAccessorsImpl(tName, moduleName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), schema.type, type)
               t += desc + '\n' + def
@@ -803,7 +803,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonResult);
     if (status == FireboltSDKErrorNone) {\n`
   if (propType.json) {
-    if ((propType.json.type === 'string') && (propType.type === 'char*')) {
+    if (((propType.json.type === 'string') || propType.json.const) && (propType.type === 'char*')) {
       impl += `    ${container.type}* strResult = new ${container.type}();`
       impl += `        *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
     } else if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
@@ -888,7 +888,7 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
     ASSERT(jsonResponse.IsValid() == true);
     if (jsonResponse.IsValid() == true) {` + '\n'
     
-      if ((propType.json.type === 'string') && (!propType.json.enum)) {
+      if (propType.json.const || ((propType.json.type === 'string') && (!propType.json.enum))) {
          impl +=`        ${container.type}* jsonStrResponse = new ${container.type}();
         *jsonStrResponse = *jsonResponse;
         jsonResponse.Release();` + '\n\n'
@@ -905,7 +905,7 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
       if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
         impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
       }
-      else if ((propType.json.type === 'string') && (!propType.json.enum)) {
+      else if (propType.json.const || ((propType.json.type === 'string') && (!propType.json.enum))) {
         impl += `        callback(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
       }
       else {
