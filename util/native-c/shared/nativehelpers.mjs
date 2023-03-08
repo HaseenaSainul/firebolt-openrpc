@@ -685,15 +685,18 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
     const areParamsValid = params => params.every(p => p.type && (p.type.length > 0))
 
-    if (areParamsValid(structure.params) && (structure["result"] && structure["result"].length > 0)) {
-      structure["signature"] = `uint32_t ${methodName}(`
+    structure["signature"] = `uint32_t ${methodName}(`
+    if (areParamsValid(structure.params)) {
       structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
-      if (structure.params.length > 0 && method.result.schema) {
+    }
+    if (structure["result"] && (structure["result"].length > 0)) {
+      if (structure.params.length > 0) {
         structure.signature += ','
       }
       method.result.schema && (structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`)
-      structure.signature += ' )'
     }
+
+    structure.signature += ' )'
     return structure
   }
 

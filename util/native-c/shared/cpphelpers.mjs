@@ -1006,30 +1006,39 @@ function getMethodImpl(method, module, schemas) {
             impl += `        jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n\n`
           }
         })
-        let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
 
-        impl += `        ${resultJsonType.type} jsonResult;\n` 
-        impl += `        status = transport->Invoke("${methodName}", jsonParameters, jsonResult);\n`
-        impl += `        if (status == FireboltSDKErrorNone) {\n`
+        let resultJsonType = ''
+        if (structure.result.length > 0) {
+          resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
 
-        if (structure.result.includes('FireboltTypes_StringHandle')) {
-            impl += `            ${resultJsonType.type}* resultPtr = new ${resultJsonType.type}(jsonResult);\n`
-            impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
-        }
+          impl += `        ${resultJsonType.type} jsonResult;\n`
+	}
         else {
-          if (structure.result.includes('Handle')) {
-            impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* resultPtr = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
-            impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
+          impl += `        JsonObject jsonResult;\n`
+        }
+
+        impl += `        status = transport->Invoke("${methodName}", jsonParameters, jsonResult);\n`
+
+        if (structure.result.length > 0) {
+          impl += `        if (status == FireboltSDKErrorNone) {\n`
+
+          if (structure.result.includes('FireboltTypes_StringHandle')) {
+              impl += `            ${resultJsonType.type}* resultPtr = new ${resultJsonType.type}(jsonResult);\n`
+              impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
           }
           else {
-            impl += `            *${method.result.name} = jsonResult.Value();\n`
+            if (structure.result.includes('Handle')) {
+              impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* resultPtr = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
+              impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
+           }
+            else {
+              impl += `            *${method.result.name} = jsonResult.Value();\n`
+            }
           }
+          impl += '        }\n'
         }
 
-        impl += '        }\n'
-
-      impl += `
-    } else {
+      impl += `    } else {
         FIREBOLT_LOG_ERROR(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "Error in getting Transport err = %d", status);
     }
 
