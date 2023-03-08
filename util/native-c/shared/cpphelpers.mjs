@@ -33,6 +33,13 @@ const getJsonDataStructName = (modName, name, prefixName = '') => {
     return result
 }
 
+const IsCallsMetricsMethod = (method) => (method.tags && method.tags.find(t => t.name === 'calls-metrics') ? true : false)
+const getCallsMetricsImpl = (module, method, schemas, prefixName = '') => {
+  if (IsCallsMetricsMethod(method) === true) {
+    //Add logic here to create submit job, need to understand where jobs class has to create
+  }
+}
+
 const getJsonNativeType = json => {
     let type
     let jsonType = json.const ? typeof json.const : json.type
@@ -813,6 +820,7 @@ impl += `    WPEFramework::Core::ProxyType<${container.type}>* resultPtr = new W
       impl += `        *${property.name || property.result.name} = jsonResult.Value();` + '\n'
     }
   }
+  impl += getCallsMetricsImpl(module, method, schemas)
   impl += '    }' + '\n'
   impl += '    return status;' + '\n'
 
@@ -848,6 +856,15 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   }
   impl += `\n\n    return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
   impl += `\n}`
+
+  impl += `\n\n    uint32_t status = return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
+  impl += `    if (status == FireboltSDKErrorNone) {
+        FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully set")\n`
+  impl += getCallsMetricsImpl(module, method, schemas)
+  impl += `    }
+
+    return status;
+}`
 
   return impl
 }
@@ -974,6 +991,26 @@ function getImplForMethodParam(param, module, name, schemas, prefixName = '') {
   return impl
 }
 
+function getMethodImplResult(method, resultJsonType, result) {
+  let impl = ''
+  if (result.length > 0) {
+    if (result.includes('FireboltTypes_StringHandle')) {
+      impl += `            ${resultJsonType.type}* resultPtr = new ${resultJsonType.type}(jsonResult);\n`
+      impl += `            *${method.result.name} = static_cast<${result}>(resultPtr);\n`
+    }
+    else {
+      if (result.includes('Handle')) {
+        impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* resultPtr = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
+        impl += `            *${method.result.name} = static_cast<${result}>(resultPtr);\n`
+      }
+       else {
+        impl += `            *${method.result.name} = jsonResult.Value();\n`
+      }
+    }
+  }
+  return impl
+}
+  
 function getMethodImpl(method, module, schemas) {
   let methodName = getModuleName(module).toLowerCase() + '.' + method.name
   let structure = getMethodSignature(method, module, schemas)
@@ -1006,12 +1043,14 @@ function getMethodImpl(method, module, schemas) {
             impl += `        jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n\n`
           }
         })
-
+        console.log("getMethodImpl " + structure.signature)
+        console.log("method.result.name" + method.result.name)
+        console.log(structure)
         let resultJsonType = ''
         if (structure.result.length > 0) {
           resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
 
-          impl += `        ${resultJsonType.type} jsonResult;\n`
+          impl += `        ${resultJsonType.type} jsonResult;\n` 
 	}
         else {
           impl += `        JsonObject jsonResult;\n`
@@ -1019,24 +1058,11 @@ function getMethodImpl(method, module, schemas) {
 
         impl += `        status = transport->Invoke("${methodName}", jsonParameters, jsonResult);\n`
 
-        if (structure.result.length > 0) {
-          impl += `        if (status == FireboltSDKErrorNone) {\n`
-
-          if (structure.result.includes('FireboltTypes_StringHandle')) {
-              impl += `            ${resultJsonType.type}* resultPtr = new ${resultJsonType.type}(jsonResult);\n`
-              impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
-          }
-          else {
-            if (structure.result.includes('Handle')) {
-              impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* resultPtr = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
-              impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
-           }
-            else {
-              impl += `            *${method.result.name} = jsonResult.Value();\n`
-            }
-          }
-          impl += '        }\n'
-        }
+        impl += `        if (status == FireboltSDKErrorNone) {
+            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully invoked")\n`
+        impl += getMethodImplResult(method, resultJsonType, structure.result)
+        impl += getCallsMetricsImpl(module, method, schemas)
+        impl += '        }\n'
 
       impl += `    } else {
         FIREBOLT_LOG_ERROR(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "Error in getting Transport err = %d", status);
@@ -1088,8 +1114,9 @@ function getPolymorphicMethodImpl(method, module, schemas) {
         WPEFramework::Core::JSON::Boolean jsonResult;
         status = transport->Invoke("${methodName}", jsonParameters, jsonResult);
         if (status == FireboltSDKErrorNone) {
-            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully pushed with status as %d", jsonResult.Value());
-        }
+            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully pushed with status as %d", jsonResult.Value());\n`
+    impl += getCallsMetricsImpl(module, method, schemas)
+    impl += `        }
     } else {
         FIREBOLT_LOG_ERROR(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "Error in getting Transport err = %d", status);
     }

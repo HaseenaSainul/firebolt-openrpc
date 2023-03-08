@@ -45,11 +45,17 @@ const hasProperties = (prop) => {
   return hasProperty
 }
 
+const getSchemaRef = (name) => {
+  let schema = {}
+  schema['$ref'] = '#/components/schemas/' + name
+  return schema
+}
+
 const getPolymorphicSchema = (method, module, name, schemas) => {
   let schema = {}
   method.params.every(param => {
     if (param.name === 'result') {
-      schema['$ref'] = '#/components/schemas/' + name
+      schema = getSchemaRef(name)
       return false
     }
     return true
