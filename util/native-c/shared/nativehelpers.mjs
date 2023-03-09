@@ -35,6 +35,14 @@ const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.t
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
+const IsRPCOnlyMethod = (method) => (method && method.tags && method.tags.find(t => t.name === 'rpc-only') ? true : false)
+
+const IsCallsMetricsMethod = (method) => (method && method.tags && method.tags.find(t => t.name === 'calls-metrics') ? true : false)
+const hasCallsMetricsMethods = (json) => {
+  let callsMetricsMethods = json.methods && json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('calls-metrics')))
+  return (callsMetricsMethods && (callsMetricsMethods.length > 0))
+}
+
 const hasProperties = (prop) => {
   let hasProperty = false
   if (prop.properties) {
@@ -45,11 +53,17 @@ const hasProperties = (prop) => {
   return hasProperty
 }
 
+const getSchemaRef = (name) => {
+  let schema = {}
+  schema['$ref'] = '#/components/schemas/' + name
+  return schema
+}
+
 const getPolymorphicSchema = (method, module, name, schemas) => {
   let schema = {}
   method.params.every(param => {
     if (param.name === 'result') {
-      schema['$ref'] = '#/components/schemas/' + name
+      schema = getSchemaRef(name)
       return false
     }
     return true
@@ -273,6 +287,9 @@ const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}
   const headers = []
   if (cpp == true) {
     headers.push(`#include "FireboltSDK.h"`)
+    if (hasCallsMetricsMethods(json) === true) {
+      headers.push(`#include "Metrics.h"`)
+    }
     headers.push((common === true) ? `#include "Common/${capitalize(getModuleName(json))}.h"` : `#include "${capitalize(getModuleName(json))}.h"`)
     if ((common === true) && (fs.existsSync(srcDir + `/JsonData_${capitalize(getModuleName(json))}.h`) === true)) {
       headers.push(`#include "JsonData_${capitalize(getModuleName(json))}.h"`)
@@ -689,7 +706,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     if (areParamsValid(structure.params)) {
       structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
     }
-    if (structure["result"] && (structure["result"].length > 0)) {
+    if (structure["result"] && (structure["result"].length > 0) && (IsRPCOnlyMethod(method) !== true)) {
       if (structure.params.length > 0) {
         structure.signature += ','
       }
@@ -750,8 +767,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getMethodSignature,
     validJsonObjectProperties,
     hasProperties,
+    getSchemaRef,
     getPolymorphicSchema,
     getPolymorphicMethodSignature,
     getPolymorphicEventCallbackSignature,
-    getPolymorphicEventSignature
+    getPolymorphicEventSignature,
+    IsRPCOnlyMethod,
+    IsCallsMetricsMethod
   }

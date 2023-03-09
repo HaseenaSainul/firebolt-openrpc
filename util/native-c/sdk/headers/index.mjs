@@ -196,7 +196,7 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
 )(json)
 
 const generateMethodPrototypes = (json, schemas = {}) => {
-  
+
   let sig = {type: [], enum: [], deps: new Set()}
 
   const properties = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('property'))) || []
@@ -282,7 +282,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     }
     method.params.forEach(p => reducedParamSchema.schema.items.properties[p.name] = p)
     method.params = [reducedParamSchema]
-    console.log(`Reduced params schema - ${JSON.stringify(method, null, 4)}`)
+
     let structure = getMethodSignature(method, json, schemas)
     structure.deps.forEach(dep => sig.deps.add(dep))
     structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})

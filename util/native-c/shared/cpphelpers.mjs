@@ -3,8 +3,8 @@ import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName, getModuleName, description, 
          getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature,
          getPropertySetterSignature, getFireboltStringType, getMethodSignature,
-         validJsonObjectProperties, hasProperties, getPolymorphicSchema,
-         getPolymorphicMethodSignature } from "./nativehelpers.mjs"
+         validJsonObjectProperties, hasProperties, getSchemaRef, getPolymorphicSchema,
+         getPolymorphicMethodSignature, IsRPCOnlyMethod, IsCallsMetricsMethod } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -31,6 +31,45 @@ const getNameSpaceClose = (module = {}) => {
 const getJsonDataStructName = (modName, name, prefixName = '') => {
     let result = (prefixName.length > 0) ? `${capitalize(modName)}::${capitalize(prefixName)}_${capitalize(name)}` : `${capitalize(modName)}::${capitalize(name)}`
     return result
+}
+
+const getCallsMetricsDispatcher = (module, method, schemas, prefixName = '') => {
+  let impl = ''
+  if (IsCallsMetricsMethod(method) === true) {
+    let methodName = 'Metrics_' + capitalize(method.name)
+
+    let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
+    if (resultJsonType.type.length > 0 && method.result.schema.type !== 'boolean') {
+      impl += `void ${methodName}Dispatcher(const void* result)\n{\n`
+      impl += `    ${methodName}(static_cast<resultJsonType.type>(const_cast<void*>(result)));\n`
+    }
+    else {
+      impl += `void ${methodName}Dispatcher(const void*)\n{\n`
+      impl += `    ${methodName}();\n`
+    }
+    impl += `}\n`
+  }
+  return impl
+}
+
+const getCallsMetricsImpl = (module, method, schemas, prefixName = '') => {
+  let impl = ''
+  if (IsCallsMetricsMethod(method) === true) {
+
+    let methodName = 'Metrics_' + capitalize(method.name)
+    let resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
+    if (resultJsonType.type.length > 0 && method.result.schema.type !== 'boolean') {
+
+      impl += `            void* ${method.result.name} = static_cast<void*>(new ${resultJsonType.type});\n`
+      impl += `            WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<FireboltSDK::Worker>::Create(${methodName}Dispatcher, ${method.result.name}));\n`
+    }
+    else {
+
+      impl += `            WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<FireboltSDK::Worker>::Create(${methodName}Dispatcher, nullptr));\n`
+    }
+    impl += `            WPEFramework::Core::IWorkerPool::Instance().Submit(job);\n`
+  }
+  return impl
 }
 
 const getJsonNativeType = json => {
@@ -202,7 +241,7 @@ function getJsonContainerDefinition (name, props = []) {
 
     c += `\n        }\n`
     c += `\n        ${name}(const ${name}& copy)
-	{`
+        {`
     props.forEach(prop => {
         c += `\n            ${capitalize(prop.name)} = copy.${capitalize(prop.name)};`
     })
@@ -271,7 +310,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
               else {
                 console.log(`WARNING: getJsonDefinition: Type undetermined for ${name}:${pname}`)
                 return false
-	      }
+              }
             }
           }
           return true
@@ -787,13 +826,13 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
   }
 
 function getPropertyGetterImpl(property, module, schemas = {}) {
-
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let moduleName = capitalize(getModuleName(module))
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
   let container = getJsonType(module, property.result.schema, property.result.name || property.name, schemas)
+  let impl = getCallsMetricsDispatcher(module, property, schemas)
 
-  let impl = `${getPropertyGetterSignature(property, module, propType.type)} {\n`
+  impl += `${getPropertyGetterSignature(property, module, propType.type)} {\n`
   impl += `    const string method = _T("${methodName}");` + '\n'
 
   if (propType.json) {
@@ -803,16 +842,20 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonResult);
     if (status == FireboltSDKErrorNone) {\n`
   if (propType.json) {
+    impl += `        if (${property.name || property.result.name} != nullptr) {\n`
+
     if (((propType.json.type === 'string') || propType.json.const) && (propType.type === 'char*')) {
-      impl += `    ${container.type}* strResult = new ${container.type}();`
-      impl += `        *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
+      impl += `            ${container.type}* strResult = new ${container.type}();`
+      impl += `            *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
     } else if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
-impl += `    WPEFramework::Core::ProxyType<${container.type}>* resultPtr = new WPEFramework::Core::ProxyType<${container.type}>();`
-      impl += `        *${property.name || property.result.name} = static_cast<${propType.type}>(resultPtr);` + '\n'
+      impl += `            WPEFramework::Core::ProxyType<${container.type}>* resultPtr = new WPEFramework::Core::ProxyType<${container.type}>();\n`
+      impl += `            *${property.name || property.result.name} = static_cast<${propType.type}>(resultPtr);\n`
     } else {
-      impl += `        *${property.name || property.result.name} = jsonResult.Value();` + '\n'
+      impl += `            *${property.name || property.result.name} = jsonResult.Value();\n`
     }
+    impl += `        }\n`
   }
+  impl += getCallsMetricsImpl(module, property, schemas)
   impl += '    }' + '\n'
   impl += '    return status;' + '\n'
 
@@ -827,7 +870,8 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
   let container = getJsonType(module, property.result.schema, property.result.name || property.name, schemas)
 
-  let impl = `${getPropertySetterSignature(property, module, propType.type)} {\n`
+  let impl = getCallsMetricsDispatcher(module, property, schemas)
+  impl += `${getPropertySetterSignature(property, module, propType.type)} {\n`
 
   impl += `    const string method = _T("${methodName}");` + '\n'
 
@@ -848,6 +892,15 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   }
   impl += `\n\n    return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
   impl += `\n}`
+
+  impl += `\n\n    uint32_t status = return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
+  impl += `    if (status == FireboltSDKErrorNone) { \n
+        FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully set")\n`
+  impl += getCallsMetricsImpl(module, property, schemas)
+  impl += `    }
+
+    return status;
+}`
 
   return impl
 }
@@ -974,6 +1027,33 @@ function getImplForMethodParam(param, module, name, schemas, prefixName = '') {
   return impl
 }
 
+function getMethodImplResult(method, resultJsonType, result) {
+  let impl = ''
+  if (result.length) {
+    if (IsRPCOnlyMethod(method) === true) {
+      impl += `            status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;\n`
+    }
+    else {
+      impl += `            if (${method.result.name} != nullptr) {\n`
+      if (result.includes('FireboltTypes_StringHandle')) {
+        impl += `                ${resultJsonType.type}* resultPtr = new ${resultJsonType.type}(jsonResult);\n`
+        impl += `                *${method.result.name} = static_cast<${result}>(resultPtr);\n`
+      }
+      else {
+        if (result.includes('Handle')) {
+          impl += `                WPEFramework::Core::ProxyType<${resultJsonType.type}>* resultPtr = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
+          impl += `                *${method.result.name} = static_cast<${result}>(resultPtr);\n`
+        }
+         else {
+         impl += `                *${method.result.name} = jsonResult.Value();\n`
+        }
+      }
+      impl += `            }\n`
+    }
+  }
+  return impl
+}
+
 function getMethodImpl(method, module, schemas) {
   let methodName = getModuleName(module).toLowerCase() + '.' + method.name
   let structure = getMethodSignature(method, module, schemas)
@@ -981,7 +1061,8 @@ function getMethodImpl(method, module, schemas) {
 
   if (structure.signature) {
 
-    impl = `${structure.signature}\n{\n`
+    impl += getCallsMetricsDispatcher(module, method, schemas)
+    impl += `${structure.signature}\n{\n`
 
     impl += `    uint32_t status = FireboltSDKErrorUnavailable;
     ${getSdkNameSpace()}::Transport<WPEFramework::Core::JSON::IElement>* transport = ${getSdkNameSpace()}::Accessor::Instance().GetTransport();
@@ -1012,31 +1093,18 @@ function getMethodImpl(method, module, schemas) {
           resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
 
           impl += `        ${resultJsonType.type} jsonResult;\n`
-	}
+        }
         else {
           impl += `        JsonObject jsonResult;\n`
         }
 
         impl += `        status = transport->Invoke("${methodName}", jsonParameters, jsonResult);\n`
 
-        if (structure.result.length > 0) {
-          impl += `        if (status == FireboltSDKErrorNone) {\n`
-
-          if (structure.result.includes('FireboltTypes_StringHandle')) {
-              impl += `            ${resultJsonType.type}* resultPtr = new ${resultJsonType.type}(jsonResult);\n`
-              impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
-          }
-          else {
-            if (structure.result.includes('Handle')) {
-              impl += `            WPEFramework::Core::ProxyType<${resultJsonType.type}>* resultPtr = new WPEFramework::Core::ProxyType<${resultJsonType.type}>(jsonResult);\n`
-              impl += `            *${method.result.name} = static_cast<${structure.result}>(resultPtr);\n`
-           }
-            else {
-              impl += `            *${method.result.name} = jsonResult.Value();\n`
-            }
-          }
-          impl += '        }\n'
-        }
+        impl += `        if (status == FireboltSDKErrorNone) {\n
+            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully invoked");\n`
+        impl += getMethodImplResult(method, resultJsonType, structure.result) + '\n'
+        impl += getCallsMetricsImpl(module, method, schemas)
+        impl += '        }\n'
 
       impl += `    } else {
         FIREBOLT_LOG_ERROR(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "Error in getting Transport err = %d", status);
@@ -1078,9 +1146,10 @@ function getPolymorphicMethodImpl(method, module, schemas) {
   let impl = ''
 
   if (structure.signature) {
+    impl += getCallsMetricsDispatcher(module, method, schemas)
 
     const jsonType = getJsonType(module, structure.json, structure.param.name, schemas)
-    impl = `${structure.signature}\n{\n`
+    impl += `${structure.signature}\n{\n`
     impl += `    uint32_t status = FireboltSDKErrorUnavailable;
     ${getSdkNameSpace()}::Transport<WPEFramework::Core::JSON::IElement>* transport = ${getSdkNameSpace()}::Accessor::Instance().GetTransport();
     if (transport != nullptr) {
@@ -1088,8 +1157,9 @@ function getPolymorphicMethodImpl(method, module, schemas) {
         WPEFramework::Core::JSON::Boolean jsonResult;
         status = transport->Invoke("${methodName}", jsonParameters, jsonResult);
         if (status == FireboltSDKErrorNone) {
-            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully pushed with status as %d", jsonResult.Value());
-        }
+            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully pushed with status as %d", jsonResult.Value());\n`
+    impl += getCallsMetricsImpl(module, method, schemas)
+    impl += `        }
     } else {
         FIREBOLT_LOG_ERROR(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "Error in getting Transport err = %d", status);
     }
