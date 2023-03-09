@@ -1032,6 +1032,7 @@ function getMethodImplResult(method, resultJsonType, result) {
   if (result.length) {
     if (IsResultBooleanSuccess(method) === true) {
       impl += `            status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;\n`
+      impl += `            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${method.name} return status = %d", status);\n`
     }
     else {
       impl += `            if (${method.result.name} != nullptr) {\n`
