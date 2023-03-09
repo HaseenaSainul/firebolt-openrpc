@@ -35,7 +35,7 @@ const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.t
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
-const IsRPCOnlyMethod = (method) => (method && method.tags && method.tags.find(t => t.name === 'rpc-only') ? true : false)
+const IsResultBooleanSuccess = (method) => (method && method.result && method.result.name === 'success' && (method.result.schema.type === 'boolean' || method.result.schema.const))
 
 const IsCallsMetricsMethod = (method) => (method && method.tags && method.tags.find(t => t.name === 'calls-metrics') ? true : false)
 const hasCallsMetricsMethods = (json) => {
@@ -706,7 +706,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     if (areParamsValid(structure.params)) {
       structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
     }
-    if (structure["result"] && (structure["result"].length > 0) && (IsRPCOnlyMethod(method) !== true)) {
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
       if (structure.params.length > 0) {
         structure.signature += ','
       }
@@ -772,6 +772,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getPolymorphicMethodSignature,
     getPolymorphicEventCallbackSignature,
     getPolymorphicEventSignature,
-    IsRPCOnlyMethod,
+    IsResultBooleanSuccess,
     IsCallsMetricsMethod
   }

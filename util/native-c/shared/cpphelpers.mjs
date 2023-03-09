@@ -4,7 +4,7 @@ import { getSchemaType, capitalize, getTypeName, getModuleName, description,
          getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature,
          getPropertySetterSignature, getFireboltStringType, getMethodSignature,
          validJsonObjectProperties, hasProperties, getSchemaRef, getPolymorphicSchema,
-         getPolymorphicMethodSignature, IsRPCOnlyMethod, IsCallsMetricsMethod } from "./nativehelpers.mjs"
+         getPolymorphicMethodSignature, IsResultBooleanSuccess, IsCallsMetricsMethod } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
@@ -1030,7 +1030,7 @@ function getImplForMethodParam(param, module, name, schemas, prefixName = '') {
 function getMethodImplResult(method, resultJsonType, result) {
   let impl = ''
   if (result.length) {
-    if (IsRPCOnlyMethod(method) === true) {
+    if (IsResultBooleanSuccess(method) === true) {
       impl += `            status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;\n`
     }
     else {
@@ -1159,6 +1159,10 @@ function getPolymorphicMethodImpl(method, module, schemas) {
         if (status == FireboltSDKErrorNone) {
             FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully pushed with status as %d", jsonResult.Value());\n`
     impl += getCallsMetricsImpl(module, method, schemas)
+    if (IsResultBooleanSuccess(method) === true) {
+      impl += `            status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;\n`
+    }
+
     impl += `        }
     } else {
         FIREBOLT_LOG_ERROR(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "Error in getting Transport err = %d", status);
