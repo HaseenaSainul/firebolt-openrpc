@@ -333,7 +333,8 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     }
   }
   else if (json.type === 'array' && json.items) {
-    structure = getJsonDefinition(moduleJson, Array.isArray(json.items) ? json.items[0] : json.items, schemas, name, options)
+    let jsonItems = Array.isArray(json.items) ? json.items[0] : json.items
+    structure = getJsonDefinition(moduleJson, jsonItems, schemas, jsonItems.title || name, options)
   }
   else if (json.anyOf) {
 
