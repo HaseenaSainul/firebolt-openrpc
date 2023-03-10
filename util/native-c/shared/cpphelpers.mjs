@@ -197,6 +197,10 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     structure.type = getJsonNativeTypeForOpaqueString()
     return structure
   }
+  else if (json.patternProperties) {
+    structure.type = getJsonNativeTypeForOpaqueString()
+    return structure
+  }
   else if (json.anyOf) {
     return structure //TODO
   }
@@ -758,7 +762,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
         structure.type.push(t)
       }
       else if (json.patternProperties) {
-        console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(moduleJson):${name})`)
+        console.log(`WARNING: patternProperties are not supported by Firebolt(inside ${getModuleName(moduleJson)}:${name})`)
       }
     }
     else if (json.anyOf) {
