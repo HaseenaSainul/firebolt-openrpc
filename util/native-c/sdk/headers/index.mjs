@@ -43,7 +43,8 @@ import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClo
          getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventSignature,
          getPropertyEventCallbackSignature, getEventSignature, getEventCallbackSignature,
          getModuleName, capitalize, getMethodSignature, getPolymorphicMethodSignature,
-         getPolymorphicEventCallbackSignature, getPolymorphicEventSignature } from '../../shared/nativehelpers.mjs'
+         getPolymorphicReducedParamSchema, getPolymorphicEventCallbackSignature,
+         getPolymorphicEventSignature } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../shared/cpphelpers.mjs'
 // Maybe an array of <key, value> from the schema
@@ -268,20 +269,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
   const reducerMethods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-reducer'))) || []
 
   reducerMethods.forEach(method => {
-    let reducedParamSchema = {
-      name: `${method.name}Params`,
-      schema: {
-        type: "array",
-        items: {
-          title: `${method.name}Param`,
-          type: "object",
-          properties: {}
-        }
-      },
-      required: true
-    }
-    method.params.forEach(p => reducedParamSchema.schema.items.properties[p.name] = p)
-    method.params = [reducedParamSchema]
+    method.params = [getPolymorphicReducedParamSchema(method)]
 
     let structure = getMethodSignature(method, json, schemas)
     structure.deps.forEach(dep => sig.deps.add(dep))

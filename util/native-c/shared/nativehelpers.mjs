@@ -72,6 +72,23 @@ const getPolymorphicSchema = (method, module, name, schemas) => {
   return schema
 }
 
+const getPolymorphicReducedParamSchema = (method) => {
+  let reducedParamSchema = {
+    name: `${method.name}Params`,
+    schema: {
+      type: "array",
+      items: {
+        title: `${method.name}Param`,
+        type: "object",
+        properties: {}
+      }
+    },
+    required: true
+  }
+  method.params.forEach(p => reducedParamSchema.schema.items.properties[p.name] = p)
+  return reducedParamSchema
+}
+
 const getPolymorphicSchemaType = (method, module, federatedType, schemas) => {
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
@@ -330,7 +347,7 @@ function validJsonObjectProperties(json = {}) {
     if (json.properties || json.additonalProperties) {
       Object.entries(json.properties || json.additonalProperties).every(([pname, prop]) => {
         if (!prop['$ref'] && (pname !== 'additionalProperties') &&
-           ((!prop.type && !prop.const) || (Array.isArray(prop.type) && (prop.type.find(t => t === 'null'))))) {
+           ((!prop.type && !prop.const && (prop.schema && !prop.schema.type)) || (Array.isArray(prop.type) && (prop.type.find(t => t === 'null'))))) {
           valid = false
         }
         return valid
@@ -769,6 +786,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     hasProperties,
     getSchemaRef,
     getPolymorphicSchema,
+    getPolymorphicReducedParamSchema,
     getPolymorphicMethodSignature,
     getPolymorphicEventCallbackSignature,
     getPolymorphicEventSignature,

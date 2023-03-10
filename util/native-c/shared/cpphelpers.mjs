@@ -332,6 +332,9 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
       }
     }
   }
+  else if (json.type === 'array' && json.items) {
+    structure = getJsonDefinition(moduleJson, Array.isArray(json.items) ? json.items[0] : json.items, schemas, name, options)
+  }
   else if (json.anyOf) {
 
   }
@@ -762,7 +765,6 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
         structure.type.push(t)
       }
       else if (json.patternProperties) {
-        console.log(`WARNING: patternProperties are not supported by Firebolt(inside ${getModuleName(moduleJson)}:${name})`)
       }
     }
     else if (json.anyOf) {

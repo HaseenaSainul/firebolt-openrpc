@@ -29,7 +29,7 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions,
-         getStyleGuardClose } from '../../shared/nativehelpers.mjs'
+         getStyleGuardClose, getPolymorphicReducedParamSchema } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema,
@@ -155,7 +155,7 @@ const generateMethods = (json, schemas = {}) => {
       return true
     }) || []
     methods.forEach(method => {
-      //Lets get the implementation for each param params Schema 
+      //Lets get the implementation for each param schema
       method.params.forEach(param => {
         let impl = getImplForMethodParam(param, json, param.name, schemas)
         impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
@@ -164,7 +164,7 @@ const generateMethods = (json, schemas = {}) => {
         impl.jsonData.forEach(j => sig.jsonData.add(j))
       })
 
-      //Lets get the implementation for Result Schema 
+      //Lets get the implementation for result schema
       let impl = getImplForMethodParam(method.result, json, method.result.name, schemas, method.name)
       impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
       impl.deps.forEach(dep => sig.deps.add(dep))
@@ -180,16 +180,46 @@ const generateMethods = (json, schemas = {}) => {
     const getNamesFromTags = tags => tags && tags.map(t => t.name)
     const methods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-pull')))
     methods.forEach(method => {
+      //Lets get the implementation for params schema
       let impl = getImplForPolymorphicMethodParam(method, json, schemas)
       impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
       impl.deps.forEach(dep => sig.deps.add(dep))
       impl.enums.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
       impl.jsonData.forEach(j => sig.jsonData.add(j))
+
       let mImpl = getPolymorphicMethodImpl(method, json, schemas)
       sig.type.push(mImpl)
       mImpl = getPolymorphicEventCallbackImpl(method, json, schemas)
       sig.type.push(mImpl)
       mImpl = getPolymorphicEventImpl(method, json, schemas)
+      sig.type.push(mImpl)
+    })
+  }
+  {
+    // Generate Polymorphic Reducer Methods - Generate single method that take an array of all params listed
+    const reducerMethods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-reducer'))) || []
+
+    reducerMethods.forEach(method => {
+      method.params = [getPolymorphicReducedParamSchema(method)]
+
+      //Lets get the implementation for each param schema
+      method.params.forEach(param => {
+        let impl = getImplForMethodParam(param, json, param.name, schemas)
+        console.log(impl.jsonData)
+        impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+        impl.deps.forEach(dep => sig.deps.add(dep))
+        impl.enums.forEach(e => sig.enums.add(e))
+        impl.jsonData.forEach(j => sig.jsonData.add(j))
+      })
+
+      //Lets get the implementation for result schema
+      let impl = getImplForMethodParam(method.result, json, method.result.name, schemas, method.name)
+      impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+      impl.deps.forEach(dep => sig.deps.add(dep))
+      impl.enums.forEach(e => sig.enums.add(e))
+      impl.jsonData.forEach(j => sig.jsonData.add(j))
+
+      let mImpl = getMethodImpl(method, json, schemas)
       sig.type.push(mImpl)
     })
   }
