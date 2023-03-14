@@ -209,14 +209,18 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     let res = getSchemaType(json, property.result.schema, property.result.name || property.name, schemas, '', {descriptions: true, level: 0})
     res.deps.forEach(dep => sig.deps.add(dep))
     res.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
-    sig.type.push(getPropertyGetterSignature(property, json, res.type) + ';\n')
-
+    {
+      let structure = getPropertyGetterSignature(property, json, schemas)
+      structure.signature && sig.type.push(structure.signature + ';\n')
+    }
     if (event(property)) {
       sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';')
       sig.type.push(getPropertyEventSignature(property, json) + ';\n')
     }
     if (setter(property)) {
-      sig.type.push(getPropertySetterSignature(property, json, res.type) + ';\n')
+      let structure = getPropertySetterSignature(property, json, schemas)
+      structure.signature && sig.type.push(structure.signature + ';\n')
+
     }
   })
 

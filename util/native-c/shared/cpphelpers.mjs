@@ -839,26 +839,47 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   let container = getJsonType(module, property.result.schema, property.result.name || property.name, schemas)
   let impl = getCallsMetricsDispatcher(module, property, schemas)
 
-  impl += `${getPropertyGetterSignature(property, module, propType.type)} {\n`
+  let structure = getPropertyGetterSignature(property, module, schemas)
+  impl += `${structure.signature} {\n`
   impl += `    const string method = _T("${methodName}");` + '\n'
 
   if (propType.json) {
-    impl += `    ${container.type} jsonResult;`
+    impl += `    ${container.type} jsonResult;\n`
   }
-  
-  impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonResult);
-    if (status == FireboltSDKErrorNone) {\n`
+  if (structure.params.length > 0) {
+    impl += `    JsonObject jsonParameters;\n\n`
+    property.params.forEach(param => {
+      const getParamType = paramName => structure.params.find(p => p.name === paramName)
+      let nativeType = getParamType(param.name)
+
+      const jsonType = getJsonType(module, param, param.name, schemas)
+      if (jsonType.type.length) {
+        if (nativeType.type.includes('FireboltTypes_StringHandle')) {
+          impl += `    ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+        }
+        else {
+          impl += `    ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
+        }
+        impl += `    jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n`
+      }
+    })
+    impl += `\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonParameters, jsonResult);`
+  } else {
+    impl += `\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonResult);`
+  }
+
+  impl += `\n    if (status == FireboltSDKErrorNone) {\n`
   if (propType.json) {
-    impl += `        if (${property.name || property.result.name} != nullptr) {\n`
+    impl += `        if (${property.result.name || property.name} != nullptr) {\n`
 
     if (((propType.json.type === 'string') || propType.json.const) && (propType.type === 'char*')) {
       impl += `            ${container.type}* strResult = new ${container.type}();`
-      impl += `            *${property.name || property.result.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
+      impl += `            *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
     } else if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
       impl += `            WPEFramework::Core::ProxyType<${container.type}>* resultPtr = new WPEFramework::Core::ProxyType<${container.type}>();\n`
-      impl += `            *${property.name || property.result.name} = static_cast<${propType.type}>(resultPtr);\n`
+      impl += `            *${property.result.name || property.name} = static_cast<${propType.type}>(resultPtr);\n`
     } else {
-      impl += `            *${property.name || property.result.name} = jsonResult.Value();\n`
+      impl += `            *${property.result.name || property.name} = jsonResult.Value();\n`
     }
     impl += `        }\n`
   }
@@ -873,36 +894,59 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 
 function getPropertySetterImpl(property, module, schemas = {}) {
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
-  let paramName = property.name || property.result.name
+  let paramName =  property.result.name || property.name
   let propType = getSchemaType(module, property.result.schema, property.result.name || property.name, schemas, {descriptions: true, level: 0})
   let container = getJsonType(module, property.result.schema, property.result.name || property.name, schemas)
 
   let impl = getCallsMetricsDispatcher(module, property, schemas)
-  impl += `${getPropertySetterSignature(property, module, propType.type)} {\n`
+  let structure = getPropertySetterSignature(property, module, schemas)
+  impl += `${structure.signature} {\n`
 
   impl += `    const string method = _T("${methodName}");` + '\n'
 
+  if (structure.params.length > 0) {
+    impl += `    JsonObject jsonParameters;\n\n`
+    property.params.forEach(param => {
+      const getParamType = paramName => structure.params.find(p => p.name === paramName)
+      let nativeType = getParamType(param.name)
+
+      const jsonType = getJsonType(module, param, param.name, schemas)
+      if (jsonType.type.length) {
+        if (nativeType.type.includes('FireboltTypes_StringHandle')) {
+          impl += `    ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+        }
+        else {
+          impl += `    ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
+        }
+        impl += `    jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n`
+      }
+    })
+  }
+
   if (propType.json) {
     if (propType.json.type === 'object') {
-      impl += `    ${container.type}& parameters = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
+      if (structure.params.length > 0) {
+      impl += `\n    ${container.type}& containerParam = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
+     impl += `\n    jsonParameters.Add(_T("${paramName}"), &containerParam);`
+      }
+      else {
+      impl += `    ${container.type}& jsonParameters = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
+      }
     }
     else {
       //ToDo Map?
-      impl += `    WPEFramework::Core::JSON::VariantContainer parameters;` + '\n'
       if ((propType.json.type === 'array') && (propType.json.items))  {
         impl += `    WPEFramework::Core::JSON::ArrayType<${container.type}> param = *(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${container.type}>>*>(${paramName})));`
       } else {
         impl += `    ${container.type} param(${paramName});`
       }
-      impl += `\n    parameters.Add(_T("${paramName}"), &param);`
+      impl += `\n    jsonParameters.Add(_T("${paramName}"), &param);`
     }
   }
-  impl += `\n\n    return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
-  impl += `\n}`
 
-  impl += `\n\n    uint32_t status = return ${getSdkNameSpace()}::Properties::Set(method, parameters);`
-  impl += `    if (status == FireboltSDKErrorNone) { \n
-        FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully set")\n`
+  impl += `\n\n    uint32_t status = ${getSdkNameSpace()}::Properties::Set(method, jsonParameters);`
+  impl += `\n    if (status == FireboltSDKErrorNone) { \n
+        FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${methodName} is successfully set");\n`
   impl += getCallsMetricsImpl(module, property, schemas)
   impl += `    }
 

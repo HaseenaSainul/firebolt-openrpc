@@ -117,7 +117,7 @@ const generateMethods = (json, schemas = {}) => {
     const event = m => m.tags.find(t => t.name === 'property:readonly' || t.name === 'property')
     const setter = m => m.tags.find(t => t.name === 'property')
     
-    //Lets get the implementation for Result Schema 
+    //Lets get the implementation for result schema
     let impl = getImplForMethodParam(property.result, json, property.result.name || property.name, schemas)
     impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
     impl.deps.forEach(dep => sig.deps.add(dep))
@@ -196,7 +196,7 @@ const generateMethods = (json, schemas = {}) => {
     })
   }
   {
-    // Generate Polymorphic Reducer Methods - Generate single method that take an array of all params listed
+    //Generate Polymorphic Reducer Methods - Generate single method that take an array of all params listed
     const reducerMethods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-reducer'))) || []
 
     reducerMethods.forEach(method => {

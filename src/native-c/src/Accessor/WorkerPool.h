@@ -68,6 +68,7 @@ namespace FireboltSDK {
 
         Dispatcher _dispatcher;
     };
+
     class Worker : public WPEFramework::Core::IDispatch {
     public:
         typedef std::function<void(const void*)> Dispatcher;

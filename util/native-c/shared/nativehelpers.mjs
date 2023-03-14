@@ -662,14 +662,55 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return structure
   }
 
-  function getPropertyGetterSignature(method, module, paramType) {
-    let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
-    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType === 'char*' ? getFireboltStringType() : paramType}* ${method.name || method.result.name})`
+  function generateMethodSignature(methodName, method, module, schemas, getter, prefix = '') {
+    let structure = {}
+    structure["params"] = []
+
+    method.params.forEach(param => {
+      let schemaType = getSchemaType(module, param.schema, param.name, schemas)
+
+      let p = {}
+      p["type"] = getParamType(schemaType)
+      p["name"] = param.name
+      structure.params.push(p)
+    })
+    if (method.result.schema) {
+
+      let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, prefix)
+      structure["result"] = getParamType(result)
+      console.log("structure.result")
+      console.log(result)
+    }
+
+    const areParamsValid = params => params.every(p => p.type && (p.type.length > 0))
+
+    structure["signature"] = `${description(method.name, method.summary)}\nuint32_t ${methodName}(`
+    if (areParamsValid(structure.params)) {
+      structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
+    }
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      if (structure.params.length > 0) {
+        structure.signature += ','
+      }
+      if (getter === true) {
+        method.result.schema && (structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`)
+      }
+      else {
+        method.result.schema && (structure.signature += ` ${structure["result"]} ${method.result.name || method.name}`)
+      }
+    }
+
+    structure.signature += ' )'
+    return structure
   }
 
-  function getPropertySetterSignature(method, module, paramType) {
-    let m = `${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
-    return `${description(method.name, method.summary)}\nuint32_t ${m}(${paramType} ${method.name || method.result.name})`
+
+  function getPropertyGetterSignature(method, module, schemas) {
+    return generateMethodSignature(`${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`, method, module, schemas, true)
+  }
+
+  function getPropertySetterSignature(method, module, schemas) {
+    return generateMethodSignature(`${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`, method, module, schemas, false)
   }
 
   function getPropertyEventCallbackSignature(method, module, paramType) {
