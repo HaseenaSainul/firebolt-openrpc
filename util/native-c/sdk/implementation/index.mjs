@@ -205,7 +205,6 @@ const generateMethods = (json, schemas = {}) => {
       //Lets get the implementation for each param schema
       method.params.forEach(param => {
         let impl = getImplForMethodParam(param, json, param.name, schemas)
-        console.log(impl.jsonData)
         impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
         impl.deps.forEach(dep => sig.deps.add(dep))
         impl.enums.forEach(e => sig.enums.add(e))

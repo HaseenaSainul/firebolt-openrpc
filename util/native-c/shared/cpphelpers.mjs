@@ -2,13 +2,34 @@ import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName, getModuleName, description, 
          getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature,
-         getPropertySetterSignature, getFireboltStringType, getMethodSignature,
+         getPropertySetterSignature, getEventSignature, getFireboltStringType, getMethodSignature,
          validJsonObjectProperties, hasProperties, getSchemaRef, getPolymorphicSchema,
          getPolymorphicMethodSignature, IsResultBooleanSuccess, IsCallsMetricsMethod } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
 const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
+
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const path = require('path');
+
+['debug', 'log', 'warn', 'error'].forEach((methodName) => {
+    const originalLoggingMethod = console[methodName];
+    console[methodName] = (firstArgument, ...otherArguments) => {
+        const originalPrepareStackTrace = Error.prepareStackTrace;
+        Error.prepareStackTrace = (_, stack) => stack;
+        const callee = new Error().stack[1];
+        Error.prepareStackTrace = originalPrepareStackTrace;
+        const relativeFileName = path.relative(process.cwd(), callee.getFileName());
+        const prefix = `${relativeFileName}:${callee.getLineNumber()}:`;
+        if (typeof firstArgument === 'string') {
+            originalLoggingMethod(prefix + ' ' + firstArgument, ...otherArguments);
+        } else {
+            originalLoggingMethod(prefix, firstArgument, ...otherArguments);
+        }
+    };
+});
 
 const getNameSpaceOpen = (module = {}) => {
   let result = `
@@ -1040,8 +1061,9 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
       ClassName = "Event::Instance()."
       CallbackName = `${methodName}Callback`
     }
-
-    impl += `${description(event.name, 'Listen to updates')}\n` + `uint32_t ${moduleName}_Register_${capitalize(event.name)}${prefix}Update(${prefix}${CallbackName} userCB, const void* userData)
+    let structure = getEventSignature(event, module, schemas, prefix)
+    structure.signatures.forEach(signature => {
+      impl += `${signature.registersig}
 {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
@@ -1049,11 +1071,12 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
       impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);
     }
     return status;
-}
-uint32_t ${moduleName}_Unregister_${capitalize(event.name)}Update(${CallbackName} userCB)
+}`
+      impl += `\n${signature.unregistersig}
 {
     return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
-}`
+}\n`
+    })
   }
   return impl
 }
