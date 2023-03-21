@@ -28,7 +28,7 @@ import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions,
+import { getHeaderText, getStyleGuardOpen, getIncludeDefinitions, getEventContextParamSchema,
          getStyleGuardClose, getPolymorphicReducedParamSchema } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 
@@ -36,7 +36,7 @@ import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchem
          getEventCallbackImpl, getEventImpl, getPropertyEventCallbackImpl, getPropertyEventImpl,
          getPropertyGetterImpl, getPropertySetterImpl, getImplForMethodParam, getMethodImpl,
          getImplForPolymorphicMethodParam, getPolymorphicMethodImpl, getPolymorphicEventImpl,
-	 getPolymorphicEventCallbackImpl } from '../../shared/cpphelpers.mjs'
+         getImplForEventContextParams, getPolymorphicEventCallbackImpl } from '../../shared/cpphelpers.mjs'
 
 const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
   const code = []
@@ -128,6 +128,15 @@ const generateMethods = (json, schemas = {}) => {
     sig.type.push(getPropertyGetterImpl(property, json, schemas))
 
     if (event(property)) {
+      property.result = [getEventContextParamSchema(property)]
+
+      //Lets get the implementation for each param schema
+      let impl = getImplForEventContextParams(property.result, json, property.result.name, schemas)
+      impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+      impl.deps.forEach(dep => sig.deps.add(dep))
+      impl.enums.forEach(e => sig.enums.add(e))
+      impl.jsonData.forEach(j => sig.jsonData.add(j))
+
       sig.type.push(getPropertyEventCallbackImpl(property, json, schemas))
       sig.type.push(getPropertyEventImpl(property, json, schemas))
     }
@@ -139,6 +148,15 @@ const generateMethods = (json, schemas = {}) => {
 
   const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('event'))) || []
   events.forEach(event => {
+    event.result = [getEventContextParamSchema(event)]
+
+    //Lets get the implementation for each param schema
+    let impl = getImplForEventContextParams(event.result, json, event.result.name, schemas)
+    impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
+    impl.deps.forEach(dep => sig.deps.add(dep))
+    impl.enums.forEach(e => sig.enums.add(e))
+    impl.jsonData.forEach(j => sig.jsonData.add(j))
+
     sig.type.push(getEventCallbackImpl(event, json, schemas))
     sig.type.push(getEventImpl(event, json, schemas))
   })

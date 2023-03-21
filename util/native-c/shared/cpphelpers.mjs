@@ -1,8 +1,8 @@
 import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName, getModuleName, description, 
-         getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature,
-         getPropertySetterSignature, getEventSignature, getFireboltStringType, getMethodSignature,
+         getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature, getParamsDetails,
+         getPropertySetterSignature, getFireboltStringType, getMethodSignature, getEventSignature,
          validJsonObjectProperties, hasProperties, getSchemaRef, getPolymorphicSchema,
          getPolymorphicMethodSignature, IsResultBooleanSuccess, IsCallsMetricsMethod } from "./nativehelpers.mjs"
 
@@ -853,6 +853,36 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
     return structure
   }
 
+function getPropertyParams(property, params, module, schemas = {}) {
+  let impl = `    JsonObject jsonParameters;\n`
+  property.params.forEach(param => {
+    impl += `\n`
+    const getParamType = paramName => params.find(p => p.name === paramName)
+    let nativeType = getParamType(param.name)
+
+    const jsonType = getJsonType(module, param, param.name, schemas)
+    if (jsonType.type.length) {
+      if (nativeType.required) {
+        if (nativeType.type.includes('FireboltTypes_StringHandle')) {
+          impl += `    ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+        }
+        else {
+          impl += `    ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
+        }
+        impl += `    jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n`
+      }
+      else {
+        impl += `    if (${nativeType.name} != nullptr) {\n`
+        impl += `        ${jsonType.type} ${capitalize(param.name)} = `
+        impl += nativeType.type === 'char*' ? `${param.name};\n` : `*(${param.name});\n`
+        impl += `        jsonParameters.Add("_t(${param.name})", &${capitalize(param.name)});\n`
+        impl += `    }\n`
+      }
+    }
+  })
+  return impl
+}
+
 function getPropertyGetterImpl(property, module, schemas = {}) {
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let moduleName = capitalize(getModuleName(module))
@@ -868,22 +898,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
     impl += `    ${container.type} jsonResult;\n`
   }
   if (structure.params.length > 0) {
-    impl += `    JsonObject jsonParameters;\n\n`
-    property.params.forEach(param => {
-      const getParamType = paramName => structure.params.find(p => p.name === paramName)
-      let nativeType = getParamType(param.name)
-
-      const jsonType = getJsonType(module, param, param.name, schemas)
-      if (jsonType.type.length) {
-        if (nativeType.type.includes('FireboltTypes_StringHandle')) {
-          impl += `    ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
-        }
-        else {
-          impl += `    ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
-        }
-        impl += `    jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n`
-      }
-    })
+    impl += getPropertyParams(property, structure.params, module, schemas)
     impl += `\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonParameters, jsonResult);`
   } else {
     impl += `\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonResult);`
@@ -926,22 +941,7 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   impl += `    const string method = _T("${methodName}");` + '\n'
 
   if (structure.params.length > 0) {
-    impl += `    JsonObject jsonParameters;\n\n`
-    property.params.forEach(param => {
-      const getParamType = paramName => structure.params.find(p => p.name === paramName)
-      let nativeType = getParamType(param.name)
-
-      const jsonType = getJsonType(module, param, param.name, schemas)
-      if (jsonType.type.length) {
-        if (nativeType.type.includes('FireboltTypes_StringHandle')) {
-          impl += `    ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
-        }
-        else {
-          impl += `    ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
-        }
-        impl += `    jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n`
-      }
-    })
+    impl += getPropertyParams(property, structure.params, module, schemas)
   }
 
   if (propType.json) {
@@ -978,7 +978,7 @@ function getPropertySetterImpl(property, module, schemas = {}) {
 }
 
 function getPropertyEventCallbackImpl(property, module, schemas) {
-  return getEventCallbackImplInternal(property, module, schemas, true)
+  return getEventCallbackImplInternal( property, module, schemas, true)
 }
 
 function getPropertyEventImpl(property, module, schemas) {
@@ -1005,8 +1005,14 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
     impl += `static void ${methodName}InnerCallback(const void* userCB, const void* userData, void* response)
 {` + '\n'
 
-    impl +=`    WPEFramework::Core::ProxyType<${container.type}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response));`
-  
+    let structure = getParamsDetails(event, module, schemas)
+    if (structure.params.length > 0) {
+      structure.params.map(p => {
+      })
+    } else {
+
+      impl +=`    WPEFramework::Core::ProxyType<${container.type}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response));`
+    }
     if (propType.json) {
       impl +=`
 
@@ -1061,22 +1067,28 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
       ClassName = "Event::Instance()."
       CallbackName = `${methodName}Callback`
     }
-    let structure = getEventSignature(event, module, schemas, prefix)
-    structure.signatures.forEach(signature => {
-      impl += `${signature.registersig}
-{
-    const string eventName = _T("${eventName}");
-    uint32_t status = FireboltSDKErrorNone;
-    if (userCB != nullptr) {` + '\n'
-      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);
+
+
+    impl += `${description(event.name, 'Listen to updates')}\n`
+
+    let structure = getEventSignature(event, module, schemas)
+    impl += `${structure.registersig}\n{`
+    impl += `    const string eventName = _T("${eventName}");`
+    impl += `    uint32_t status = FireboltSDKErrorNone;`
+    impl += `    if (userCB != nullptr) {\n`
+
+    if (structure.params.length > 0) {
+      //impl += getPropertyParams(property, structure.params, module, schemas)
+      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);`
+      
+    } else {
+      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);`
     }
-    return status;
-}`
-      impl += `\n${signature.unregistersig}
+    impl += `    return status;
+${structure.unregistersig}
 {
     return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
-}\n`
-    })
+}`
   }
   return impl
 }
@@ -1101,6 +1113,26 @@ function getImplForMethodParam(param, module, name, schemas, prefixName = '') {
   return impl
 }
 
+function getImplForEventContextParams(result, module, name, schemas, prefixName = '') {
+  let impl = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set()}
+
+  if (result.schema) {
+    let resJson = result.schema
+    if ((resJson['$ref'] === undefined) || (resJson['$ref'][0] !== '#')) {
+      let res = {}
+      res = getImplForSchema(module, resJson, schemas, result.name || name, prefixName)
+      res.type.forEach(type => (impl.type.includes(type) === false) ?  impl.type.push(type) : null)
+      res.deps.forEach(dep => impl.deps.add(dep))
+      res.enums.forEach(e => impl.enums.add(e))
+    }
+
+    //Get the JsonData definition for the schema
+    let jType = getJsonDefinition(module, resJson, schemas, result.name || name, prefixName)
+    jType.deps.forEach(j => impl.jsonData.add(j))
+    jType.type.forEach(t => impl.jsonData.add(t))
+  }
+  return impl
+}
 function getMethodImplResult(method, resultJsonType, result) {
   let impl = ''
   if (result.length) {
@@ -1326,5 +1358,6 @@ export {
     getImplForPolymorphicMethodParam,
     getPolymorphicMethodImpl,
     getPolymorphicEventImpl,
-    getPolymorphicEventCallbackImpl
+    getPolymorphicEventCallbackImpl,
+    getImplForEventContextParams
 }

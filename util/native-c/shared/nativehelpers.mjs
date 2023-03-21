@@ -99,6 +99,41 @@ const getPolymorphicReducedParamSchema = (method) => {
   return reducedParamSchema
 }
 
+const getEventContextParamSchema = (method) => {
+  let contextParamSchema = {
+    name: `${method.name}Result`,
+    schema: {
+      type: "array",
+      items: {
+        type: "object",
+        result: [
+        {
+          name: "data",
+          schema: {}
+        },
+        {
+           name : "context",
+           type: "object",
+           properties: {}
+        }
+	]
+      }
+    },
+    required: true
+  }
+  if (method.params) {
+    console.log("contextParamSchema")
+    method.params.forEach(p => {
+      console.log(p.name)
+      contextParamSchema.schema.items.result.properties[p.name] = p
+    })
+    console.log(contextParamSchema.schema)
+    contextParamSchema.schema.items.result.schema = method.result.schema
+  }
+
+  return contextParamSchema
+}
+
 const getPolymorphicSchemaType = (method, module, federatedType, schemas) => {
   let structure = {}
   structure["deps"] = new Set() //To avoid duplication of local ref definitions
@@ -680,7 +715,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       let schemaType = getSchemaType(module, param.schema, param.name, schemas)
 
       let p = {}
-      p["type"] = getParamType(schemaType)
+      p["type"] = param.required ? getParamType(schemaType) : schemaType.type
       p["name"] = param.name
       p["required"] = param.required
       structure.params.push(p)
@@ -693,13 +728,28 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return structure
   }
 
+  function generateMethodParamsSignature(params) {
+    let signatureParams = ''
+    params.map(p => {
+      signatureParams += (signatureParams.length > 0) ? ',' : ''
+      if (p.required) {
+        signatureParams += ` ${p.type} ${p.name}`
+      }
+      else {
+        signatureParams += (p.type === 'char*' ? ` ${p.type} ${p.name}` : ` ${p.type}* ${p.name}`)
+      }
+    })
+    return signatureParams
+  }
+
   function generateMethodSignature(methodName, method, module, schemas, getter, prefix = '') {
     let structure = getParamsDetails(method, module, schemas, prefix)
 
     structure["signature"] = `uint32_t ${methodName}(`
     if (areParamsValid(structure.params)) {
-      structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
+      structure.signature += generateMethodParamsSignature(structure.params)
     }
+
     if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
       if (structure.params.length > 0) {
         structure.signature += ','
@@ -718,80 +768,45 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
   function generateEventCallbackSignature(methodName, method, module, schemas, prefix = '') {
     let structure = getParamsDetails(method, module, schemas, prefix)
-    structure["signatures"] = []
+    structure["signature"] = `${methodName}( const void* userData`
 
-    let optionalParamCount = getOptionalParamCount(structure.params)
-    for (let count = 0; count <= optionalParamCount; count++) {
-      let signature = `${methodName}`
-      signature += count ? `_${count})(` : `)(`
-      let params = 'const void* userData'
-
-      for (let index = 1; index <= count; index++) {
-        structure.params.map(p => {
-          if (!p.required && (index <= count)) {
-            params += (params.length > 0) ? ',' : ''
-            params += ` ${p.type} ${p.name}`
-            index++;
-          }
-        })
-      }
-      signature += params
-      if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-        signature += (params.length > 0) ? ',' : ''
-        method.result.schema && (signature += ` ${structure["result"]} ${method.result.name || method.name}`)
-      }
-      signature += ' )'
-      structure.signatures.push(signature)
+    let params = ''
+    if (areParamsValid(structure.params)) {
+      params += generateMethodParamsSignature(structure.params)
+      structure.signature += (params.length > 0) ? ',' : ''
+      structure.signature += params
     }
+
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      structure.signature += (params.length > 0) ? ',' : ''
+      method.result.schema && (structure.signature += ` ${structure["result"]} ${method.result.name || method.name}`)
+    }
+    structure.signature += ' )'
 
     return structure
   }
 
   function generateEventSignature(callbackName, method, module, schemas, prefix = '') {
     let structure = getParamsDetails(method, module, schemas, prefix)
-    structure["signatures"] = []
-     
-    let optionalParamCount = getOptionalParamCount(structure.params)
-      
-    for (let count = 0; count <= optionalParamCount; count++) {
-      let details = {}
-      details["params"] = []
-      details["result"] = []
-      details["callback"] = `${callbackName}`
-      details["registersig"] = `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update`
-      details["unregistersig"] = `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update`
- 
-      details.callback += count ? `_${count}` : ''
-      details.registersig += count ? `_${count}(` : '('
-      details.unregistersig += count ? `_${count}(` : '('
-
-      let params = ''
-      for (let index = 0; index <= count; index++) {
-        structure.params.map(p => {
-          if (!p.required && (index < count)) {
-            details.result.push(`${p.type} ${p.name}`)
-            index++;
-          }
-          else {
-            details.params.push(`${p.type} ${p.name}`)
-            params += (params.length > 0) ? ',' : ''
-            params += ` ${p.type} ${p.name}`
-          }
-        })
-      }
-      details.registersig += params
-      if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-        method.result.schema && (details.result.push(`${structure["result"]} ${method.result.name || method.name}`))
-      }
-      details.registersig += (params.length > 0) ? ',' : ''
-      details.registersig += ` ${details.callback}, const void* userData )`
-      details.unregistersig += ` ${details.callback} )`
-      structure.signatures.push(details)
+    structure["registersig"] = `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(`
+    structure["unregistersig"] = `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(`
+    structure['result'] = ''
+   
+    let params = ''
+    if (areParamsValid(structure.params)) {
+      params += generateMethodParamsSignature(structure.params)
+      structure.registersig += params
     }
+
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      method.result.schema && (structure.result.push(`${structure["result"]} ${method.result.name || method.name}`))
+    }
+    structure.registersig += (params.length > 0) ? ',' : ''
+    structure.registersig += ` ${callbackName}, const void* userData )`
+    structure.unregistersig += ` ${callbackName} )`
 
     return structure
   }
-
 
   function getPropertyGetterSignature(method, module, schemas) {
     return generateMethodSignature(`${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`, method, module, schemas, true)
@@ -803,7 +818,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
   function getPropertyEventCallbackSignature(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return generateEventCallbackSignature(`(*On${methodName}Changed`, method, module, schemas)
+    return generateEventCallbackSignature(`(*On${methodName}Changed)`, method, module, schemas)
   }
 
   function getPropertyEventSignature(method, module, schemas) {
@@ -813,7 +828,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
   function getEventCallbackSignature(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return generateEventCallbackSignature(`(*${methodName}Callback`, method, module, schemas)
+    return generateEventCallbackSignature(`(*${methodName}Callback)`, method, module, schemas)
   }
 
   function getEventSignature(method, module, schemas, prefix) {
@@ -918,5 +933,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getPolymorphicEventCallbackSignature,
     getPolymorphicEventSignature,
     IsResultBooleanSuccess,
-    IsCallsMetricsMethod
+    IsCallsMetricsMethod,
+    getParamsDetails,
+    getEventContextParamSchema
   }

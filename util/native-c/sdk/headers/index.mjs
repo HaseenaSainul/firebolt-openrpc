@@ -43,7 +43,7 @@ import { description, getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, get
          getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventSignature,
          getPropertyEventCallbackSignature, getEventSignature, getEventCallbackSignature,
          getModuleName, capitalize, getMethodSignature, getPolymorphicMethodSignature,
-         getPolymorphicReducedParamSchema, getPolymorphicEventCallbackSignature,
+         getPolymorphicReducedParamSchema, getPolymorphicEventCallbackSignature, getEventContextParamSchema,
          getPolymorphicEventSignature } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../shared/cpphelpers.mjs'
@@ -217,10 +217,11 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     if (event(property)) {
       sig.type.push(`${description(property.name, 'Listen to updates')}`)
       let structure = getPropertyEventCallbackSignature(property, json, schemas)
-      structure.signatures.forEach(signature => sig.type.push(signature + ';'))
-      structure.signatures && sig.type.push('')
+      structure.signature && sig.type.push(structure.signature + ';\n')
+
       structure = getPropertyEventSignature(property, json, schemas)
-      structure.signatures.forEach(signature => sig.type.push(signature.registersig + ';\n' + signature.unregistersig + ';\n'))
+      structure.registersig && sig.type.push(structure.registersig + ';\n')
+      structure.unregistersig && sig.type.push(structure.unregistersig + ';\n')
     }
     if (setter(property)) {
       let structure = getPropertySetterSignature(property, json, schemas)
@@ -233,10 +234,10 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     let res = getSchemaType(json, event.result.schema, event.result.name || event.name, schemas, '', {descriptions: true, level: 0})
     if (res.type && res.type.length > 0) {
       let structure = getEventCallbackSignature(event, json, schemas)
-      structure.signatures.forEach(signature => sig.type.push(signature + ';'))
-      structure.signatures && sig.type.push('')
+      structure.signature && sig.type.push(structure.signature + ';\n')
       structure = getEventSignature(event, json, schemas)
-      structure.signatures.forEach(signature => sig.type.push(signature.registersig + ';\n' + signature.unregistersig + ';\n'))
+      structure.registersig && sig.type.push(structure.registersig + ';\n')
+      structure.unregistersig && sig.type.push(structure.unregistersig + ';\n')
     }
   })
 
