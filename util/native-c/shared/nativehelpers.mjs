@@ -22,7 +22,7 @@ import safe from 'crocks/Maybe/safe.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, reduce, option, map } = pointfree
 import predicates from 'crocks/predicates/index.js'
-import { getPath, getSchema, getExternalRefs } from '../../shared/json-schema.mjs'
+import { getPath, getSchema, getExternalRefs, localizeDependencies } from '../../shared/json-schema.mjs'
 import { fsReadFile } from '../../shared/helpers.mjs'
 import deepmerge from 'deepmerge'
 import { createRequire } from 'module';
@@ -166,6 +166,615 @@ bool ${varName}Handle_IsValid(${varName}Handle handle);
 `
     return result
 }
+
+
+/*
+{
+    "allOf": [
+        {
+            "description": "A Firebolt compliant representation of a user intention.",
+            "type": "object",
+            "required": [
+                "action",
+                "context"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "context": {
+                    "type": "object",
+                    "required": [
+                        "source"
+                    ],
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "enum": [
+                                "voice",
+                                "channel-lineup",
+                                "editorial",
+                                "device"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "propertyNames": {
+                "enum": [
+                    "action",
+                    "data",
+                    "context"
+                ]
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "const": "pause"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "boolean"
+                        },
+                        "toggle": {
+                            "const": true
+                        }
+                    },
+                    "minProperties": 1,
+                    "maxProperties": 1,
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "description": "A Firebolt compliant representation of a user intention.",
+            "type": "object",
+            "required": [
+                "action",
+                "context"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "context": {
+                    "type": "object",
+                    "required": [
+                        "source"
+                    ],
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "enum": [
+                                "voice",
+                                "channel-lineup",
+                                "editorial",
+                                "device"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "propertyNames": {
+                "enum": [
+                    "action",
+                    "data",
+                    "context"
+                ]
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "const": "seek"
+                },
+                "data": {
+                    "allOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "direction": {
+                                    "type": "string",
+                                    "enum": [
+                                        "forward",
+                                        "backward"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "seconds": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1800
+                                }
+                            },
+                            "propertyNames": {
+                                "enum": [
+                                    "direction",
+                                    "seconds"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "description": "A Firebolt compliant representation of a user intention.",
+            "type": "object",
+            "required": [
+                "action",
+                "context"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "context": {
+                    "type": "object",
+                    "required": [
+                        "source"
+                    ],
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "enum": [
+                                "voice",
+                                "channel-lineup",
+                                "editorial",
+                                "device"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "propertyNames": {
+                "enum": [
+                    "action",
+                    "data",
+                    "context"
+                ]
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "const": "skip"
+                },
+                "data": {
+                    "allOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "direction": {
+                                    "type": "string",
+                                    "enum": [
+                                        "forward",
+                                        "backward"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "count": {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 100
+                                }
+                            },
+                            "propertyNames": {
+                                "enum": [
+                                    "direction",
+                                    "count"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "description": "A Firebolt compliant representation of a user intention.",
+            "type": "object",
+            "required": [
+                "action",
+                "context"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "context": {
+                    "type": "object",
+                    "required": [
+                        "source"
+                    ],
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "enum": [
+                                "voice",
+                                "channel-lineup",
+                                "editorial",
+                                "device"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "propertyNames": {
+                "enum": [
+                    "action",
+                    "data",
+                    "context"
+                ]
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "const": "trickplay"
+                },
+                "data": {
+                    "allOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "direction": {
+                                    "type": "string",
+                                    "enum": [
+                                        "forward",
+                                        "backward"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "speed": {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 10
+                                }
+                            },
+                            "propertyNames": {
+                                "enum": [
+                                    "direction",
+                                    "speed"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "description": "A Firebolt compliant representation of a user intention.",
+            "type": "object",
+            "required": [
+                "action",
+                "context"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "context": {
+                    "type": "object",
+                    "required": [
+                        "source"
+                    ],
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "enum": [
+                                "voice",
+                                "channel-lineup",
+                                "editorial",
+                                "device"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "propertyNames": {
+                "enum": [
+                    "action",
+                    "data",
+                    "context"
+                ]
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "const": "closedcaptions"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "boolean"
+                        },
+                        "toggle": {
+                            "const": true
+                        }
+                    },
+                    "minProperties": 1,
+                    "maxProperties": 1,
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "description": "A Firebolt compliant representation of a user intention.",
+            "type": "object",
+            "required": [
+                "action",
+                "context"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "context": {
+                    "type": "object",
+                    "required": [
+                        "source"
+                    ],
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "enum": [
+                                "voice",
+                                "channel-lineup",
+                                "editorial",
+                                "device"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "propertyNames": {
+                "enum": [
+                    "action",
+                    "data",
+                    "context"
+                ]
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "const": "audiodescriptions"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "boolean"
+                        },
+                        "toggle": {
+                            "const": true
+                        }
+                    },
+                    "minProperties": 1,
+                    "maxProperties": 1,
+                    "additionalProperties": false
+                }
+            }
+        }
+    ],
+    "examples": [
+        {
+            "action": "pause",
+            "data": {
+                "value": false
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "pause",
+            "data": {
+                "toggle": true
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "seek",
+            "data": {
+                "seconds": 300
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "seek",
+            "data": {
+                "direction": "forward",
+                "seconds": 30
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "seek",
+            "data": {
+                "direction": "backward",
+                "seconds": 30
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "skip",
+            "data": {
+                "direction": "forward",
+                "count": 1
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "skip",
+            "data": {
+                "direction": "backward",
+                "count": 1
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "trickplay",
+            "data": {
+                "direction": "forward",
+                "speed": 2
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "trickplay",
+            "data": {
+                "direction": "backward",
+                "speed": 2
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "closedcaptions",
+            "data": {
+                "value": false
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "closedcaptions",
+            "data": {
+                "toggle": true
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "audiodescriptions",
+            "data": {
+                "value": false
+            },
+            "context": {
+                "source": "voice"
+            }
+        },
+        {
+            "action": "audiodescriptions",
+            "data": {
+                "toggle": true
+            },
+            "context": {
+                "source": "voice"
+            }
+        }
+    ]
+}
+
+
+*/
+
+
+function union(schemas, module, commonSchemas) {
+ 
+  const result = {};
+  for (const schema of schemas) {
+    for (const [key, value] of Object.entries(schema)) {
+      if (!result.hasOwnProperty(key)) {
+        // If the key does not already exist in the result schema, add it
+        if (value && value.anyOf) {
+          result[key] = union(value.anyOf, module, commonSchemas)
+        } else if (key === 'title' || key === 'description' || key === 'required') {
+          console.warn(`Ignoring "${key}"`)
+        } else {
+          result[key] = value;
+        }
+      } else if (key === 'type') {
+        // If the key is 'type', merge the types of the two schemas
+        if(result[key] === value) {
+          console.warn(`Ignoring "${key}" that is already present and same`)
+        } else {
+          console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
+          throw "ERROR: type is not same"
+        }
+      } else {
+        // If the key exists in both schemas and is not 'type', merge the values
+        if (Array.isArray(result[key])) {
+          // If the value is an array, concatenate the arrays and remove duplicates
+          result[key] = Array.from(new Set([...result[key], ...value]))
+        } else if (result[key] && result[key].enum && value && value.enum) {
+          //If the value is an enum, merge the enums together and remove duplicates
+          result[key].enum = Array.from(new Set([...result[key].enum, ...value.enum]))
+        } else if (typeof result[key] === 'object' && typeof value === 'object') {
+          // If the value is an object, recursively merge the objects
+          result[key] = union([result[key], value], module, commonSchemas);
+        } else if (result[key] && result[key].type && result[key].type === 'string') {
+          // If the type is same
+          console.warn(`Ignoring const values key "${key}"`)
+        } else if (result[key] !== value) {
+          // If the value is a primitive and is not the same in both schemas, ignore it
+          console.warn(`Ignoring conflicting value for key "${key}"`)
+        }
+      }
+    }
+  }
+  return result;
+}
+
 
 const getPropertyAccessors = (objName, propertyName, propertyType,  options = {level:0, readonly:false, optional:false}) => {
 
@@ -566,6 +1175,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       }
       else if (json.propertyNames && json.propertyNames.enum) {
         //propertyNames in object not handled yet
+
       }
       else if (json.additionalProperties && (typeof json.additionalProperties === 'object') && (validJsonObjectProperties(json) === true)) {
         //This is a map of string to type in schema
@@ -585,11 +1195,36 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         type.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
       }
       else if (json.patternProperties) {
-        throw "patternProperties are not supported by Firebolt"
+        //throw "patternProperties are not supported by Firebolt"
       }
     }
     else if (json.anyOf) {
-     console.log("json.anyOf = ------>");
+      console.log(`json.anyOf = ------> ${JSON.stringify(json.anyOf, null, 4)}`);
+
+      let def = localizeDependencies(json.anyOf, moduleJson, schemas, {externalOnly: false, mergeAllOfs: true, keepRefsAndLocalizeAsComponent: false})
+
+      console.log(`json.anyOf localised = ------> ${JSON.stringify(def, null, 4)}`);
+
+      /*let iSchemas = [...json.anyOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)]
+
+      iSchemas = iSchemas.map(json => {
+        if (json.allOf) {
+          let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
+          if (json.title) {
+            union['title'] = json.title
+          }
+          else {
+            union['title'] = name
+          }
+          delete union['$ref']
+          return union
+        }
+        return json
+      })*/
+
+      let unionSchema = union(def, moduleJson, schemas)
+      console.log(`Union of schemas - ${JSON.stringify(unionSchema, null, 4)}`)
+
     }
     else if (json.oneOf) {
       //Just ignore schema shape, since this has to be treated as string
@@ -656,7 +1291,12 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
     structure["params"] = []
     structure["enum"] = []
-
+    const resultVoid = ( (!method.result) || (!method.result.schema) ||
+                          ((method.result.schema.type === 'boolean') && (method.result.schema === 'success'))
+                       )
+    if (method.name === 'watched'){
+      console.log(`Result Void - ${resultVoid}`)
+    }
     method.params.forEach(param => {
       let schemaType = getSchemaType(module, param.schema, param.name, schemas)
       schemaType.deps.forEach(d => structure.deps.add(d))
@@ -667,8 +1307,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       structure.params.push(p)
       schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
     })
-    if (method.result.schema) {
-
+    if (!resultVoid) {
       let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, method.name)
       result.deps.forEach(dep => structure.deps.add(dep))
       result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
@@ -676,14 +1315,17 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     }
 
     const areParamsValid = params => params.every(p => p.type && (p.type.length > 0))
+    const resultValid = (structure["result"] && structure["result"].length > 0)
 
-    if (areParamsValid(structure.params) && (structure["result"] && structure["result"].length > 0)) {
+    if (areParamsValid(structure.params) && (resultValid || resultVoid)) {
       structure["signature"] = `uint32_t ${methodName}(`
       structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
-      if (structure.params.length > 0 && method.result.schema) {
-        structure.signature += ','
+      if (structure.params.length > 0 && resultValid) {
+        if(!resultVoid){
+          structure.signature += ','
+        }
       }
-      method.result.schema && (structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`)
+      resultValid && (structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`)
       structure.signature += ' )'
     }
     return structure
