@@ -103,32 +103,30 @@ const getEventContextParamSchema = (method) => {
   let contextParamSchema = {
     name: `${method.name}Result`,
     schema: {
-      type: "array",
-      items: {
-        type: "object",
-        result: [
-        {
-          name: "data",
+      type: "object",
+      properties: {
+        data: {
           schema: {}
         },
-        {
-           name : "context",
-           type: "object",
-           properties: {}
+        context: {
+         type: "object",
+         properties: {}
         }
-	]
       }
-    },
-    required: true
+    }
   }
-  if (method.params) {
+  if (method.params.length > 0) {
     console.log("contextParamSchema")
     method.params.forEach(p => {
       console.log(p.name)
-      contextParamSchema.schema.items.result.properties[p.name] = p
+      contextParamSchema.schema.properties.context.properties[p.name] = p
     })
     console.log(contextParamSchema.schema)
-    contextParamSchema.schema.items.result.schema = method.result.schema
+    contextParamSchema.schema.properties.data.schema = method.result.schema
+    console.log(contextParamSchema.schema.properties.data)
+    console.log(contextParamSchema.schema.properties.context)
+    console.log(method.params)
+
   }
 
   return contextParamSchema
@@ -715,7 +713,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       let schemaType = getSchemaType(module, param.schema, param.name, schemas)
 
       let p = {}
-      p["type"] = param.required ? getParamType(schemaType) : schemaType.type
+      p["type"] = getParamType(schemaType)
       p["name"] = param.name
       p["required"] = param.required
       structure.params.push(p)
@@ -736,7 +734,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         signatureParams += ` ${p.type} ${p.name}`
       }
       else {
-        signatureParams += (p.type === 'char*' ? ` ${p.type} ${p.name}` : ` ${p.type}* ${p.name}`)
+        signatureParams += (p.type === getFireboltStringType() ? ` ${p.type} ${p.name}` : ` ${p.type}* ${p.name}`)
       }
     })
     return signatureParams
@@ -768,7 +766,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
   function generateEventCallbackSignature(methodName, method, module, schemas, prefix = '') {
     let structure = getParamsDetails(method, module, schemas, prefix)
-    structure["signature"] = `${methodName}( const void* userData`
+    structure["signature"] = `typedef void ${methodName}( const void* userData`
 
     let params = ''
     if (areParamsValid(structure.params)) {
@@ -778,8 +776,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     }
 
     if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-      structure.signature += (params.length > 0) ? ',' : ''
-      method.result.schema && (structure.signature += ` ${structure["result"]} ${method.result.name || method.name}`)
+      method.result.schema && (structure.signature += `, ${structure["result"]} ${method.result.name || method.name}`)
     }
     structure.signature += ' )'
 
@@ -802,8 +799,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       method.result.schema && (structure.result.push(`${structure["result"]} ${method.result.name || method.name}`))
     }
     structure.registersig += (params.length > 0) ? ',' : ''
-    structure.registersig += ` ${callbackName}, const void* userData )`
-    structure.unregistersig += ` ${callbackName} )`
+    structure.registersig += ` ${callbackName} userCB, const void* userData )`
+    structure.unregistersig += ` ${callbackName} userCB)`
 
     return structure
   }
@@ -831,7 +828,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return generateEventCallbackSignature(`(*${methodName}Callback)`, method, module, schemas)
   }
 
-  function getEventSignature(method, module, schemas, prefix) {
+  function getEventSignature(method, module, schemas, prefix = '') {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
     return generateEventSignature(`${prefix}${methodName}Callback`, method, module, schemas)
   }

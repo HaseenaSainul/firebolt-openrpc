@@ -128,14 +128,16 @@ const generateMethods = (json, schemas = {}) => {
     sig.type.push(getPropertyGetterImpl(property, json, schemas))
 
     if (event(property)) {
-      property.result = [getEventContextParamSchema(property)]
+/*      property.result = (property.params.length > 0) ? getEventContextParamSchema(property) : property.result
+      console.log(property.result)
 
       //Lets get the implementation for each param schema
       let impl = getImplForEventContextParams(property.result, json, property.result.name, schemas)
+      console.log(impl)
       impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
       impl.deps.forEach(dep => sig.deps.add(dep))
       impl.enums.forEach(e => sig.enums.add(e))
-      impl.jsonData.forEach(j => sig.jsonData.add(j))
+      impl.jsonData.forEach(j => sig.jsonData.add(j))*/
 
       sig.type.push(getPropertyEventCallbackImpl(property, json, schemas))
       sig.type.push(getPropertyEventImpl(property, json, schemas))
@@ -148,14 +150,14 @@ const generateMethods = (json, schemas = {}) => {
 
   const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('event'))) || []
   events.forEach(event => {
-    event.result = [getEventContextParamSchema(event)]
+/*    event.result = (event.params.length > 0) ? getEventContextParamSchema(event) : event.result
 
     //Lets get the implementation for each param schema
     let impl = getImplForEventContextParams(event.result, json, event.result.name, schemas)
     impl.type.forEach(type => (sig.type.includes(type) === false) ?  sig.type.push(type) : null)
     impl.deps.forEach(dep => sig.deps.add(dep))
     impl.enums.forEach(e => sig.enums.add(e))
-    impl.jsonData.forEach(j => sig.jsonData.add(j))
+    impl.jsonData.forEach(j => sig.jsonData.add(j))*/
 
     sig.type.push(getEventCallbackImpl(event, json, schemas))
     sig.type.push(getEventImpl(event, json, schemas))

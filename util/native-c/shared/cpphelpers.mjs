@@ -3,7 +3,7 @@ import deepmerge from 'deepmerge'
 import { getSchemaType, capitalize, getTypeName, getModuleName, description, 
          getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature, getParamsDetails,
          getPropertySetterSignature, getFireboltStringType, getMethodSignature, getEventSignature,
-         validJsonObjectProperties, hasProperties, getSchemaRef, getPolymorphicSchema,
+         getPropertyEventSignature, validJsonObjectProperties, hasProperties, getSchemaRef, getPolymorphicSchema,
          getPolymorphicMethodSignature, IsResultBooleanSuccess, IsCallsMetricsMethod } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
@@ -382,18 +382,21 @@ const getObjectHandleImpl = (varName, jsonDataName) => {
 
   let containerName = (jsonDataName.includes(wpeJsonNameSpace()) === true) ? `${jsonDataName}` : `${getSdkNameSpace()}::${jsonDataName}`
 
-  let result = `${varName}Handle ${varName}Handle_Create(void) {
+  let result = `${varName}Handle ${varName}Handle_Create(void)
+{
     WPEFramework::Core::ProxyType<${containerName}>* type = new WPEFramework::Core::ProxyType<${containerName}>();
     *type = WPEFramework::Core::ProxyType<${containerName}>::Create();
     return (static_cast<${varName}Handle>(type));
 }
-void ${varName}Handle_Addref(${varName}Handle handle) {
+void ${varName}Handle_Addref(${varName}Handle handle)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerName}>* var = static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(handle);
     ASSERT(var->IsValid());
     var->AddRef();
 }
-void ${varName}Handle_Release(${varName}Handle handle) {
+void ${varName}Handle_Release(${varName}Handle handle)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerName}>* var = static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(handle);
     var->Release();
@@ -401,7 +404,8 @@ void ${varName}Handle_Release(${varName}Handle handle) {
         delete var;
     }
 }
-bool ${varName}Handle_IsValid(${varName}Handle handle) {
+bool ${varName}Handle_IsValid(${varName}Handle handle)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerName}>* var = static_cast<WPEFramework::Core::ProxyType<${containerName}>*>(handle);
     ASSERT(var->IsValid());
@@ -414,7 +418,8 @@ bool ${varName}Handle_IsValid(${varName}Handle handle) {
 const getObjectPropertyAccessorsImpl = (objName, moduleName, modulePropertyType, subPropertyType, subPropertyName, accessorPropertyType, json = {}, options = {readonly:false, optional:false}) => {
 
   let result = ''
-  result += `${accessorPropertyType} ${objName}_Get_${subPropertyName}(${objName}Handle handle) {
+  result += `${accessorPropertyType} ${objName}_Get_${subPropertyName}(${objName}Handle handle)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
@@ -490,7 +495,8 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
     return (${propertyName}.Length());
 }` + '\n'
 
-  result += `${accessorPropertyType} ${objName}Array_Get(${objHandleType} handle, uint32_t index) {
+  result += `${accessorPropertyType} ${objName}Array_Get(${objHandleType} handle, uint32_t index)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());` + '\n'
@@ -512,7 +518,8 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
   }
   result += `}` + '\n'
 
-  result += `void ${objName}Array_Add(${objHandleType} handle, ${accessorPropertyType} value) {
+  result += `void ${objName}Array_Add(${objHandleType} handle, ${accessorPropertyType} value)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());` + '\n'
@@ -527,7 +534,8 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
     ${propertyName}.Add(element);
 }` + '\n'
 
-  result += `void ${objName}Array_Clear(${objHandleType} handle) {
+  result += `void ${objName}Array_Clear(${objHandleType} handle)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
@@ -539,7 +547,8 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
 }
 
 const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType, accessorPropertyType, json = {}) => {
-  let result = `uint32_t ${objName}_KeysCount(${objName}Handle handle) {
+  let result = `uint32_t ${objName}_KeysCount(${objName}Handle handle)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
     ASSERT(var->IsValid());
@@ -550,7 +559,8 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
     }
     return (count);
 }`  + '\n'
-  result += `void ${objName}_AddKey(${objName}Handle handle, char* key, ${accessorPropertyType} value) {
+  result += `void ${objName}_AddKey(${objName}Handle handle, char* key, ${accessorPropertyType} value)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
     ASSERT(var->IsValid());
@@ -564,7 +574,8 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
     result += `    (*var)->Add(const_cast<const char*>(key), &element);
 }` + '\n'
 
-  result += `void ${objName}_RemoveKey(${objName}Handle handle, char* key) {
+  result += `void ${objName}_RemoveKey(${objName}Handle handle, char* key)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
     ASSERT(var->IsValid());
@@ -572,7 +583,8 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
     (*var)->Remove(key);
 }` + '\n'
 
-    result += `${accessorPropertyType} ${objName}_FindKey(${objName}Handle handle, char* key) {
+    result += `${accessorPropertyType} ${objName}_FindKey(${objName}Handle handle, char* key)
+{
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
     ASSERT(var->IsValid());
@@ -873,9 +885,13 @@ function getPropertyParams(property, params, module, schemas = {}) {
       }
       else {
         impl += `    if (${nativeType.name} != nullptr) {\n`
-        impl += `        ${jsonType.type} ${capitalize(param.name)} = `
-        impl += nativeType.type === 'char*' ? `${param.name};\n` : `*(${param.name});\n`
-        impl += `        jsonParameters.Add("_t(${param.name})", &${capitalize(param.name)});\n`
+        if (nativeType.type.includes('FireboltTypes_StringHandle')) {
+          impl += `        ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+        } else {
+
+          impl += `        ${jsonType.type} ${capitalize(param.name)} = *(${param.name});\n`
+	}
+        impl += `        jsonParameters.Add("_T(${param.name})", &${capitalize(param.name)});\n`
         impl += `    }\n`
       }
     }
@@ -891,7 +907,8 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
   let impl = getCallsMetricsDispatcher(module, property, schemas)
 
   let structure = getPropertyGetterSignature(property, module, schemas)
-  impl += `${structure.signature} {\n`
+  impl += `${description(property.name, property.summary)}\n`
+  impl += `${structure.signature}\n{\n`
   impl += `    const string method = _T("${methodName}");` + '\n'
 
   if (propType.json) {
@@ -936,7 +953,8 @@ function getPropertySetterImpl(property, module, schemas = {}) {
 
   let impl = getCallsMetricsDispatcher(module, property, schemas)
   let structure = getPropertySetterSignature(property, module, schemas)
-  impl += `${structure.signature} {\n`
+  impl += `${description(property.name, property.summary)}\n`
+  impl += `${structure.signature}\n{\n`
 
   impl += `    const string method = _T("${methodName}");` + '\n'
 
@@ -1006,23 +1024,78 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
 {` + '\n'
 
     let structure = getParamsDetails(event, module, schemas)
+
     if (structure.params.length > 0) {
       structure.params.map(p => {
+        impl += `    ${p.type} ${p.name};\n`
+        if ((p.type !== getFireboltStringType()) && (p.required === false)) {
+          impl += `    ${p.type}* ${p.name}Ptr = nullptr;\n`
+        }
       })
+      impl += `    WPEFramework::Core::ProxyType<${container.type}>* jsonResponse;\n`
+      impl += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>& var = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>*>(response));
+
+    ASSERT(var.IsValid() == true);
+    if (var.IsValid() == true) {
+        WPEFramework::Core::JSON::VariantContainer::Iterator elements = var->Variants();
+
+        while (elements.Next()) {
+            if (strcmp(elements.Label(), "value") == 0) {
+                jsonResponse = new WPEFramework::Core::ProxyType<${container.type}>();
+                string objectStr;
+                elements.Current().Object().ToString(objectStr);
+                (*jsonResponse)->FromString(objectStr);
+            } else if (strcmp(elements.Label(), "context") == 0) {
+                WPEFramework::Core::JSON::VariantContainer::Iterator params = elements.Current().Object().Variants();
+                while (params.Next()) {\n`
+      let contextParams = ''
+      structure.params.map(p => {
+        if (contextParams.length > 0) {
+          contextParams += `                    else if (strcmp(elements.Label(), "${p.name}") == 0) {\n`
+        }
+        else {
+          contextParams += `                    if (strcmp(elements.Label(), "${p.name}") == 0) {\n`
+	}
+        if (p.type === getFireboltStringType()) {
+          contextParams += `                        ${getSdkNameSpace()}::JSON::String* ${p.name}Value = new ${getSdkNameSpace()}::JSON::String();
+                        *${p.name}Value = elements.Current().Value().c_str();
+                        ${p.name} = ${p.name}Value;\n`
+	}
+        else if (p.type === 'bool') {
+          contextParams += `                        ${p.name} = elements.Current().Boolean();\n`
+        }
+        else if ((p.type === 'float') || (p.type === 'int32_t')) {
+          contextParams += `                        ${p.name} = elements.Current().Number();\n`
+        }
+        else {
+            console.log(`WARNING: wrongt type defined for ${p.name}`)
+	}
+        if ((p.type !== getFireboltStringType()) && (p.required === false)) {
+          contextParams += `                        ${p.name}Ptr = &${p.name};\n`
+	}
+        contextParams += `                    }\n`
+      })
+      impl += contextParams
+      impl += `                }
+            } else {
+               ASSERT(false);
+            }
+        }
+    }`
     } else {
 
-      impl +=`    WPEFramework::Core::ProxyType<${container.type}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response));`
+      impl +=`    WPEFramework::Core::ProxyType<${container.type}>* jsonResponse = static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response);`
     }
     if (propType.json) {
       impl +=`
 
-    ASSERT(jsonResponse.IsValid() == true);
-    if (jsonResponse.IsValid() == true) {` + '\n'
+    ASSERT(jsonResponse->IsValid() == true);
+    if (jsonResponse->IsValid() == true) {` + '\n'
     
       if (propType.json.const || ((propType.json.type === 'string') && (!propType.json.enum))) {
          impl +=`        ${container.type}* jsonStrResponse = new ${container.type}();
-        *jsonStrResponse = *jsonResponse;
-        jsonResponse.Release();` + '\n\n'
+        *jsonStrResponse = *(*jsonResponse);
+        jsonResponse->Release();` + '\n\n'
       }
 
       let CallbackName = ''
@@ -1033,14 +1106,28 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
       }
 
       impl +=`        ${CallbackName} callback = reinterpret_cast<${CallbackName}>(userCB);` + '\n'
+      impl += `        callback(userData, `
+      if (structure.params.length > 0) {
+        structure.params.map(p => {
+          if (p.type === getFireboltStringType()) {
+            impl += `static_cast<${p.type}>(${p.name}), `
+	  }
+          else if (p.required) {
+            impl += `${p.name}, `
+	  }
+          else {
+            impl += `${p.name}Ptr, `
+          }
+	})
+      }
       if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
-        impl += `        callback(userData, static_cast<${paramType}>(response));` + '\n'
+        impl += `static_cast<${paramType}>(jsonResponse));` + '\n'
       }
       else if (propType.json.const || ((propType.json.type === 'string') && (!propType.json.enum))) {
-        impl += `        callback(userData, static_cast<${paramType}>(jsonStrResponse));` + '\n'
+        impl += `static_cast<${paramType}>(jsonStrResponse));` + '\n'
       }
       else {
-        impl += `        callback(userData, static_cast<${paramType}>(jsonResponse->Value()));` + '\n'
+        impl += `static_cast<${paramType}>((*jsonResponse)->Value()));` + '\n'
       }
     }
     impl += `    }
@@ -1060,21 +1147,21 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
     let container = getJsonType(module, event.result.schema, event.result.name || event.name, schemas)
     let ClassName = ''
     let CallbackName = ''
+    let structure = {}
     if (property) {
       ClassName = "Properties::"
       CallbackName = `On${methodName}Changed`
+      structure = getPropertyEventSignature(event, module, schemas)
     } else {
       ClassName = "Event::Instance()."
       CallbackName = `${methodName}Callback`
+      structure = getEventSignature(event, module, schemas)
     }
 
-
     impl += `${description(event.name, 'Listen to updates')}\n`
-
-    let structure = getEventSignature(event, module, schemas)
-    impl += `${structure.registersig}\n{`
-    impl += `    const string eventName = _T("${eventName}");`
-    impl += `    uint32_t status = FireboltSDKErrorNone;`
+    impl += `${structure.registersig}\n{\n`
+    impl += `    const string eventName = _T("${eventName}");\n`
+    impl += `    uint32_t status = FireboltSDKErrorNone;\n`
     impl += `    if (userCB != nullptr) {\n`
 
     if (structure.params.length > 0) {
@@ -1084,7 +1171,9 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
     } else {
       impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);`
     }
-    impl += `    return status;
+    impl += `\n    }
+    return status;
+}
 ${structure.unregistersig}
 {
     return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
@@ -1115,8 +1204,11 @@ function getImplForMethodParam(param, module, name, schemas, prefixName = '') {
 
 function getImplForEventContextParams(result, module, name, schemas, prefixName = '') {
   let impl = {type: [], deps: new Set(), enums: new Set(), jsonData: new Set()}
+  console.log("Inside getImplForEventContextParams ")
+  console.log(result)
 
   if (result.schema) {
+    console.log("Inside result.schema check")
     let resJson = result.schema
     if ((resJson['$ref'] === undefined) || (resJson['$ref'][0] !== '#')) {
       let res = {}
@@ -1125,7 +1217,6 @@ function getImplForEventContextParams(result, module, name, schemas, prefixName 
       res.deps.forEach(dep => impl.deps.add(dep))
       res.enums.forEach(e => impl.enums.add(e))
     }
-
     //Get the JsonData definition for the schema
     let jType = getJsonDefinition(module, resJson, schemas, result.name || name, prefixName)
     jType.deps.forEach(j => impl.jsonData.add(j))
