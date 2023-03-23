@@ -319,7 +319,16 @@ extern "C" {
 
 uint32_t test_firebolt_create_instance()
 {
-    FireboltSDK::Accessor::Instance();
+    const std::string config = _T("{\
+    \"waitTime\": 1000,\
+    \"logLevel\": \"Info\",\
+    \"workerPool\":{\
+        \"queueSize\": 8,\
+        \"threadCount\": 3\
+    },\
+    \"wsUrl\": \"ws://127.0.0.1:9998\"\
+}");
+    FireboltSDK::Accessor::Instance(config);
 }
 
 uint32_t test_firebolt_dispose_instance()
