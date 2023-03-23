@@ -35,6 +35,16 @@ const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.t
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
+const areParamsValid = (params) => params.every(p => p.type && (p.type.length > 0))
+const getOptionalParamCount = (params) => {
+  let count = 0
+  params.every(p => {
+     count += (p.type && !p.required) ? 1 : 0
+     return true
+  })
+  return count
+}
+
 const IsResultBooleanSuccess = (method) => (method && method.result && method.result.name === 'success' && (method.result.schema.type === 'boolean' || method.result.schema.const))
 
 const IsCallsMetricsMethod = (method) => (method && method.tags && method.tags.find(t => t.name === 'calls-metrics') ? true : false)
@@ -662,32 +672,51 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return structure
   }
 
-  function generateMethodSignature(methodName, method, module, schemas, getter, prefix = '') {
+  function getParamsDetails(method, module, schemas, prefix) {
     let structure = {}
     structure["params"] = []
 
     method.params.forEach(param => {
       let schemaType = getSchemaType(module, param.schema, param.name, schemas)
 
-      let p = {}
-      p["type"] = getParamType(schemaType)
-      p["name"] = param.name
-      structure.params.push(p)
+      if (param.required !== undefined) {
+        let p = {}
+        p["type"] = getParamType(schemaType)
+        p["name"] = param.name
+        p["required"] = param.required
+        structure.params.push(p)
+      }
     })
     if (method.result.schema) {
 
       let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, prefix)
       structure["result"] = getParamType(result)
-      console.log("structure.result")
-      console.log(result)
     }
+    return structure
+  }
 
-    const areParamsValid = params => params.every(p => p.type && (p.type.length > 0))
+  function generateMethodParamsSignature(params) {
+    let signatureParams = ''
+    params.map(p => {
+      signatureParams += (signatureParams.length > 0) ? ',' : ''
+      if (p.required === true) {
+        signatureParams += ` ${p.type} ${p.name}`
+      }
+      else if (p.required === false) {
+        signatureParams += (p.type === getFireboltStringType() ? ` ${p.type} ${p.name}` : ` ${p.type}* ${p.name}`)
+      }
+    })
+    return signatureParams
+  }
 
-    structure["signature"] = `${description(method.name, method.summary)}\nuint32_t ${methodName}(`
+  function generateMethodSignature(methodName, method, module, schemas, getter, prefix = '') {
+    let structure = getParamsDetails(method, module, schemas, prefix)
+
+    structure["signature"] = `uint32_t ${methodName}(`
     if (areParamsValid(structure.params)) {
-      structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
+      structure.signature += generateMethodParamsSignature(structure.params)
     }
+
     if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
       if (structure.params.length > 0) {
         structure.signature += ','
@@ -704,6 +733,46 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return structure
   }
 
+  function generateEventCallbackSignature(methodName, method, module, schemas, prefix = '') {
+    let structure = getParamsDetails(method, module, schemas, prefix)
+    structure["signature"] = `typedef void ${methodName}( const void* userData`
+
+    let params = ''
+    if (areParamsValid(structure.params)) {
+      params += generateMethodParamsSignature(structure.params)
+      structure.signature += (params.length > 0) ? ',' : ''
+      structure.signature += params
+    }
+
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      method.result.schema && (structure.signature += `, ${structure["result"]} ${method.result.name || method.name}`)
+    }
+    structure.signature += ' )'
+
+    return structure
+  }
+
+  function generateEventSignature(callbackName, method, module, schemas, prefix = '') {
+    let structure = getParamsDetails(method, module, schemas, prefix)
+    structure["registersig"] = `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(`
+    structure["unregistersig"] = `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(`
+    structure['result'] = ''
+
+    let params = ''
+    if (areParamsValid(structure.params)) {
+      params += generateMethodParamsSignature(structure.params)
+      structure.registersig += params
+    }
+
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      method.result.schema && (structure.result.push(`${structure["result"]} ${method.result.name || method.name}`))
+    }
+    structure.registersig += (params.length > 0) ? ',' : ''
+    structure.registersig += ` ${callbackName} userCB, const void* userData )`
+    structure.unregistersig += ` ${callbackName} userCB)`
+
+    return structure
+  }
 
   function getPropertyGetterSignature(method, module, schemas) {
     return generateMethodSignature(`${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`, method, module, schemas, true)
@@ -713,24 +782,24 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return generateMethodSignature(`${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`, method, module, schemas, false)
   }
 
-  function getPropertyEventCallbackSignature(method, module, paramType) {
+  function getPropertyEventCallbackSignature(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return `typedef void (*On${methodName}Changed)(const void* userData, ${paramType === 'char*' ? getFireboltStringType() : paramType})`
+    return generateEventCallbackSignature(`(*On${methodName}Changed)`, method, module, schemas)
   }
 
-  function getPropertyEventSignature(method, module) {
+  function getPropertyEventSignature(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(On${methodName}Changed, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(On${methodName}Changed)`
+    return generateEventSignature(`On${methodName}Changed`, method, module, schemas)
   }
 
-  function getEventCallbackSignature(method, module, paramType) {
+  function getEventCallbackSignature(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return `typedef void (*${methodName}Callback)(const void* userData, ${paramType === 'char*' ? getFireboltStringType() : paramType})`
+    return generateEventCallbackSignature(`(*${methodName}Callback)`, method, module, schemas)
   }
 
-  function getEventSignature(method, module) {
+  function getEventSignature(method, module, schemas, prefix = '') {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(${methodName}Callback, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(${methodName}Callback)`
+    return generateEventSignature(`${prefix}${methodName}Callback`, method, module, schemas)
   }
 
   function getMethodSignature(method, module, schemas) {
@@ -757,8 +826,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
       structure["result"] = getParamType(result)
     }
-
-    const areParamsValid = params => params.every(p => p.type && (p.type.length > 0))
 
     structure["signature"] = `uint32_t ${methodName}(`
     if (areParamsValid(structure.params)) {
@@ -832,5 +899,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getPolymorphicEventCallbackSignature,
     getPolymorphicEventSignature,
     IsResultBooleanSuccess,
-    IsCallsMetricsMethod
+    IsCallsMetricsMethod,
+    getParamsDetails
   }

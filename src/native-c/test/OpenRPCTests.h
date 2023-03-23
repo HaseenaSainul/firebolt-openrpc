@@ -21,6 +21,13 @@
 #include "TestUtils.h"
 #include "FireboltSDK.h"
 
+typedef enum {
+    Test1,
+    Test2,
+    Test3,
+    Test4
+} TestEnum;
+
 namespace FireboltSDK {
     typedef uint32_t (*Func)();
 
@@ -99,7 +106,7 @@ namespace FireboltSDK {
         static uint32_t SubscribeEventWithMultipleCallback();
 
         template <typename CALLBACK>
-        static uint32_t SubscribeEventForC(const string& eventName, CALLBACK& callbackFunc, const void* usercb, const void* userdata);
+        static uint32_t SubscribeEventForC(const string& eventName, JsonObject& jsonParameters, CALLBACK& callbackFunc, const void* usercb, const void* userdata);
 
     protected:
         static void PrintJsonObject(const JsonObject::Iterator& iterator);

@@ -67,7 +67,7 @@ namespace FireboltSDK {
         return Event::Instance();
     }
 
-    uint32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime)
+    uint32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime = DefaultWaitTime)
     {
         if (_transport != nullptr) {
             delete _transport;

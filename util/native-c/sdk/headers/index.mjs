@@ -38,7 +38,7 @@ const { not } = logic
 import safe from 'crocks/Maybe/safe.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
-import { getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose,
+import { description, getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, getStyleGuardClose,
          getIncludeGuardClose, getIncludeDefinitions, getSchemaShape, getSchemaType,
          getPropertySetterSignature, getPropertyGetterSignature, getPropertyEventSignature,
          getPropertyEventCallbackSignature, getEventSignature, getEventCallbackSignature,
@@ -209,18 +209,23 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     let res = getSchemaType(json, property.result.schema, property.result.name || property.name, schemas, '', {descriptions: true, level: 0})
     res.deps.forEach(dep => sig.deps.add(dep))
     res.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+    sig.type.push(`${description(property.name, property.summary)}`)
     {
       let structure = getPropertyGetterSignature(property, json, schemas)
       structure.signature && sig.type.push(structure.signature + ';\n')
     }
     if (event(property)) {
-      sig.type.push(getPropertyEventCallbackSignature(property, json, res.type) + ';')
-      sig.type.push(getPropertyEventSignature(property, json) + ';\n')
+      sig.type.push(`${description(property.name, 'Listen to updates')}`)
+      let structure = getPropertyEventCallbackSignature(property, json, schemas)
+      structure.signature && sig.type.push(structure.signature + ';\n')
+
+      structure = getPropertyEventSignature(property, json, schemas)
+      structure.registersig && sig.type.push(structure.registersig + ';\n')
+      structure.unregistersig && sig.type.push(structure.unregistersig + ';\n')
     }
     if (setter(property)) {
       let structure = getPropertySetterSignature(property, json, schemas)
       structure.signature && sig.type.push(structure.signature + ';\n')
-
     }
   })
 
@@ -228,8 +233,11 @@ const generateMethodPrototypes = (json, schemas = {}) => {
   events.forEach(event => {
     let res = getSchemaType(json, event.result.schema, event.result.name || event.name, schemas, '', {descriptions: true, level: 0})
     if (res.type && res.type.length > 0) {
-      sig.type.push(getEventCallbackSignature(event, json, res.type) + ';')
-      sig.type.push(getEventSignature(event, json) + ';\n')
+      let structure = getEventCallbackSignature(event, json, schemas)
+      structure.signature && sig.type.push(structure.signature + ';\n')
+      structure = getEventSignature(event, json, schemas)
+      structure.registersig && sig.type.push(structure.registersig + ';\n')
+      structure.unregistersig && sig.type.push(structure.unregistersig + ';\n')
     }
   })
 
