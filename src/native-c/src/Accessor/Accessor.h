@@ -34,11 +34,12 @@ namespace FireboltSDK {
         static constexpr uint8_t DefaultQueueSize = 8;
         static constexpr uint8_t DefaultThreadCount = 3;
 
+    private:
+        Accessor();
+
     public:
         Accessor(const Accessor&) = delete;
         Accessor& operator= (const Accessor&) = delete;
-
-        Accessor();
         ~Accessor();
 
         static Accessor& Instance()
@@ -61,13 +62,13 @@ namespace FireboltSDK {
         uint32_t DestroyEventHandler();
         Event& GetEventManager();
 
-        uint32_t CreateTransport(const string& url, const uint32_t waitTime);
-        uint32_t DestroyTransport();
         Transport<WPEFramework::Core::JSON::IElement>* GetTransport();
-        uint32_t WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime);
 
     private:
         void LoadConfigs(Config& config);
+        uint32_t CreateTransport(const string& url, const uint32_t waitTime);
+        uint32_t DestroyTransport();
+        uint32_t WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime);
 
     private:
         uint8_t _threadCount;

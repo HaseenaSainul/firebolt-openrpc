@@ -63,25 +63,31 @@ namespace FireboltSDK {
             WPEFramework::Core::JSON::Boolean Listening;
         };
 
-    public:
+    private:
         Event();
+    public:
         ~Event() override;
         static Event& Instance();
         static void Dispose();
         void Configure(Transport<WPEFramework::Core::JSON::IElement>* transport);
 
     public:
-        template <typename PARAMETERS, typename CALLBACK>
-        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* usercb, const void* userdata)
+        template <typename RESULT, typename CALLBACK>
+        uint32_t Subscribe(const string& eventName, JsonObject& jsonParameters, const CALLBACK& callback, const void* usercb, const void* userdata)
         {
             uint32_t status = FireboltSDKErrorUnavailable;
             if (_transport != nullptr) {
 
-                status = Assign<PARAMETERS, CALLBACK>(eventName, callback, usercb, userdata);
+                status = Assign<RESULT, CALLBACK>(eventName, callback, usercb, userdata);
                 if (status == FireboltSDKErrorNone) {
-                    const string parameters("{\"listen\":true}");
                     Response response;
-                    status = _transport->Subscribe(eventName, parameters, response);
+
+                    WPEFramework::Core::JSON::Boolean Listen = true;
+                    jsonParameters.Set(_T("listen"), &Listen);
+                    string parameters;
+                    jsonParameters.ToString(parameters);
+
+                    status = _transport->Subscribe<Response>(eventName, parameters, response);
 
                     if (status != FireboltSDKErrorNone) {
                         Revoke(eventName, usercb);
@@ -119,12 +125,12 @@ namespace FireboltSDK {
             EventMap::iterator eventIndex = _eventMap.find(eventName);
             if (eventIndex != _eventMap.end()) {
                 CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
-		if (callbackIndex == eventIndex->second.end()) {
+                if (callbackIndex == eventIndex->second.end()) {
                     eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
-		} else {
+                } else {
                     // Already registered, no need to register again;
                     status = FireboltSDKErrorInUse;
-		}
+                }
             } else {
 
                 CallbackMap callbackMap;
