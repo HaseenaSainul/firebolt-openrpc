@@ -33,9 +33,6 @@ namespace FireboltSDK {
         //Singleton
         Accessor(const string& configLine);
 
-    private:
-        Accessor();
-
     public:
         class EXTERNAL Config : public WPEFramework::Core::JSON::Container {
         public:
