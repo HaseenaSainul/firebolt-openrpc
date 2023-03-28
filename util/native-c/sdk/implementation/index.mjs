@@ -145,7 +145,7 @@ const generateMethods = (json, schemas = {}) => {
  
   {
     //Generate methods that are not tagged with any of the below tags
-    const excludeTagNames = ['property','property:readonly','property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
+    const excludeTagNames = ['property','property:readonly','property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'temporal-set', 'event']
     const getNamesFromTags = tags => tags && tags.map(t => t.name)
     const methods = json.methods.filter( m => {
       const tNames = getNamesFromTags(m.tags)

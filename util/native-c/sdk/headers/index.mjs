@@ -44,7 +44,7 @@ import { description, getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, get
          getPropertyEventCallbackSignature, getEventSignature, getEventCallbackSignature,
          getModuleName, capitalize, getMethodSignature, getPolymorphicMethodSignature,
          getPolymorphicReducedParamSchema, getPolymorphicEventCallbackSignature,
-         getPolymorphicEventSignature } from '../../shared/nativehelpers.mjs'
+         getPolymorphicEventSignature, getTemporalSetMethodSignature } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../shared/cpphelpers.mjs'
 // Maybe an array of <key, value> from the schema
@@ -243,7 +243,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
 
   {
     //Generate methods that are not tagged with any of the below tags
-    const excludeTagNames = ['property', 'property:readonly', 'property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'event']
+    const excludeTagNames = ['property', 'property:readonly', 'property:immutable', 'property::immutable', 'polymorphic-pull', 'polymorphic-reducer', 'temporal-set', 'event']
     const getNamesFromTags = tags => tags && tags.map(t => t.name)
     const methods = json.methods.filter( m => {
       const tNames = getNamesFromTags(m.tags)
@@ -276,18 +276,35 @@ const generateMethodPrototypes = (json, schemas = {}) => {
       sig.type.push(getPolymorphicEventSignature(method, json, schemas) + ';\n')
    })
   }
+  {
+    //Generate Polymorphic Reducer Methods - Generate single method that take an array of all params listed
+    const reducerMethods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-reducer'))) || []
 
-  //Generate Polymorphic Reducer Methods - Generate single method that take an array of all params listed
-  const reducerMethods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('polymorphic-reducer'))) || []
+    reducerMethods.forEach(method => {
+      method.params = [getPolymorphicReducedParamSchema(method)]
 
-  reducerMethods.forEach(method => {
-    method.params = [getPolymorphicReducedParamSchema(method)]
+      let structure = getMethodSignature(method, json, schemas)
+      structure.deps.forEach(dep => sig.deps.add(dep))
+      structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+      structure.signature && sig.type.push(structure.signature + ';\n')
+    })
+  }
+  {
+    const methods = json.methods.filter( m => m.tags && m.tags.find(t => t.name.includes('temporal-set')))
+    methods.forEach(method => {
+      let res = getSchemaType(json, method.result.schema, method.result.name || method.name, schemas, '', {descriptions: true, level: 0})
+      res.deps.forEach(dep => sig.deps.add(dep))
+      res.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+      sig.type.push(`${description(method.name, method.summary)}`)
 
-    let structure = getMethodSignature(method, json, schemas)
-    structure.deps.forEach(dep => sig.deps.add(dep))
-    structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
-    structure.signature && sig.type.push(structure.signature + ';\n')
-  })
+      let structure = getTemporalSetMethodSignature(method, json, schemas)
+      structure.signature && sig.type.push(structure.signature + ';')
+      structure.availablesig && sig.type.push(structure.availablesig + ';')
+      structure.unavailablesig && sig.type.push(structure.unavailablesig + ';')
+      structure.startsig && sig.type.push(structure.startsig + ';')
+      structure.stopsig && sig.type.push(structure.stopsig + ';')
+   })
+  }
 
   return sig
 }

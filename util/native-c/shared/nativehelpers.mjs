@@ -464,9 +464,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     }
 
     def += getArrayAccessors(getModuleName(module), arrayName, (n + 'Array'), res.type)
-    if (name) {
-       structure.name = capitalize(name)
-    }
+    structure.name = res.name || name && (capitalize(name))
     structure.deps.add(def)
     structure.type = n + 'ArrayHandle'
     structure.json = json
@@ -672,6 +670,15 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return structure
   }
 
+  function getResultName(method, module, schemas) {
+     let name = method.result.name
+     if (method.result.schema) {
+        let schemaType = getSchemaType(module, method.result.schema, method.result.name, schemas)
+        name = schemaType.name || (method.result.schema.items && method.result.schema.items.title)
+     }
+     return name
+  }
+
   function getParamsDetails(method, module, schemas, prefix) {
     let structure = {}
     structure["params"] = []
@@ -722,10 +729,10 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         structure.signature += ','
       }
       if (getter === true) {
-        method.result.schema && (structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`)
+        structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`
       }
       else {
-        method.result.schema && (structure.signature += ` ${structure["result"]} ${method.result.name || method.name}`)
+        structure.signature += ` ${structure["result"]} ${method.result.name || method.name}`
       }
     }
 
@@ -745,7 +752,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     }
 
     if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-      method.result.schema && (structure.signature += `, ${structure["result"]} ${method.result.name || method.name}`)
+      structure.signature += `, ${structure["result"]} ${method.result.name || method.name}`
     }
     structure.signature += ' )'
 
@@ -765,7 +772,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     }
 
     if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-      method.result.schema && (structure.result.push(`${structure["result"]} ${method.result.name || method.name}`))
+      structure.result.push(`${structure["result"]} ${method.result.name || method.name}`)
     }
     structure.registersig += (params.length > 0) ? ',' : ''
     structure.registersig += ` ${callbackName} userCB, const void* userData )`
@@ -835,7 +842,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       if (structure.params.length > 0) {
         structure.signature += ','
       }
-      method.result.schema && (structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`)
+      structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`
     }
 
     structure.signature += ' )'
@@ -863,6 +870,43 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
   function getPolymorphicEventSignature(method, module) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
     return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Pull(OnPull${methodName}Callback, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Pull(OnPull${methodName}Callback)`
+  }
+
+  function getTemporalSetMethodSignature(method, module, schemas, prefix = '') {
+    let structure = getParamsDetails(method, module, schemas, prefix)
+    let methodName = `${capitalize(getModuleName(module))}_${capitalize(method.name)}`
+
+    structure["signature"] = `uint32_t ${methodName}_FirstMatch(`
+    if (areParamsValid(structure.params)) {
+      structure.signature += generateMethodParamsSignature(structure.params)
+    }
+
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      if (structure.params.length > 0) {
+        structure.signature += ','
+      }
+      structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`
+
+      let result = getResultName(method, module, schemas)
+      let availableCB = `On${result}AvailableCB`
+      let unavailableCB = `On${result}UnavailableCB`
+      structure["availableCB"] = availableCB
+      structure["unavailableCB"] = unavailableCB
+
+      structure["startsig"] = `uint32_t ${methodName}_Start(${availableCB}, ${unavailableCB})`
+      structure["stopsig"] = `uint32_t ${methodName}_Stop(${availableCB}, ${unavailableCB})`
+
+      structure["availablesig"] = `typedef void (${availableCB})(`
+      structure["unavailablesig"] = `typedef void (${unavailableCB})(`
+
+      structure.availablesig += ` ${structure["result"]} ${method.result.name || method.name}`
+      structure.unavailablesig += ` ${structure["result"]} ${method.result.name || method.name}`
+    }
+
+    structure.signature += ' )'
+    structure.availablesig += ' )'
+    structure.unavailablesig += ' )'
+    return structure
   }
 
   export {
@@ -900,5 +944,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     getPolymorphicEventSignature,
     IsResultBooleanSuccess,
     IsCallsMetricsMethod,
-    getParamsDetails
+    getParamsDetails,
+    getTemporalSetMethodSignature
   }
