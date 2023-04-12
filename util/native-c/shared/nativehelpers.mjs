@@ -82,6 +82,60 @@ const getPolymorphicSchema = (method, module, name, schemas) => {
   return schema
 }
 
+function union(schemas, module, commonSchemas) {
+
+  const result = {};
+  for (const schema of schemas) {
+    for (const [key, value] of Object.entries(schema)) {
+      if (!result.hasOwnProperty(key)) {
+        // If the key does not already exist in the result schema, add it
+        if (value && value.anyOf) {
+          result[key] = union(value.anyOf, module, commonSchemas)
+        } else if (key === 'title' || key === 'description' || key === 'required') {
+          console.warn(`Ignoring "${key}"`)
+        } else {
+          result[key] = value;
+        }
+      } else if (key === 'type') {
+        // If the key is 'type', merge the types of the two schemas
+        if(result[key] === value) {
+          console.warn(`Ignoring "${key}" that is already present and same`)
+        } else {
+          console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
+          throw "ERROR: type is not same"
+        }
+      } else {
+        //If the Key is a const then merge them into an enum
+        if((result[key].const || result[key].enum) && value.const) {
+          if(result[key].enum) {
+            result[key].enum = Array.from(new Set([...result[key].enum, value.const]))
+          }
+          else {
+            result[key].enum = Array.from(new Set([result[key].const, value.const]))
+            delete result[key].const
+          }
+        }
+        // If the key exists in both schemas and is not 'type', merge the values
+        if (Array.isArray(result[key])) {
+          // If the value is an array, concatenate the arrays and remove duplicates
+          result[key] = Array.from(new Set([...result[key], ...value]))
+        } else if (result[key] && result[key].enum && value && value.enum) {
+          //If the value is an enum, merge the enums together and remove duplicates
+          result[key].enum = Array.from(new Set([...result[key].enum, ...value.enum]))
+        } else if (typeof result[key] === 'object' && typeof value === 'object') {
+          // If the value is an object, recursively merge the objects
+          result[key] = union([result[key], value], module, commonSchemas);
+        } else if (result[key] !== value) {
+          // If the value is a primitive and is not the same in both schemas, ignore it
+          console.warn(`Ignoring conflicting value for key "${key}"`)
+        }
+      }
+    }
+  }
+  return result;
+}
+
+
 const getPolymorphicReducedParamSchema = (method) => {
   let reducedParamSchema = {
     name: `${method.name}Params`,
