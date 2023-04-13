@@ -543,6 +543,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.anyOf) {
+    console.log("json.anyOf = ------> name = " + name);
     return structure
     //TODO
   }
@@ -693,7 +694,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       }
     }
     else if (json.anyOf) {
-     console.log("json.anyOf = ------>");
+     console.log("json.anyOf = ------> name = " + name);
     }
     else if (json.oneOf) {
       //Just ignore schema shape, since this has to be treated as string
@@ -731,6 +732,38 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         name = schemaType.name || (method.result.schema.items && method.result.schema.items.title)
      }
      return name
+  }
+
+  function isAnyofType(type, module, schemas) {
+    let anyOfType = false
+    if (type.schema) {
+      if (type.schema.anyOf) {
+        anyOfType = true
+      }
+      else {
+        let schemaType = getSchemaType(module, type.schema, type.name, schemas)
+        if (schemaType.json && schemaType.json.anyOf) {
+          anyOfType = true
+        }
+      }
+    }
+    return anyOfType
+  }
+
+  function isAnyofParamsAndResult(method, module, schemas) {
+    let anyOfTypeParam = false
+    method.params.every(param => {
+      anyOfTypeParam = isAnyofType(param, module, schemas)
+      return !anyOfTypeParam
+    })
+    anyOfTypeParam = (anyOfTypeParam == true) ? isAnyofType(method.result, module, schemas) : false
+    return anyOfTypeParam
+  }
+
+  function validateParamsAndResult(method, module, schemas) {
+    if (checkAnyofParamsAndResult == true) {
+      throw method.name + "policy schema is not support, since it has anyOf type for both param(s) and result"
+    }
   }
 
   function getParamsDetails(method, module, schemas, prefix) {
@@ -771,6 +804,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
   }
 
   function generateMethodSignature(methodName, method, module, schemas, getter, prefix = '') {
+    validateParamsAndResult(method, module, schemas)
+
     let structure = getParamsDetails(method, module, schemas, prefix)
 
     structure["signature"] = `uint32_t ${methodName}(`
@@ -814,6 +849,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
   }
 
   function generateEventSignature(callbackName, method, module, schemas, prefix = '') {
+    validateParamsAndResult(method, module, schemas)
+
     let structure = getParamsDetails(method, module, schemas, prefix)
     structure["registersig"] = `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(`
     structure["unregistersig"] = `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(`
@@ -864,6 +901,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
   }
 
   function getMethodSignature(method, module, schemas) {
+    validateParamsAndResult(method, module, schemas)
+
     let methodName = `${capitalize(getModuleName(module))}_${capitalize(method.name)}`
     let structure = {}
     structure["deps"] = new Set() //To avoid duplication of local ref definitions
@@ -904,6 +943,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
   }
 
   function getPolymorphicMethodSignature(method, module, schemas) {
+    validateParamsAndResult(method, module, schemas)
+
     let structure = getPolymorphicSchemaType(method, module, 'FederatedResponse', schemas)
     if (structure.param.type.length > 0 && structure.result.length > 0) {
       structure["signature"] = `uint32_t ${capitalize(getModuleName(module))}_Push${capitalize(method.name)}(`
@@ -922,11 +963,15 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
   }
 
   function getPolymorphicEventSignature(method, module) {
+    validateParamsAndResult(method, module, schemas)
+
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
     return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Pull(OnPull${methodName}Callback, const void* userData);\n` + `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Pull(OnPull${methodName}Callback)`
   }
 
   function getTemporalSetMethodSignature(method, module, schemas, prefix = '') {
+    validateParamsAndResult(method, module, schemas)
+
     let structure = getParamsDetails(method, module, schemas, prefix)
     let methodName = `${capitalize(getModuleName(module))}_${capitalize(method.name)}`
 
