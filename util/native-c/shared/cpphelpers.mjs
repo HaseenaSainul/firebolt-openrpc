@@ -9,7 +9,30 @@ import { getSchemaType, capitalize, getTypeName, getModuleName, description,
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
 const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
+const getEnumName = (name, prefix) => ((prefix.length > 0) ? (prefix + '_' + name) : name)
 
+/* Added to get line number, to be deleted in the final version
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const path = require('path');
+
+['debug', 'log', 'warn', 'error'].forEach((methodName) => {
+    const originalLoggingMethod = console[methodName];
+    console[methodName] = (firstArgument, ...otherArguments) => {
+        const originalPrepareStackTrace = Error.prepareStackTrace;
+        Error.prepareStackTrace = (_, stack) => stack;
+        const callee = new Error().stack[1];
+        Error.prepareStackTrace = originalPrepareStackTrace;
+        const relativeFileName = path.relative(process.cwd(), callee.getFileName());
+        const prefix = `${relativeFileName}:${callee.getLineNumber()}:`;
+        if (typeof firstArgument === 'string') {
+            originalLoggingMethod(prefix + ' ' + firstArgument, ...otherArguments);
+        } else {
+            originalLoggingMethod(prefix, firstArgument, ...otherArguments);
+        }
+    };
+});
+*/
 const getNameSpaceOpen = (module = {}) => {
   let result = `
 namespace ${getSdkNameSpace()} {`
@@ -29,7 +52,7 @@ const getNameSpaceClose = (module = {}) => {
 }
 
 const getJsonDataStructName = (modName, name, prefixName = '') => {
-    let result = (prefixName.length > 0) ? `${capitalize(modName)}::${capitalize(prefixName)}_${capitalize(name)}` : `${capitalize(modName)}::${capitalize(name)}`
+    let result =((prefixName.length > 0) && (prefixName != name)) ? `${capitalize(modName)}::${capitalize(prefixName)}${capitalize(name)}` : `${capitalize(modName)}::${capitalize(name)}`
     return result
 }
 
@@ -153,7 +176,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     }
   else if (json.type === 'string' && json.enum) {
     //Enum
-    let t = 'WPEFramework::Core::JSON::EnumType<' + (json.namespace ? json.namespace : getModuleName(module)) + '_' + capitalize(name) + '>'
+    let t = 'WPEFramework::Core::JSON::EnumType<' + (json.namespace ? json.namespace : getModuleName(module)) + '_' + (getEnumName(capitalize(name), prefixName)) + '>'
     structure.type.push(t)
     return structure
   }
@@ -163,19 +186,20 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
   }
   else if (json.type === 'array' && json.items) {
     let res
+    let items
     if (Array.isArray(json.items)) {
       //TODO
       const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
       if (!IsHomogenous(json.items)) {
         throw 'Heterogenous Arrays not supported yet'
       }
-      res = getJsonType(module, json.items[0], json.items[0].name || name, schemas, prefixName) //TOBE Checked
+      items = json.items[0]
     }
     else {
+      items = json.items
       // grab the type for the non-array schema
-      res = getJsonType(module, json.items, json.items.name || name, schemas, prefixName)
     }
-
+    res = getJsonType(module, items, items.name || name, schemas, prefixName)
     structure.deps = res.deps
     let n = capitalize(name || json.title)
     structure.type.push(`WPEFramework::Core::JSON::ArrayType<${res.type}>`)
@@ -183,6 +207,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     return structure
   }
   else if (json.allOf) {
+    console.log("json.allOf = ------> name = " + name);
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
     if (json.title) {
       union['title'] = json.title
@@ -190,8 +215,10 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     else {
       union['title'] = name
     }
+    let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+
     delete union['$ref']
-    return getJsonType(module, union, '',schemas, options, prefixName)
+    return getJsonType(module, union, '', schemas, prefix, options)
   }
   else if (json.oneOf) {
     structure.type = getJsonNativeTypeForOpaqueString()
@@ -202,6 +229,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     return structure
   }
   else if (json.anyOf) {
+    console.log("json.anyOf = ------> name = " + name);
     return structure //TODO
   }
   else if (json.type === 'object') {
@@ -209,7 +237,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
       structure.type = getJsonNativeTypeForOpaqueString()
     }
     else {
-      let res = getJsonDefinition(module, json, schemas, json.title || name, {descriptions: options.descriptions, level: 0})
+      let res = getJsonDefinition(module, json, schemas, json.title || name, prefixName, {descriptions: options.descriptions, level: 0})
       let schema = getSchemaType(module, json, name, schemas)
       structure.deps = res.deps
       structure.deps.add(res.type.join('\n'))
@@ -276,7 +304,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
 
   if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
     if ((json.properties || json.additonalProperties) && (validJsonObjectProperties(json) === true)) {
-        let tName = (prefixName.length > 0) ? (prefixName + '_' + capitalize(name)) : capitalize(name)
+        let tName = ((prefixName.length > 0) && (name != prefixName)) ? (prefixName + capitalize(name)) : capitalize(name)
         let props = []
         Object.entries(json.properties || json.additonalProperties).every(([pname, prop]) => {
           if (prop.type === 'array') {
@@ -306,7 +334,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
             if (prop.type === 'object' && (hasProperties(prop) !== true)) {
               props.push({name: `${pname}`, type: `${getJsonNativeTypeForOpaqueString()}`})
             } else {
-              let res = getJsonType(moduleJson, prop, pname, schemas)
+              let res = getJsonType(moduleJson, prop, pname, schemas, prefixName)
               if (res.type && res.type.length > 0) {
                 props.push({name: `${pname}`, type: `${res.type}`})
                 res.deps.forEach(t => structure.deps.add(t))
@@ -337,12 +365,13 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     structure = getJsonDefinition(moduleJson, jsonItems, schemas, jsonItems.title || name, options)
   }
   else if (json.anyOf) {
-
+    console.log("json.anyOf = ------> name = " + name);
   }
   else if (json.oneOf) {
     //Just ignore schema shape, since this has to be treated as string
   }
   else if (json.allOf) {
+    console.log("json.allOf = ------> name = " + name);
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
     if (json.title) {
       union['title'] = json.title
@@ -351,7 +380,9 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
       union['title'] = name
     }
     delete union['$ref']
-    structure = getJsonDefinition(moduleJson, union, schemas, name, options)
+
+    let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+    structure = getJsonDefinition(moduleJson, union, schemas, name, prefix, options)
   }
 
   return structure
@@ -668,7 +699,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
     }
     else if (json.type === 'string' && json.enum) {
       //Enum
-      let typeName = getTypeName(getModuleName(moduleJson), name || json.title)
+      let typeName = getTypeName(getModuleName(moduleJson), name || json.title, prefixName)
       let res = description(capitalize(name || json.title), json.description) + getEnumConversionImpl(typeName, json)
       structure.enums.add(res)
 
@@ -682,22 +713,21 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
         Object.entries(json.properties).forEach(([pname, prop]) => {
           let desc = '\n' + description(pname, prop.description)
           let schema = ''
-          let j
           if (prop.type === 'array') {
+            let items
             if (Array.isArray(prop.items)) {
               //TODO
               const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
               if (!IsHomogenous(prop.items)) {
                 throw 'Heterogenous Arrays not supported yet'
               }
-              schema = getSchemaType(moduleJson, prop.items[0], prop.items[0].name || pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
-              j = prop.items[0]
+              items = prop.items[0]
             }
             else {
               // grab the type for the non-array schema
-              schema = getSchemaType(moduleJson, prop.items, prop.items.nape || pname, schemas, {level : options.level, descriptions: options.descriptions, title: true})
-              j = prop.items
+             items = prop.items
             }
+            schema = getSchemaType(moduleJson, items, items.name || pname, schemas, prefixName, {level : options.level, descriptions: options.descriptions, title: true})
             if (schema.type && schema.type.length > 0) {
               let type = getArrayElementSchema(json, moduleJson, schemas, schema.name)
               if (type.type === 'string' && type.enum && schema.name && schema.name.length > 0 && (getModuleName(moduleJson) === schema.namespace)) {
@@ -716,15 +746,15 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
             }
           }
           else {
-            schema = getSchemaType(moduleJson, prop, pname, schemas, {descriptions: descriptions, level: level + 1, title: true})
+            schema = getSchemaType(moduleJson, prop, pname, schemas, prefixName, {descriptions: descriptions, level: level + 1, title: true})
             if (schema.type && schema.type.length > 0) {
               let jtype = getJsonType(moduleJson, prop, pname, schemas, prefixName)
               let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : schema.name)
               let subPropertyType = ((!prop.title) ? schema.name : capitalize(prop.title))
-
               let schemaNameSpace = (`${getSdkNameSpace()}` + '::' + schema.namespace)
               let moduleProperty = getJsonType(moduleJson, json, name, schemas, prefixName)
               let subProperty = getJsonType(moduleJson, prop, pname, schemas, prefixName)
+
               t += desc + '\n' + getObjectPropertyAccessorsImpl(tName, getModuleName(moduleJson), moduleProperty.type, subProperty.type, subPropertyName, schema.type, schema.json, {readonly:false, optional:isOptional(pname, json)})
 
             }
@@ -738,9 +768,11 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
             }
             else if (prop.type === 'string' && prop.enum) {
               //Enum
-              let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title)
+              if (schema.namespace == getModuleName(moduleJson)) {
+              let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title, prefixName)
               let res = description((capitalize(name) + "::" + capitalize(pname)), prop.description) + getEnumConversionImpl(typeName, prop)
               structure.enums.add(res)
+              }
             }
           }
         })
@@ -766,7 +798,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
         let subModuleProperty = getJsonType(moduleJson, type.json, type.name, schemas, prefixName)
         if (type.json.type === 'string' && type.json.enum) {
           //Enum
-          let typeName = getTypeName(getModuleName(moduleJson), name)
+          let typeName = getTypeName(getModuleName(moduleJson), name, prefixName)
           let res = description(name, json.description) + getEnumConversionImpl(typeName, type.json)
           structure.enums.add(res)
         } else if ((type.json.type === 'object' && type.json.properties) || type.json.type === 'array') {
@@ -781,11 +813,12 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
       }
     }
     else if (json.anyOf) {
-
+       console.log("json.anyOf = ------> name = " + name);
     }
     else if (json.oneOf) {
     }
     else if (json.allOf) {
+      console.log("json.allOf = ------> name = " + name);
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
       if (json.title) {
         union['title'] = json.title
@@ -793,8 +826,11 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
       else {
         union['title'] = name
       }
+
+      let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+
       delete union['$ref']
-      return getImplForSchema(moduleJson, union, schemas, name, prefixName, options)
+      return getImplForSchema(moduleJson, union, schemas, name, prefix, options)
 
     }
     else if (json.type === 'array') {

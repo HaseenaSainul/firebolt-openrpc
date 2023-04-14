@@ -365,20 +365,20 @@ const getArrayElementSchema = (json, module, schemas = {}, name) => {
 }
 
 const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}, common = false) => {
+  let internal = []
   const headers = []
   if (cpp == true) {
     headers.push(`#include "FireboltSDK.h"`)
     if (hasCallsMetricsMethods(json) === true) {
       headers.push(`#include "Metrics.h"`)
     }
-    headers.push((common === true) ? `#include "Common/${capitalize(getModuleName(json))}.h"` : `#include "${capitalize(getModuleName(json))}.h"`)
+    internal.push((common === true) ? `#include "Common/${capitalize(getModuleName(json))}.h"` : `#include "${capitalize(getModuleName(json))}.h"`)
     if ((common === true) && (fs.existsSync(srcDir + `/JsonData_${capitalize(getModuleName(json))}.h`) === true)) {
-      headers.push(`#include "JsonData_${capitalize(getModuleName(json))}.h"`)
+      internal.push(`#include "JsonData_${capitalize(getModuleName(json))}.h"`)
     }
   } else {
     headers.push(`#include "Firebolt.h"`)
   }
-
 
   let externalHeaders = (getExternalRefs(json)
     .map(ref => {
@@ -400,6 +400,7 @@ const getIncludeDefinitions = (json = {}, schemas = {}, cpp = false, srcDir = {}
       external.forEach(header => (headers.includes(header) === false) ? headers.push(header) : null)
     })
   }
+  internal.forEach((header) => (headers.includes(header) === false) ? headers.push(header) : null)
 
   return headers
 }
@@ -527,6 +528,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.allOf) {
+    console.log("json.allOf = ------> name = " + name);
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
     if (json.title) {
       union['title'] = json.title
@@ -555,7 +557,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
       res.type.forEach(t => structure.deps.add(t))
       structure.type = getTypeName(getModuleName(module), json.title || name, prefixName) + 'Handle'
       res.enum.forEach(enm => (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : structure.enum)
-      structure.namespace = getModuleName(module)
+      structure.namespace = (json.namespace ? json.namespace : getModuleName(module))
     } else {
       structure.type = getFireboltStringType()
     }
@@ -694,12 +696,13 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       }
     }
     else if (json.anyOf) {
-     console.log("json.anyOf = ------> name = " + name);
+      console.log("json.anyOf = ------> name = " + name);
     }
     else if (json.oneOf) {
       //Just ignore schema shape, since this has to be treated as string
     }
     else if (json.allOf) {
+      console.log("json.allOf = ------> name = " + name);
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
       if (json.title) {
         union['title'] = json.title
@@ -707,8 +710,10 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       else {
         union['title'] = name
       }
+      let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+
       delete union['$ref']
-      return getSchemaShape(moduleJson, union, schemas, name, prefixName, options)
+      return getSchemaShape(moduleJson, union, schemas, name, prefix, options)
 
     }
     else if (json.type === 'array') {
@@ -743,6 +748,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       else {
         let schemaType = getSchemaType(module, type.schema, type.name, schemas)
         if (schemaType.json && schemaType.json.anyOf) {
+          if (!type.name && !type.title) {
+             throw method + ": does not has both title or name"
+          }
           anyOfType = true
         }
       }
@@ -761,8 +769,8 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
   }
 
   function validateParamsAndResult(method, module, schemas) {
-    if (checkAnyofParamsAndResult == true) {
-      throw method.name + "policy schema is not support, since it has anyOf type for both param(s) and result"
+    if (isAnyofParamsAndResult == true) {
+      throw method.name + " : policy schema is not support, since it has anyOf type for both param(s) and result"
     }
   }
 
@@ -962,7 +970,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     return structure
   }
 
-  function getPolymorphicEventSignature(method, module) {
+  function getPolymorphicEventSignature(method, module, schemas) {
     validateParamsAndResult(method, module, schemas)
 
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
