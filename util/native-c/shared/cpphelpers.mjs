@@ -7,6 +7,7 @@ import { getSchemaType, capitalize, getTypeName, getModuleName, description,
          getPolymorphicMethodSignature, IsResultBooleanSuccess, IsCallsMetricsMethod } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
+const getJsonDataPrefix = () => 'JsonData_'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
 const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
 const getEnumName = (name, prefix) => ((prefix.length > 0) ? (prefix + '_' + name) : name)
@@ -52,7 +53,7 @@ const getNameSpaceClose = (module = {}) => {
 }
 
 const getJsonDataStructName = (modName, name, prefixName = '') => {
-    let result =((prefixName.length > 0) && (prefixName != name)) ? `${capitalize(modName)}::${capitalize(prefixName)}${capitalize(name)}` : `${capitalize(modName)}::${capitalize(name)}`
+    let result =((prefixName.length > 0) && (prefixName != name)) ? `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(prefixName)}${capitalize(name)}` : `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(name)}`
     return result
 }
 
@@ -257,7 +258,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
 }
 
 function getJsonContainerDefinition (name, props = []) {
-  name = capitalize(name)
+  name = getJsonDataPrefix() + capitalize(name)
   let c = `    class ${name} : public WPEFramework::Core::JSON::Container {
     public:
         ~${name}() override = default;
