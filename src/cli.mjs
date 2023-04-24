@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import sdk from '../util/sdk/index.mjs'
-import {generateHeaders, generateCppFiles} from '../util/native-c/sdk/index.mjs'
+import {csdk} from '../util/native-c/sdk/index.mjs'
 import docs from '../util/docs/index.mjs'
 import validate from '../util/validate/index.mjs'
 import openrpc from '../util/openrpc/index.mjs'
@@ -41,8 +41,7 @@ if (util === 'sdk') {
     sdk(parsedArgs).done(signOff)
   } 
   else if (parsedArgs.lang === 'native-c') {
-    generateHeaders(parsedArgs).done(signOff)
-    generateCppFiles(parsedArgs).done(signOff)
+    csdk(parsedArgs).done(signOff)
   }
 }
 else if (util === 'docs') {

@@ -47,6 +47,10 @@ import { description, getHeaderText, getIncludeGuardOpen, getStyleGuardOpen, get
          getPolymorphicEventSignature, getTemporalSetMethodSignature } from '../../shared/nativehelpers.mjs'
 import { getSchemas } from '../../../shared/modules.mjs'
 import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchema } from '../../shared/cpphelpers.mjs'
+
+
+
+
 // Maybe an array of <key, value> from the schema
 const getDefinitions = compose(
   option([]),
@@ -56,10 +60,12 @@ const getDefinitions = compose(
   getPath(['definitions']) // Maybe any
 )
 
-const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
+const isUnUsed = (name, unUsedSchemas = []) => unUsedSchemas.includes(name)
+
+const generateHeaderForDefinitions = (obj = {}, schemas = {}, unUsedSchemas = []) => {
   const code = []
 
-  const shape = generateTypesForDefinitions(obj, schemas)
+  const shape = generateTypesForDefinitions(obj, schemas ,unUsedSchemas)
   code.push(getHeaderText())
   code.push(getIncludeGuardOpen(obj, 'common'))
   const i = getIncludeDefinitions(obj, schemas)
@@ -77,10 +83,10 @@ const generateHeaderForDefinitions = (obj = {}, schemas = {}) => {
   return code
 }
 
-const generateHeaderForModules = (obj = {}, schemas = {}) => {
+const generateHeaderForModules = (obj = {}, schemas = {}, unUsedSchemas=[]) => {
   const code = []
 
-  const shape = generateTypesForModules(obj, schemas)
+  const shape = generateTypesForModules(obj, schemas, unUsedSchemas)
   const m = generateMethodPrototypes(obj, schemas)
 
   if (m.deps.size || m.type.length || m.enum.length || shape.type.length || shape.enum.length || shape.deps.size) {
@@ -105,9 +111,9 @@ const generateHeaderForModules = (obj = {}, schemas = {}) => {
   }
   return code
 }
-const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
+const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}, unUsedSchemas=[]) => {
   const code = []
-  const shape = generateJsonTypesForDefinitons(obj, schemas)
+  const shape = generateJsonTypesForDefinitons(obj, schemas, unUsedSchemas)
   if (shape.deps.size > 0 || shape.type.length > 0) {
     code.push(getHeaderText())
     code.push('#pragma once' + '\n')
@@ -121,15 +127,14 @@ const generateJsonDataHeaderForDefinitions = (obj = {}, schemas = {}) => {
   return code
 }
 
-const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
+const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}, unUsedSchemas=[]) => {
   const code = []
   const header = []
-
   header.push(getHeaderText())
   const i = getIncludeDefinitions(obj, schemas, true, srcDir, true)
 
   header.push(i.join('\n'))
-  const shape = generateImplForDefinitions(obj, schemas)
+  const shape = generateImplForDefinitions(obj, schemas, unUsedSchemas)
 
   if (shape.enums.size) {
       code.push(header.join('\n'))
@@ -137,7 +142,7 @@ const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
       code.push([...shape.enums].join('\n'))
       code.push(`\n}`)
   }
-  if ((shape.deps.size) || (shape.type.length))  {
+  if (shape.deps.size > 0 || shape.type.length > 0)  {
     code.length === 0 ? code.push(header.join('\n')) : null
 
     code.push(getStyleGuardOpen(obj))
@@ -145,11 +150,12 @@ const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}) => {
     code.push(shape.type.join('\n'))
     code.push(getStyleGuardClose())
   }
+
   return code
 }
 
 //For each schema object, 
-const generateImplForDefinitions = (json, schemas = {}) => compose(
+const generateImplForDefinitions = (json, schemas = {}, unUsedSchemas = []) => compose(
   reduce((acc, val) => {
     const shape = getImplForSchema(json, val[1], schemas, val[0])
     shape.type.length ? acc.type.push(shape.type.join('\n')) : null
@@ -157,12 +163,13 @@ const generateImplForDefinitions = (json, schemas = {}) => compose(
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
   }, {type: [], deps: new Set(), enums: new Set()}),
+  filter(x => !isUnUsed('#/definitions/' + x[0], unUsedSchemas)),
   getDefinitions //Get schema under Definitions
 )(json)
 
 
 //For each schema object, 
-const generateTypesForDefinitions = (json, schemas = {}) => compose(
+const generateTypesForDefinitions = (json, schemas = {}, unUsedSchemas = []) => compose(
   reduce((acc, val) => {
     const shape = getSchemaShape(json, val[1], schemas, val[0])
     shape.type.length ? acc.type.push(shape.type.join('\n')) : null
@@ -170,10 +177,11 @@ const generateTypesForDefinitions = (json, schemas = {}) => compose(
     shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
   }, {type: [], enum: [], deps: new Set()}),
+  filter(x => !isUnUsed('#/definitions/' + x[0], unUsedSchemas)),
   getDefinitions //Get schema under Definitions
 )(json)
 
-const generateTypesForModules = (json,  schemas = {}) => compose(
+const generateTypesForModules = (json,  schemas = {}, unUsedSchemas = []) => compose(
   reduce((acc, val) => {
     const shape = getSchemaShape(json, val[1], schemas, val[0])
     shape.type.length ? acc.type.push(shape.type.join('\n')) : null
@@ -181,10 +189,11 @@ const generateTypesForModules = (json,  schemas = {}) => compose(
     shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
   }, {type: [], enum: [], deps: new Set()}),
+  filter(x => !isUnUsed('#/components/schemas/' + x[0], unUsedSchemas)),
   getSchemas //Get schema under Definitions
 )(json)
 
-const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
+const generateJsonTypesForDefinitons = (json, schemas = {}, unUsedSchemas = []) => compose(
   reduce((acc, val) => {
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
     if (shape.type.length > 0) {
@@ -193,6 +202,7 @@ const generateJsonTypesForDefinitons = (json, schemas = {}) => compose(
     }
     return acc
   }, {type: [], deps: new Set()}),
+  filter(x => !isUnUsed('#/definitions/' + x[0], unUsedSchemas)),
   getDefinitions //Get schema under Definitions
 )(json)
 

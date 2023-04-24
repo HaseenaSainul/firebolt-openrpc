@@ -774,6 +774,55 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     }
   }
 
+const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
+    const refs = objectPaths(moduleJson)
+                  .filter(x => /\/\$ref$/.test(x))
+                  .map(refToPath)
+                  .map(x => getPathOr(null, x, moduleJson))
+                  .filter(x => {
+                    console.log(`Checking ${x} against ${name}`)
+                    return x === name
+                  })
+  
+    return (refs.length > 0)
+  }
+
+const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
+  let unUsedDefinitions = []
+  let local_schemas, prefix
+
+  const isReferencedBySchema = (name = '', moduleJson = {}) => {
+    let modStr = JSON.stringify(moduleJson.definitions || moduleJson)
+    return (modStr.includes(name))
+  }
+
+    if (moduleJson.components && moduleJson.components.schemas && Object.values(moduleJson.components.schemas).length) {
+        local_schemas = moduleJson.components.schemas
+        prefix = '#/components/schemas/'
+    }
+    else if (moduleJson.definitions && Object.values(moduleJson.definitions).length) {
+        local_schemas = moduleJson.definitions
+        prefix = '#/definitions/'
+    }
+
+    if (local_schemas) {
+        Object.entries(local_schemas).forEach(([n, v]) => {
+          let referred = false
+          Object.entries(combinedSchemas).every(([mName, module]) => {
+            if (isReferencedBySchema(prefix + n, module)) {
+              referred = true
+              return false
+            }
+            return true
+          })
+          if (!referred) {
+            unUsedDefinitions.push(prefix + n)
+          }
+      })
+    }
+    return unUsedDefinitions
+  }
+
   function getParamsDetails(method, module, schemas, prefix) {
     let structure = {}
     structure["params"] = []
@@ -1052,5 +1101,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     IsResultBooleanSuccess,
     IsCallsMetricsMethod,
     getParamsDetails,
-    getTemporalSetMethodSignature
+    getTemporalSetMethodSignature,
+    getUnusedDefinitionsInSchema
   }

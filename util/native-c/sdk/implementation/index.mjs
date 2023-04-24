@@ -38,16 +38,19 @@ import { getNameSpaceOpen, getNameSpaceClose, getJsonDefinition, getImplForSchem
          getImplForPolymorphicMethodParam, getPolymorphicMethodImpl, getPolymorphicEventImpl,
          getImplForEventContextParams, getPolymorphicEventCallbackImpl } from '../../shared/cpphelpers.mjs'
 
-const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
+
+const isUnUsed = (name, unUsedSchemas = []) => unUsedSchemas.includes(name)
+
+const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}, unUsedSchemas = []) => {
   const code = []
   const header = []
 
   header.push(getHeaderText())
-  const jsonDefs = generateJsonTypesForSchemas(obj, schemas)
+  const jsonDefs = generateJsonTypesForSchemas(obj, schemas, unUsedSchemas)
   const i = getIncludeDefinitions(obj, schemas, true, srcDir);
   header.push(i.join('\n'))
 
-  const shape = generateImplForSchemas(obj, schemas)
+  const shape = generateImplForSchemas(obj, schemas, unUsedSchemas)
   const methods = generateMethods(obj, schemas)
   let jsonData = new Set([...jsonDefs.deps, ...methods.jsonData])
   if (jsonDefs.type.length > 0) {
@@ -84,7 +87,7 @@ const generateCppForSchemas = (obj = {}, schemas = {}, srcDir = {}) => {
 
 
 //For each schema object, 
-const generateImplForSchemas = (json, schemas = {}) => compose(
+const generateImplForSchemas = (json, schemas = {}, unUsedSchemas = []) => compose(
   reduce((acc, val) => {
     const shape = getImplForSchema(json, val[1], schemas, val[0])
     shape.type.length ? acc.type.push(shape.type.join('\n')) : null
@@ -92,16 +95,18 @@ const generateImplForSchemas = (json, schemas = {}) => compose(
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
   }, {type: [], deps: new Set(), enums: new Set()}),
+  filter(x => !isUnUsed('#/components/schemas/' + x[0], unUsedSchemas)),
   getSchemas //Get schema under Components/Schemas
 )(json)
 
-const generateJsonTypesForSchemas = (json, schemas = {}) => compose(
+const generateJsonTypesForSchemas = (json, schemas = {}, unUsedSchemas = []) => compose(
   reduce((acc, val) => {
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
     shape.type.length ? acc.type.push(shape.type.join('\n')) : null
     shape.deps.forEach(dep => acc.deps.add(dep))
     return acc
   }, {type: [], deps: new Set()}),
+  filter(x => !isUnUsed('#/components/schemas/' + x[0], unUsedSchemas)),
   getSchemas //Get schema under Definitions
 )(json)
 
