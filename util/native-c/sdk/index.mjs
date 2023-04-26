@@ -26,7 +26,7 @@ import {getModuleName, getUnusedDefinitionsInSchema} from '../shared/nativehelpe
 
 
 const filterBlackListedSchemas = (module) => {
-  const blackList = ["FireboltOpenRPC", "Discovery", "Entertainment", "Intents", "Parameters"]
+  const blackList = ["FireboltOpenRPC"]
   return blackList.includes(getModuleName(module))
 }
 

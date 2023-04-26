@@ -43,6 +43,7 @@ namespace ${getSdkNameSpace()} {`
   result += '\n'
   return result
 }
+
 const getNameSpaceClose = (module = {}) => {
   let result = ''
   if (JSON.stringify(module) !== '{}') {
@@ -764,6 +765,8 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
             else {
               console.log(`WARNING: Type undetermined for ${name}:${pname}`)
             }
+
+            prop = ((!prop.type && prop.allOf) ? schema.json : prop)
             if (prop.type === 'object' && prop.properties) {
               let res = getImplForSchema(moduleJson, prop, schemas, (prop.title || pname), prefixName, {descriptions: descriptions, level: level})
               res.type.forEach(t => structure.deps.add(t))

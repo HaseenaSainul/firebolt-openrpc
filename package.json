@@ -21,7 +21,7 @@
     "thunder:clean": "cd src/native-c/thunder && sh scripts/clean.sh && cd -",
     "thunder:prepare": "npm run thunder:clean && cd src/native-c/thunder && sh scripts/prepare.sh -b 09e9f18c75c3bf2860296edb6e51f415f7a6093f -t 2f3cff3b647a9a37b595fb1602d2808ab81b5cef&& cd -",
     "thunder:setup": "cd src/native-c/thunder && sh scripts/setup.sh && cd -",
-    "build:csdk": "node ./src/cli.mjs --task sdk --lang native-c --source ./src/ --output ./build/sdk/native-c/ --shared-schemas test/sharedSchemas",
+    "build:csdk": "rm -rf ./build/sdk/native-c && node ./src/cli.mjs --task sdk --lang native-c --source ./src/ --output ./build/sdk/native-c/ --shared-schemas test/sharedSchemas",
     "nativesdk:prepare": "npm run thunder:prepare && npm run thunder:setup && npm run build:csdk",
     "nativesdk:configure": "cmake-js reconfigure --directory src/native-c --CDSYSROOT_PATH=${SYSROOT_PATH} --CDGENERATED_CODE_PATH=${PWD}/build/sdk/native-c --CDENABLE_TESTS=${ENABLE_TESTS}",
     "nativesdk:compile": "cmake-js build --directory src/native-c",
