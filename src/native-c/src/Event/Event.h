@@ -73,6 +73,13 @@ namespace FireboltSDK {
 
     public:
         template <typename RESULT, typename CALLBACK>
+        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* usercb, const void* userdata)
+        {
+            JsonObject jsonParameters;
+            return Subscribe<RESULT, CALLBACK>(eventName, jsonParameters, callback, usercb, userdata);
+        }
+
+        template <typename RESULT, typename CALLBACK>
         uint32_t Subscribe(const string& eventName, JsonObject& jsonParameters, const CALLBACK& callback, const void* usercb, const void* userdata)
         {
             uint32_t status = FireboltSDKErrorUnavailable;
