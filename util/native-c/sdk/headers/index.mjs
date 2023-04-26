@@ -150,7 +150,6 @@ const generateCppForDefinitions = (obj = {}, schemas = {}, srcDir = {}, unUsedSc
     code.push(shape.type.join('\n'))
     code.push(getStyleGuardClose())
   }
-
   return code
 }
 
@@ -199,10 +198,8 @@ const generateTypesForModules = (json,  schemas = {}, unUsedSchemas = []) => com
 const generateJsonTypesForDefinitons = (json, schemas = {}, unUsedSchemas = []) => compose(
   reduce((acc, val) => {
     const shape = getJsonDefinition(json, val[1], schemas, val[0])
-    if (shape.type.length > 0) {
-      shape.type.forEach(type => { (acc.deps.has(type) === false) ? acc.type.push(type) : acc.type})
-      shape.deps.forEach(dep => { (acc.type.includes(dep) === false) ? acc.deps.add(dep) : acc.deps})
-    }
+    shape.deps.size ? (shape.deps.forEach(dep => { (acc.type.includes(dep) === false) ? acc.deps.add(dep) : acc.type.splice(acc.type.indexOf(dep), 1) && acc.deps.add(dep)})) : null
+    shape.type.length ? (shape.type.forEach(type => { (acc.deps.has(type) === false) ? acc.type.push(type) : acc.type})) : null
     return acc
   }, {type: [], deps: new Set()}),
   filter(x => !x[1].anyOf),
