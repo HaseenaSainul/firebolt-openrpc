@@ -268,7 +268,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
       let structure = getMethodSignature(method, json, schemas)
       structure.deps.forEach(dep => sig.deps.add(dep))
       structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
-      structure.signature && sig.type.push(structure.signature + ';\n')
+      structure.signatures.forEach(signature => sig.type.push(signature + ';\n'))
     })
   }
   {

@@ -12,7 +12,7 @@ const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
 const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
 const getEnumName = (name, prefix) => ((prefix.length > 0) ? (prefix + '_' + name) : name)
 
-/* Added to get line number, to be deleted in the final version
+// Added to get line number, to be deleted in the final version
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const path = require('path');
@@ -33,7 +33,7 @@ const path = require('path');
         }
     };
 });
-*/
+
 const getNameSpaceOpen = (module = {}) => {
   let result = `
 namespace ${getSdkNameSpace()} {`
@@ -231,6 +231,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     return structure
   }
   else if (json.anyOf) {
+    console.log("json.anyOf = ------> name = " + name);
     return structure //TODO
   }
   else if (json.type === 'object') {
@@ -366,13 +367,12 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     structure = getJsonDefinition(moduleJson, jsonItems, schemas, jsonItems.title || name, options)
   }
   else if (json.anyOf) {
-    //console.log("getJsonDefinition: json.anyOf = ------> name = " + name);
+    console.log("json.anyOf = ------> name = " + name);
   }
   else if (json.oneOf) {
     //Just ignore schema shape, since this has to be treated as string
   }
   else if (json.allOf) {
-    //console.log("json.allOf = ------> name = " + name);
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
     if (json.title) {
       union['title'] = json.title
@@ -817,7 +817,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
       }
     }
     else if (json.anyOf) {
-
+       console.log("json.anyOf = ------> name = " + name);
     }
     else if (json.oneOf) {
     }
@@ -1340,7 +1340,7 @@ function getMethodImpl(method, module, schemas) {
 function getImplForPolymorphicMethodParamInternal(method, module, impl, federatedType, schemas, prefixName = '') {
 
   let name = capitalize(method.name + federatedType)
-  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let schema = getPolymorphicSchema(method, name)
   if (schema['$ref']) {
     let res = {}
     res = getImplForSchema(module, schema, schemas, name, prefixName)
@@ -1397,7 +1397,7 @@ function getPolymorphicMethodImpl(method, module, schemas) {
 
 function getPolymorphicEventImpl(method, module, schemas) {
   let name = capitalize(method.name + 'FederatedRequest')
-  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let schema = getPolymorphicSchema(method, name)
   let propType = getSchemaType(module, schema, name, schemas, {descriptions: true, level: 0})
 
   let impl = ''
@@ -1426,7 +1426,7 @@ uint32_t ${moduleName}_Unregister_${capitalize(method.name)}Pull(OnPull${methodN
 
 function getPolymorphicEventCallbackImpl(method, module, schemas) {
   let name = capitalize(method.name + 'FederatedRequest')
-  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let schema = getPolymorphicSchema(method, name)
   let propType = getSchemaType(module, schema, name, schemas, {descriptions: true, level: 0})
 
   let impl = ''
