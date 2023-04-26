@@ -163,6 +163,7 @@ const generateImplForDefinitions = (json, schemas = {}, unUsedSchemas = []) => c
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
   }, {type: [], deps: new Set(), enums: new Set()}),
+  filter(x => !x[1].anyOf),
   filter(x => !isUnUsed('#/definitions/' + x[0], unUsedSchemas)),
   getDefinitions //Get schema under Definitions
 )(json)
@@ -177,6 +178,7 @@ const generateTypesForDefinitions = (json, schemas = {}, unUsedSchemas = []) => 
     shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
   }, {type: [], enum: [], deps: new Set()}),
+  filter(x => !x[1].anyOf),
   filter(x => !isUnUsed('#/definitions/' + x[0], unUsedSchemas)),
   getDefinitions //Get schema under Definitions
 )(json)
@@ -189,6 +191,7 @@ const generateTypesForModules = (json,  schemas = {}, unUsedSchemas = []) => com
     shape.enum.forEach(enm => { (acc.enum.includes(enm) === false) ? acc.enum.push(enm) : acc.enum})
     return acc
   }, {type: [], enum: [], deps: new Set()}),
+  filter(x => !x[1].anyOf),
   filter(x => !isUnUsed('#/components/schemas/' + x[0], unUsedSchemas)),
   getSchemas //Get schema under Definitions
 )(json)
@@ -202,6 +205,7 @@ const generateJsonTypesForDefinitons = (json, schemas = {}, unUsedSchemas = []) 
     }
     return acc
   }, {type: [], deps: new Set()}),
+  filter(x => !x[1].anyOf),
   filter(x => !isUnUsed('#/definitions/' + x[0], unUsedSchemas)),
   getDefinitions //Get schema under Definitions
 )(json)

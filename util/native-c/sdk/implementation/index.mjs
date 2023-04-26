@@ -95,6 +95,7 @@ const generateImplForSchemas = (json, schemas = {}, unUsedSchemas = []) => compo
     shape.enums.forEach(e => acc.enums.add(e))
     return acc
   }, {type: [], deps: new Set(), enums: new Set()}),
+  filter(x => !x[1].anyOf),
   filter(x => !isUnUsed('#/components/schemas/' + x[0], unUsedSchemas)),
   getSchemas //Get schema under Components/Schemas
 )(json)
@@ -106,6 +107,7 @@ const generateJsonTypesForSchemas = (json, schemas = {}, unUsedSchemas = []) => 
     shape.deps.forEach(dep => acc.deps.add(dep))
     return acc
   }, {type: [], deps: new Set()}),
+  filter(x => !x[1].anyOf),
   filter(x => !isUnUsed('#/components/schemas/' + x[0], unUsedSchemas)),
   getSchemas //Get schema under Definitions
 )(json)

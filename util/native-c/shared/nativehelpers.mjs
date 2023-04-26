@@ -69,7 +69,7 @@ const getSchemaRef = (name) => {
   return schema
 }
 
-const getPolymorphicSchema = (method, module, name, schemas) => {
+const getPolymorphicSchema = (method, name) => {
   let schema = {}
   method.params.every(param => {
     if (param.name === 'result') {
@@ -92,21 +92,21 @@ function union(schemas, module, commonSchemas) {
         if (value && value.anyOf) {
           result[key] = union(value.anyOf, module, commonSchemas)
         } else if (key === 'title' || key === 'description' || key === 'required') {
-          console.warn(`Ignoring "${key}"`)
+          //console.warn(`Ignoring "${key}"`)
         } else {
           result[key] = value;
         }
       } else if (key === 'type') {
         // If the key is 'type', merge the types of the two schemas
         if(result[key] === value) {
-          console.warn(`Ignoring "${key}" that is already present and same`)
+          //console.warn(`Ignoring "${key}" that is already present and same`)
         } else {
           console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
           throw "ERROR: type is not same"
         }
       } else {
         //If the Key is a const then merge them into an enum
-        if((result[key].const || result[key].enum) && value.const) {
+        if(value && value.const) {
           if(result[key].enum) {
             result[key].enum = Array.from(new Set([...result[key].enum, value.const]))
           }
@@ -116,7 +116,7 @@ function union(schemas, module, commonSchemas) {
           }
         }
         // If the key exists in both schemas and is not 'type', merge the values
-        if (Array.isArray(result[key])) {
+        else if (Array.isArray(result[key])) {
           // If the value is an array, concatenate the arrays and remove duplicates
           result[key] = Array.from(new Set([...result[key], ...value]))
         } else if (result[key] && result[key].enum && value && value.enum) {
@@ -127,7 +127,7 @@ function union(schemas, module, commonSchemas) {
           result[key] = union([result[key], value], module, commonSchemas);
         } else if (result[key] !== value) {
           // If the value is a primitive and is not the same in both schemas, ignore it
-          console.warn(`Ignoring conflicting value for key "${key}"`)
+          //console.warn(`Ignoring conflicting value for key "${key}"`)
         }
       }
     }
@@ -434,7 +434,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   structure["enum"] = []
   structure["name"] = {}
   structure["namespace"] = {}
-
+  
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
@@ -528,7 +528,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.allOf) {
-    console.log("json.allOf = ------> name = " + name);
+
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
     if (json.title) {
       union['title'] = json.title
@@ -545,9 +545,25 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.anyOf) {
-    console.log("json.anyOf = ------> name = " + name);
-    return structure
-    //TODO
+
+    let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+
+    let refsResolved = [...json.anyOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]
+
+    let allOfsResolved = refsResolved.map(sch => sch.allOf ? deepmerge.all([...sch.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]) : sch)
+
+    let mergedSchema = union(allOfsResolved, module, schemas)
+    if (json.title) {
+      mergedSchema['title'] = json.title
+    }
+    else {
+      mergedSchema['title'] = name
+    }
+
+    delete mergedSchema['$ref']
+    
+    return getSchemaType(module, mergedSchema, '', schemas, prefix, options)
+    
   }
   else if (json.type === 'object') {
     structure.json = json
@@ -566,7 +582,6 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     }
 
     return structure
-    //TODO
   }
   else if (json.type) {
     structure.type = getNativeType(json)
@@ -696,13 +711,28 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       }
     }
     else if (json.anyOf) {
-      console.log("json.anyOf = ------> name = " + name);
+
+      let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+
+      let refsResolved = [...json.anyOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]
+      let allOfsResolved = refsResolved.map(sch => sch.allOf ? deepmerge.all([...sch.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]) : sch)
+
+      let mergedSchema = union(allOfsResolved, module, schemas)
+      if (json.title) {
+        mergedSchema['title'] = json.title
+      }
+      else {
+        mergedSchema['title'] = name
+      }
+  
+      delete mergedSchema['$ref']
+
+      return getSchemaShape(moduleJson, mergedSchema, schemas, name, prefix, options)
     }
     else if (json.oneOf) {
       //Just ignore schema shape, since this has to be treated as string
     }
     else if (json.allOf) {
-      console.log("json.allOf = ------> name = " + name);
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
       if (json.title) {
         union['title'] = json.title
@@ -714,7 +744,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
       delete union['$ref']
       return getSchemaShape(moduleJson, union, schemas, name, prefix, options)
-
     }
     else if (json.type === 'array') {
       let res = getSchemaType(moduleJson, json, name, schemas, prefixName, {level: 0, descriptions: descriptions})
@@ -772,19 +801,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
     if (isAnyofParamsAndResult == true) {
       throw method.name + " : policy schema is not support, since it has anyOf type for both param(s) and result"
     }
-  }
-
-const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
-    const refs = objectPaths(moduleJson)
-                  .filter(x => /\/\$ref$/.test(x))
-                  .map(refToPath)
-                  .map(x => getPathOr(null, x, moduleJson))
-                  .filter(x => {
-                    console.log(`Checking ${x} against ${name}`)
-                    return x === name
-                  })
-  
-    return (refs.length > 0)
   }
 
 const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {

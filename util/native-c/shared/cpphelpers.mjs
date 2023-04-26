@@ -207,7 +207,6 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     return structure
   }
   else if (json.allOf) {
-    console.log("json.allOf = ------> name = " + name);
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
     if (json.title) {
       union['title'] = json.title
@@ -229,7 +228,6 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     return structure
   }
   else if (json.anyOf) {
-    console.log("json.anyOf = ------> name = " + name);
     return structure //TODO
   }
   else if (json.type === 'object') {
@@ -365,13 +363,13 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     structure = getJsonDefinition(moduleJson, jsonItems, schemas, jsonItems.title || name, options)
   }
   else if (json.anyOf) {
-    console.log("json.anyOf = ------> name = " + name);
+    //console.log("getJsonDefinition: json.anyOf = ------> name = " + name);
   }
   else if (json.oneOf) {
     //Just ignore schema shape, since this has to be treated as string
   }
   else if (json.allOf) {
-    console.log("json.allOf = ------> name = " + name);
+    //console.log("json.allOf = ------> name = " + name);
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
     if (json.title) {
       union['title'] = json.title
@@ -813,12 +811,11 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
       }
     }
     else if (json.anyOf) {
-       console.log("json.anyOf = ------> name = " + name);
+
     }
     else if (json.oneOf) {
     }
     else if (json.allOf) {
-      console.log("json.allOf = ------> name = " + name);
       let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
       if (json.title) {
         union['title'] = json.title
