@@ -1340,7 +1340,7 @@ function getMethodImpl(method, module, schemas) {
 function getImplForPolymorphicMethodParamInternal(method, module, impl, federatedType, schemas, prefixName = '') {
 
   let name = capitalize(method.name + federatedType)
-  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let schema = getPolymorphicSchema(method, name)
   if (schema['$ref']) {
     let res = {}
     res = getImplForSchema(module, schema, schemas, name, prefixName)
@@ -1397,7 +1397,7 @@ function getPolymorphicMethodImpl(method, module, schemas) {
 
 function getPolymorphicEventImpl(method, module, schemas) {
   let name = capitalize(method.name + 'FederatedRequest')
-  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let schema = getPolymorphicSchema(method, name)
   let propType = getSchemaType(module, schema, name, schemas, {descriptions: true, level: 0})
 
   let impl = ''
@@ -1426,7 +1426,7 @@ uint32_t ${moduleName}_Unregister_${capitalize(method.name)}Pull(OnPull${methodN
 
 function getPolymorphicEventCallbackImpl(method, module, schemas) {
   let name = capitalize(method.name + 'FederatedRequest')
-  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let schema = getPolymorphicSchema(method, name)
   let propType = getSchemaType(module, schema, name, schemas, {descriptions: true, level: 0})
 
   let impl = ''

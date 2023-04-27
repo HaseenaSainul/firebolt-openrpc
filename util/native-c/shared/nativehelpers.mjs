@@ -161,7 +161,7 @@ const getPolymorphicSchemaType = (method, module, federatedType, schemas) => {
   structure["json"] = {}
 
   let name =  capitalize(method.name + federatedType)
-  let schema = getPolymorphicSchema(method, module, name, schemas)
+  let schema = getPolymorphicSchema(method, name)
   if (schema['$ref']) {
     let schemaType = getSchemaType(module, schema, name, schemas)
     schemaType.deps.forEach(d => structure.deps.add(d))
