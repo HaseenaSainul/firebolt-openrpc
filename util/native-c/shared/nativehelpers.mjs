@@ -45,6 +45,77 @@ const getOptionalParamCount = (params) => {
   return count
 }
 
+const getAnyOfSchema = (param, module, schemas) => {
+  let schema
+  if (param.schema.anyOf) {
+    schema = param.schema
+  }
+  else {
+    let sch = param['$ref'] ? param['$ref'] : param.schema['$ref'] ? param.schema['$ref'] : null
+    if (sch) {
+      let refSchema = getPath(sch, module, schemas)
+      schema = refSchema.anyOf ? refSchema : schema
+    }
+  }
+  return schema
+}
+
+const generateMethodParamsSignature = (params) => {
+    let signatureParams = ''
+    params.forEach(p => {
+      signatureParams += (signatureParams.length > 0) ? ', ' : ''
+      if (p.required === true) {
+        signatureParams += `${p.type} ${p.name}`
+      }
+      else {
+	      // (p.required === false) { TODO revisit
+        signatureParams += (p.type === getFireboltStringType() ? `${p.type} ${p.name}` : `${p.type} ${p.name}`)
+      }
+    })
+    return signatureParams
+}
+
+const getParamsSignature = (structure, signature, method, getter = true, eventCB = false, innerCB = false, anyOfParam) => {
+  let param = ''
+  if (anyOfParam) {
+    signature +=  '_' + anyOfParam.json.title
+    param += `${anyOfParam.type} param`
+  }
+
+  if (eventCB === true) {
+    if (innerCB === true) {
+      signature += 'InnerCallback'
+      param = 'const void* userCB, const void* userData, void* response'
+    }
+    else {
+      signature += ')'
+      param = 'const void* userData' + (param.length > 0 ? ', ' : '') + param
+    }
+  }
+
+  signature += '( ' + param
+  if ((structure.params.length > 0) && areParamsValid(structure.params)) {
+    signature += (param.length > 0 ? ', ' : '')
+    signature += generateMethodParamsSignature(structure.params)
+  }
+  if (innerCB === false) {
+    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      if ((structure.params.length > 0) || (param.length > 0)) {
+        signature += ', '
+      }
+      if (getter === true) {
+        signature += `${structure["result"]}* ${method.result.name || method.name}`
+      }
+      else {
+        signature += `${structure["result"]} ${method.result.name || method.name}`
+      }
+    }
+  }
+  signature += ' )'
+  structure.signatures.push(signature)
+  return structure
+}
+
 const IsResultBooleanSuccess = (method) => (method && method.result && method.result.name === 'success' && (method.result.schema.type === 'boolean' || method.result.schema.const))
 
 const IsCallsMetricsMethod = (method) => (method && method.tags && method.tags.find(t => t.name === 'calls-metrics') ? true : false)
@@ -92,14 +163,14 @@ function union(schemas, module, commonSchemas) {
         if (value && value.anyOf) {
           result[key] = union(value.anyOf, module, commonSchemas)
         } else if (key === 'title' || key === 'description' || key === 'required') {
-          //console.warn(`Ignoring "${key}"`)
+          console.warn(`Ignoring "${key}"`)
         } else {
           result[key] = value;
         }
       } else if (key === 'type') {
         // If the key is 'type', merge the types of the two schemas
         if(result[key] === value) {
-          //console.warn(`Ignoring "${key}" that is already present and same`)
+          console.warn(`Ignoring "${key}" that is already present and same`)
         } else {
           console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
           throw "ERROR: type is not same"
@@ -127,7 +198,7 @@ function union(schemas, module, commonSchemas) {
           result[key] = union([result[key], value], module, commonSchemas);
         } else if (result[key] !== value) {
           // If the value is a primitive and is not the same in both schemas, ignore it
-          //console.warn(`Ignoring conflicting value for key "${key}"`)
+          console.warn(`Ignoring conflicting value for key "${key}"`)
         }
       }
     }
@@ -232,7 +303,7 @@ const Indent = '    '
 
 const getParamType = (type) => {
     let res = {}
-    if (((type.json.type === 'object') && (!type.json.properties) && (!type.json.additionalProperties)) || (type.type === 'char*')) {
+    if ((type.json && (type.json.type === 'object') && (!type.json.properties) && (!type.json.additionalProperties)) || (type.type === 'char*')) {
       res = getFireboltStringType()
     }
     else {
@@ -434,7 +505,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   structure["enum"] = []
   structure["name"] = {}
   structure["namespace"] = {}
-  
+
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema 
@@ -528,7 +599,6 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.allOf) {
-
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
     if (json.title) {
       union['title'] = json.title
@@ -545,11 +615,10 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.anyOf) {
-
+    console.log("json.anyOf = ------> name = " + name);
     let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
 
     let refsResolved = [...json.anyOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]
-
     let allOfsResolved = refsResolved.map(sch => sch.allOf ? deepmerge.all([...sch.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]) : sch)
 
     let mergedSchema = union(allOfsResolved, module, schemas)
@@ -563,7 +632,6 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     delete mergedSchema['$ref']
     
     return getSchemaType(module, mergedSchema, '', schemas, prefix, options)
-    
   }
   else if (json.type === 'object') {
     structure.json = json
@@ -711,7 +779,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       }
     }
     else if (json.anyOf) {
-
+      console.log("json.anyOf = ------> name = " + name);
       let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
 
       let refsResolved = [...json.anyOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]
@@ -778,7 +846,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
         let schemaType = getSchemaType(module, type.schema, type.name, schemas)
         if (schemaType.json && schemaType.json.anyOf) {
           if (!type.name && !type.title) {
-             throw method + ": does not has both title or name"
+             throw method + ": does not has both title and name"
           }
           anyOfType = true
         }
@@ -842,81 +910,98 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
   function getParamsDetails(method, module, schemas, prefix) {
     let structure = {}
     structure["params"] = []
+    structure["deps"] = new Set()
+    structure["enum"] = []
+    structure["anyOfParams"] = []
 
     method.params.forEach(param => {
-      let schemaType = getSchemaType(module, param.schema, param.name, schemas)
-
-      if (param.required !== undefined) {
-        let p = {}
-        p["type"] = getParamType(schemaType)
-        p["name"] = param.name
-        p["required"] = param.required
-        structure.params.push(p)
+      let anyOfSchema = getAnyOfSchema(param, module, schemas)
+      if (anyOfSchema) {
+        for (const schema of anyOfSchema.anyOf) {
+          let anyOfParam = getSchemaType(module, schema, schema.name || schema.title, schemas)
+          structure.anyOfParams.push(anyOfParam)
+          anyOfParam.deps.forEach(d => structure.deps.add(d))
+          anyOfParam.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+        }
+      }
+      else {
+        let schemaType = getSchemaType(module, param.schema, param.name, schemas)
+        if (param.required !== undefined && schemaType) {
+          let p = {}
+          p["type"] = getParamType(schemaType)
+          p["name"] = param.name
+          p["required"] = param.required
+          structure.params.push(p)
+        }
       }
     })
     if (method.result.schema) {
-
-      let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, prefix)
-      structure["result"] = getParamType(result)
+      let anyOfSchema = getAnyOfSchema(method.result, module, schemas)
+      if (anyOfSchema) {
+        for (const schema of anyOfSchema.anyOf) {
+          let anyOfResult = getSchemaType(module, schema, schema.name || schema.title, schemas, prefix)
+          structure.anyOfParams.push(anyOfResult)
+          anyOfResult.deps.forEach(d => structure.deps.add(d))
+          anyOfResult.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+        }
+      }
+      else {
+        let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, prefix)
+        structure["result"] = getParamType(result)
+      }
     }
     return structure
   }
 
-  function generateMethodParamsSignature(params) {
-    let signatureParams = ''
-    params.map(p => {
-      signatureParams += (signatureParams.length > 0) ? ',' : ''
-      if (p.required === true) {
-        signatureParams += ` ${p.type} ${p.name}`
-      }
-      else if (p.required === false) {
-        signatureParams += (p.type === getFireboltStringType() ? ` ${p.type} ${p.name}` : ` ${p.type}* ${p.name}`)
-      }
-    })
-    return signatureParams
-  }
-
-  function generateMethodSignature(methodName, method, module, schemas, getter, prefix = '') {
+  function generateMethodSignature(signature, method, module, schemas, getter, eventCB = false, innerCB = false, prefix = '') {
     validateParamsAndResult(method, module, schemas)
-
     let structure = getParamsDetails(method, module, schemas, prefix)
 
-    structure["signature"] = `uint32_t ${methodName}(`
-    if (areParamsValid(structure.params)) {
-      structure.signature += generateMethodParamsSignature(structure.params)
+    structure["signatures"] = []
+    if (structure.anyOfParams.length > 0) {
+      structure.anyOfParams.forEach(param => {
+        structure = getParamsSignature(structure, signature, method, getter, eventCB, innerCB, param)
+      })
+    } else {
+      structure = getParamsSignature(structure, signature, method, getter, eventCB, innerCB)
     }
 
-    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-      if (structure.params.length > 0) {
-        structure.signature += ','
-      }
-      if (getter === true) {
-        structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`
-      }
-      else {
-        structure.signature += ` ${structure["result"]} ${method.result.name || method.name}`
-      }
-    }
-
-    structure.signature += ' )'
     return structure
   }
 
   function generateEventCallbackSignature(methodName, method, module, schemas, prefix = '') {
-    let structure = getParamsDetails(method, module, schemas, prefix)
-    structure["signature"] = `typedef void ${methodName}( const void* userData`
+    let signature = `typedef void ${methodName}`
+    return generateMethodSignature(signature, method, module, schemas, false, true, false)
+  }
+
+  function generateEventInnerCallbackSignature(signature, method, module, schemas, prefix = '') {
+    return generateMethodSignature(signature, method, module, schemas, false, true, true)
+  }
+
+  function getEventParamsSignature(structure, rsig, unrsig, callbackName, anyOfParam) {
+    if (anyOfParam) {
+      rsig += '_' + anyOfParam.json.title
+      unrsig += '_' + anyOfParam.json.title
+      callbackName += '_' + anyOfParam.json.title
+    }
+
+    rsig += 'Update('
+    unrsig += 'Update('
 
     let params = ''
     if (areParamsValid(structure.params)) {
       params += generateMethodParamsSignature(structure.params)
-      structure.signature += (params.length > 0) ? ',' : ''
-      structure.signature += params
+      rsig += params
     }
 
     if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-      structure.signature += `, ${structure["result"]} ${method.result.name || method.name}`
+      structure.result.push(`${structure["result"]} ${method.result.name || method.name}`)
     }
-    structure.signature += ' )'
+    rsig += (params.length > 0) ? ',' : ''
+    rsig += ` ${callbackName} userCB, const void* userData )`
+    unrsig += ` ${callbackName} userCB)`
+    structure.registersigs.push(rsig)
+    structure.unregistersigs.push(unrsig)
 
     return structure
   }
@@ -925,37 +1010,42 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
     validateParamsAndResult(method, module, schemas)
 
     let structure = getParamsDetails(method, module, schemas, prefix)
-    structure["registersig"] = `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}Update(`
-    structure["unregistersig"] = `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}Update(`
+    let registersig = `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}`
+    let unregistersig = `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}`
     structure['result'] = ''
 
-    let params = ''
-    if (areParamsValid(structure.params)) {
-      params += generateMethodParamsSignature(structure.params)
-      structure.registersig += params
-    }
+    structure["registersigs"] = []
+    structure["unregistersigs"] = []
 
-    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-      structure.result.push(`${structure["result"]} ${method.result.name || method.name}`)
+    if (structure.anyOfParams.length > 0) {
+      structure.anyOfParams.forEach(param => {
+        structure = getEventParamsSignature(structure, registersig, unregistersig, callbackName, param)
+      })
+    } else {
+      structure = getEventParamsSignature(structure, registersig, unregistersig, callbackName)
     }
-    structure.registersig += (params.length > 0) ? ',' : ''
-    structure.registersig += ` ${callbackName} userCB, const void* userData )`
-    structure.unregistersig += ` ${callbackName} userCB)`
 
     return structure
   }
 
   function getPropertyGetterSignature(method, module, schemas) {
-    return generateMethodSignature(`${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`, method, module, schemas, true)
+    let signature = `uint32_t ${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
+    return generateMethodSignature(signature, method, module, schemas, true)
   }
 
   function getPropertySetterSignature(method, module, schemas) {
-    return generateMethodSignature(`${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`, method, module, schemas, false)
+    let signature = `uint32_t ${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
+    return generateMethodSignature(signature, method, module, schemas, false)
   }
 
   function getPropertyEventCallbackSignature(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return generateEventCallbackSignature(`(*On${methodName}Changed)`, method, module, schemas)
+    return generateEventCallbackSignature(`(*On${methodName}Changed`, method, module, schemas)
+  }
+
+  function getPropertyEventInnerCallbackSignature(method, module, schemas) {
+    let signature = `static void ${capitalize(getModuleName(module)) + capitalize(method.name)}`
+    return generateEventInnerCallbackSignature(signature, method, module, schemas)
   }
 
   function getPropertyEventSignature(method, module, schemas) {
@@ -965,7 +1055,12 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
 
   function getEventCallbackSignature(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
-    return generateEventCallbackSignature(`(*${methodName}Callback)`, method, module, schemas)
+    return generateEventCallbackSignature(`(*${methodName}Callback`, method, module, schemas)
+  }
+
+  function getEventInnerCallbackSignature(method, module, schemas) {
+    let signature = `static void ${capitalize(getModuleName(module)) + capitalize(method.name)}`
+    return generateEventInnerCallbackSignature(signature, method, module, schemas)
   }
 
   function getEventSignature(method, module, schemas, prefix = '') {
@@ -983,35 +1078,55 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
     structure["enum"] = []
 
     method.params.forEach(param => {
-      let schemaType = getSchemaType(module, param.schema, param.name, schemas)
-      schemaType.deps.forEach(d => structure.deps.add(d))
-
-      let p = {}
-      p["type"] = getParamType(schemaType)
-      p["name"] = param.name
-      structure.params.push(p)
-      schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+      let anyOfSchema = getAnyOfSchema(param, module, schemas)
+      if (anyOfSchema) {
+        structure["anyOfParams"] = []
+        for (const schema of anyOfSchema.anyOf) {
+          let anyOfParam = getSchemaType(module, schema, schema.name || schema.title, schemas)
+          structure.anyOfParams.push(anyOfParam)
+        }
+      } else {
+        let schemaType = getSchemaType(module, param.schema, param.name, schemas)
+        schemaType.deps.forEach(d => structure.deps.add(d))
+        let p = {}
+        p["type"] = getParamType(schemaType)
+        p["name"] = param.name
+        structure.params.push(p)
+        schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+      }
     })
     if (method.result.schema) {
-
-      let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, method.name)
-      result.deps.forEach(dep => structure.deps.add(dep))
-      result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
-      structure["result"] = getParamType(result)
-    }
-
-    structure["signature"] = `uint32_t ${methodName}(`
-    if (areParamsValid(structure.params)) {
-      structure.signature += structure.params.map(p => ` ${p.type} ${p.name}`).join(',')
-    }
-    if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
-      if (structure.params.length > 0) {
-        structure.signature += ','
+      let anyOfSchema = getAnyOfSchema(method.result, module, schemas)
+      if (anyOfSchema) {
+        structure["anyOfResults"] = []
+        for (const schema of anyOfSchema.anyOf) {
+          let anyOfResult = getSchemaType(module, schema, schema.name || schema.title, schemas, method.name)
+          structure.anyOfResults.push(anyOfResult)
+        }
       }
-      structure.signature += ` ${structure["result"]}* ${method.result.name || method.name}`
+      else {
+        let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, method.name)
+        result.deps.forEach(dep => structure.deps.add(dep))
+        result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
+        structure["result"] = getParamType(result)
+      }
     }
-
-    structure.signature += ' )'
+    let signature = `uint32_t ${methodName}`
+    structure["signatures"] = []
+    if (structure.anyOfResult || structure.anyOfParams) {
+      if (structure.anyOfResult) {
+        structure.anyOfResult.forEach(result => {
+          structure = getParamsSignature(structure, signature, method, true, false, result)
+	})
+      }
+      else if (structure.anyOfParams) {
+        structure.anyOfParams.forEach(param => {
+          structure = getParamsSignature(structure, signature, method, true, false, param)
+        })
+      }
+    } else {
+      structure = getParamsSignature(structure, signature, method)
+    }
     return structure
   }
 
@@ -1118,5 +1233,7 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
     IsCallsMetricsMethod,
     getParamsDetails,
     getTemporalSetMethodSignature,
-    getUnusedDefinitionsInSchema
+    getUnusedDefinitionsInSchema,
+    getPropertyEventInnerCallbackSignature,
+    getEventInnerCallbackSignature
   }
