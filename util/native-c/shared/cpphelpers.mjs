@@ -1,11 +1,11 @@
 import { getPath, getSchema } from '../../shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { getSchemaType, capitalize, getTypeName, getModuleName, description, 
+import { getSchemaType, capitalize, camelcase, getTypeName, getModuleName, description, 
          getArrayElementSchema, isOptional, enumValue, getPropertyGetterSignature, getParamsDetails,
          getPropertySetterSignature, getFireboltStringType, getMethodSignature, getEventSignature,
          getEventInnerCallbackSignature, getPropertyEventSignature, validJsonObjectProperties, hasProperties,
          getSchemaRef, getPolymorphicSchema, getPolymorphicMethodSignature, IsResultBooleanSuccess,
-         IsCallsMetricsMethod } from "./nativehelpers.mjs"
+         getMergedSchema, IsCallsMetricsMethod } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const getJsonDataPrefix = () => 'JsonData_'
@@ -13,7 +13,7 @@ const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
 const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
 const getEnumName = (name, prefix) => ((prefix.length > 0) ? (prefix + '_' + name) : name)
 
-/* Added to get line number, to be deleted in the final version
+// Added to get line number, to be deleted in the final version
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const path = require('path');
@@ -34,7 +34,7 @@ const path = require('path');
         }
     };
 });
-*/
+
 const getNameSpaceOpen = (module = {}) => {
   let result = `
 namespace ${getSdkNameSpace()} {`
@@ -233,7 +233,8 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
   }
   else if (json.anyOf) {
     console.log("json.anyOf = ------> name = " + name);
-    return structure //TODO
+    let mergedSchema = getMergedSchema(module, json, name, schemas, prefixName)
+    return getJsonType(module, mergedSchema, name, schemas, prefixName, options)
   }
   else if (json.type === 'object') {
     if (hasProperties(json) !== true) {
@@ -369,12 +370,13 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   }
   else if (json.anyOf) {
     console.log("json.anyOf = ------> name = " + name);
+    let mergedSchema = getMergedSchema(module, json, name, schemas, prefixName)
+    return getJsonDefinition(module, mergedSchema, schemas, name, prefixName, options)
   }
   else if (json.oneOf) {
     //Just ignore schema shape, since this has to be treated as string
   }
   else if (json.allOf) {
-    //console.log("json.allOf = ------> name = " + name);
     let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
     if (json.title) {
       union['title'] = json.title
@@ -928,8 +930,8 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
 
   let structure = getPropertyGetterSignature(property, module, schemas)
   impl += `${description(property.name, property.summary)}\n`
-  structure.signatures.forEach(signature => {
-    impl += `${signature}\n{\n`
+  structure.signatures.forEach(s => {
+    impl += `${s.signature}\n{\n`
     impl += `    const string method = _T("${methodName}");` + '\n'
 
     if (propType.json) {
@@ -979,8 +981,8 @@ function getPropertySetterImpl(property, module, schemas = {}) {
   let structure = getPropertySetterSignature(property, module, schemas)
   impl += `${description(property.name, property.summary)}\n`
 
-  structure.signatures.forEach(signature => {
-    impl += `${signature}\n{\n`
+  structure.signatures.forEach(s => {
+    impl += `${s.signature}\n{\n`
     impl += `    const string method = _T("${methodName}");` + '\n'
 
     if (structure.params.length > 0) {
@@ -1044,13 +1046,14 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
   if (propType.type && (propType.type.length > 0)) {
     let container = getJsonType(module, event.result.schema, event.result.name || event.name, schemas)
     let paramType = (propType.type === 'char*') ? getFireboltStringType() : propType.type
-
     let structure = getEventInnerCallbackSignature(event, module, schemas)
-    structure.signatures.forEach(signature => {
-      impl += `${signature}
+    structure.signatures.forEach(s => {
+      if (s.anyOfParam.type) {
+         container = getJsonType(s.anyOfParam.externalSchema, s.anyOfParam.json, s.anyOfParam.json.title, schemas)
+         paramType = (s.anyOfParam.type === 'char*') ? getFireboltStringType() : s.anyOfParam.type
+      }
+      impl += `${s.signature}
 {` + '\n'
-
-      let structure = getParamsDetails(event, module, schemas)
 
       if (structure.params.length > 0) {
         structure.params.map(p => {
@@ -1136,13 +1139,16 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
           CallbackName = `${methodName}Callback`
         }
 
+        if (s.anyOfParam.json && s.anyOfParam.json.title) {
+          CallbackName += '_' + s.anyOfParam.json.title
+        }
         impl +=`        ${CallbackName} callback = reinterpret_cast<${CallbackName}>(userCB);` + '\n'
         impl += `        callback(userData, `
         if (structure.params.length > 0) {
           structure.params.map(p => {
             if (p.required !== undefined) {
               if (p.type === getFireboltStringType()) {
-                impl += `static_cast<${p.type}>(${p.name}), `
+                impl += `static_cast<${container.type}>(${p.name}), `
               }
               else if (p.required === true) {
                 impl += `${p.name}, `
@@ -1178,22 +1184,23 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
 
   let impl = ''
   if (propType.type && (propType.type.length > 0)) {
-    let container = getJsonType(module, event.result.schema, event.result.name || event.name, schemas)
     let ClassName = ''
-    let CallbackName = ''
     let structure = {}
     if (property) {
       ClassName = "Properties::"
-      CallbackName = `On${methodName}Changed`
       structure = getPropertyEventSignature(event, module, schemas)
     } else {
       ClassName = "Event::Instance()."
-      CallbackName = `${methodName}Callback`
       structure = getEventSignature(event, module, schemas)
     }
-    structure.registersigs.forEach(registersig => {
+    let container = getJsonType(module, event.result.schema, event.result.name || event.name, schemas)
+    structure.signatures.forEach(s => {
+      if (s.anyOfParam && s.anyOfParam.type) {
+         container = getJsonType(s.anyOfParam.externalSchema, s.anyOfParam.json, s.anyOfParam.json.title, schemas)
+      }
+
       impl += `${description(event.name, 'Listen to updates')}\n`
-      impl += `${registersig}\n{\n`
+      impl += `${s.rsig}\n{\n`
       impl += `    const string eventName = _T("${eventName}");\n`
       impl += `    uint32_t status = FireboltSDKErrorNone;\n`
       impl += `    if (userCB != nullptr) {\n`
@@ -1204,13 +1211,13 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
         impl += `        JsonObject jsonParameters;\n`
       }
       impl += `\n`
-      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, jsonParameters, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);`
+      let innerCallbackName = ((s.anyOfParam && s.anyOfParam.json) ? `${methodName}_${s.anyOfParam.json.title}InnerCallback` : `${methodName}InnerCallback`)
+
+      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, jsonParameters, ${innerCallbackName}, reinterpret_cast<const void*>(userCB), userData);`
       impl += `\n    }
     return status;
 }\n`
-    })
-    structure.unregistersigs.forEach(unregistersig => {
-impl += `${unregistersig}
+impl += `${s.unrsig}
 {
     return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
 }\n`
@@ -1286,37 +1293,48 @@ function getMethodImplResult(method, resultJsonType, result) {
   return impl
 }
 
+function addJsonDataParameters(module, schemas, param, name, type) {
+  let impl = ''
+  const jsonType = getJsonType(module, param, name, schemas)
+  if (jsonType.type.length) {
+
+    if (type.includes('FireboltTypes_StringHandle')) {
+      impl += `        ${jsonType.type}& ${capitalize(name)} = *(static_cast<${jsonType.type}*>(${camelcase(name)}));\n`
+    }
+    else if (type.includes('Handle')) {
+      impl += `        ${jsonType.type}& ${capitalize(name)} = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${camelcase(name)})));\n`
+    }
+    else {
+      impl += `        ${jsonType.type} ${capitalize(name)} = ${camelcase(name)};\n`
+    }
+    impl += `        jsonParameters.Set(_T("${name.toLowerCase()}"), &${capitalize(name)});\n\n`
+  }
+  return impl
+}
+
 function getMethodImpl(method, module, schemas) {
   let methodName = getModuleName(module).toLowerCase() + '.' + method.name
   let structure = getMethodSignature(method, module, schemas)
   let impl = ''
 
-  structure.signatures.forEach(signature => {
+  structure.signatures.forEach(s => {
 
     impl += getCallsMetricsDispatcher(module, method, schemas)
-    impl += `${signature}\n{\n`
+    impl += `${s.signature}\n{\n`
 
     impl += `    uint32_t status = FireboltSDKErrorUnavailable;
     ${getSdkNameSpace()}::Transport<WPEFramework::Core::JSON::IElement>* transport = ${getSdkNameSpace()}::Accessor::Instance().GetTransport();
     if (transport != nullptr) {\n
         JsonObject jsonParameters;\n`
+        if (s.anyOfParam.type) {
+          impl += addJsonDataParameters(s.anyOfParam.externalSchema, schemas, s.anyOfParam.json, s.anyOfParam.name, s.anyOfParam.type)
+        }
 
         method.params.forEach(param => {
           const getParamType = paramName => structure.params.find(p => p.name === paramName)
           let nativeType = getParamType(param.name)
-
-          const jsonType = getJsonType(module, param, param.name, schemas)
-          if (jsonType.type.length) {
-            if (nativeType.type.includes('FireboltTypes_StringHandle')) {
-              impl += `        ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
-            }
-            else if (nativeType.type.includes('Handle')) {
-              impl += `        ${jsonType.type}& ${capitalize(param.name)} = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${param.name})));\n`
-            }
-            else {
-                impl += `        ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
-            }
-            impl += `        jsonParameters.Set(_T("${param.name}"), &${capitalize(param.name)});\n\n`
+          if (nativeType) {
+            impl += addJsonDataParameters(module, schemas, param, param.name, nativeType.type)
           }
         })
 
