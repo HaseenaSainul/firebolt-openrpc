@@ -79,12 +79,15 @@ const generateMethodParamsSignature = (params) => {
     let signatureParams = ''
     params.forEach(p => {
       signatureParams += (signatureParams.length > 0) ? ', ' : ''
-      if (p.required === true) {
-        signatureParams += `${p.type} ${p.name}`
+      let type = p.type
+      if (type == getFireboltStringType()) {
+        type = 'char*'
       }
-      else {
-	      // (p.required === false) { TODO revisit
-        signatureParams += (p.type === getFireboltStringType() ? `${p.type} ${p.name}` : `${p.type}* ${p.name}`)
+      if (p.required === true) {
+        signatureParams += `${type} ${p.name}`
+      }
+      else if (p.required === false) {
+        signatureParams += (((type === 'char*') || (type.includes('Handle') == true)) ? `${type} ${p.name}` : `${type}* ${p.name}`)
       }
     })
     return signatureParams

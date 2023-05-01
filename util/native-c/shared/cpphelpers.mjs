@@ -1299,7 +1299,7 @@ function addJsonDataParameters(module, schemas, param, name, type) {
   if (jsonType.type.length) {
 
     if (type.includes('FireboltTypes_StringHandle')) {
-      impl += `        ${jsonType.type}& ${capitalize(name)} = *(static_cast<${jsonType.type}*>(${camelcase(name)}));\n`
+      impl += `        ${jsonType.type} ${capitalize(name)} = ${camelcase(name)};\n`
     }
     else if (type.includes('Handle')) {
       impl += `        ${jsonType.type}& ${capitalize(name)} = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${camelcase(name)})));\n`
