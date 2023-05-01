@@ -229,8 +229,6 @@ const generateMethodPrototypes = (json, schemas = {}) => {
       sig.type.push(`${description(property.name, 'Listen to updates')}`)
       let structure = getPropertyEventCallbackSignature(property, json, schemas)
       structure.signatures.forEach(s => sig.type.push(s.signature + ';\n'))
-      structure.deps.forEach(d => sig.deps.add(dep))
-      structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
 
       structure = getPropertyEventSignature(property, json, schemas)
       structure.signatures.forEach(signature => {
@@ -250,8 +248,7 @@ const generateMethodPrototypes = (json, schemas = {}) => {
     if (res.type && res.type.length > 0) {
       let structure = getEventCallbackSignature(event, json, schemas)
       structure.signatures.forEach(s => sig.type.push(s.signature + ';\n'))
-      structure.deps.forEach(dep => sig.deps.add(dep))
-      structure.enum.forEach(enm => { (sig.enum.includes(enm) === false) ? sig.enum.push(enm) : null})
+
       structure = getEventSignature(event, json, schemas)
       structure.signatures.forEach(signature => sig.type.push(signature.rsig + ';\n') && sig.type.push(signature.unrsig + ';\n'))
     }

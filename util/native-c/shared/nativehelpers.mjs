@@ -45,25 +45,34 @@ const getOptionalParamCount = (params) => {
   return count
 }
 
-const getAnyOfSchema = (param, module, schemas) => {
-  let schema = {}
-  schema["refSchema"]
-  schema["externalSchema"] = module
+const getAnyOfSchema = (param, module, schemas, structure, prefix = '') => {
+  let anyOf = {}
+  anyOf["schema"]
+  anyOf["refSchema"] = module
 
   if (param.schema.anyOf) {
-    schema = param.schema
+    anyOf.schema = param.schema
   }
   else {
     let sch = param['$ref'] ? param['$ref'] : param.schema['$ref'] ? param.schema['$ref'] : null
     if (sch) {
       if (sch[0] !== '#') {
-         schema.externalSchema = getSchema(sch.split('#')[0], schemas) || module
+         anyOf.refSchema = getSchema(sch.split('#')[0], schemas) || module
       }
-      let refSchema = getPath(sch, module, schemas)
-      schema.refSchema = refSchema.anyOf ? refSchema : schema.refSchema
+      let schema = getPath(sch, module, schemas)
+      anyOf.schema = schema.anyOf ? schema : anyOf.schema
     }
   }
-  return schema
+  if (anyOf && anyOf.schema) {
+    structure["anyOfParams"] = []
+    for (const schema of anyOf.schema.anyOf) {
+      module = anyOf.refSchema ? anyOf.refSchema : module
+      let anyOfType = getSchemaType(module, schema, schema.name || schema.title, schemas, prefix)
+      anyOfType["refSchema"] = anyOf.refSchema
+      structure.anyOfParams.push(anyOfType)
+    }
+  }
+  return structure;
 }
 
 const generateMethodParamsSignature = (params) => {
@@ -922,18 +931,10 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
   function getParamsDetails(method, module, schemas, prefix) {
     let structure = {}
     structure["params"] = []
-    structure["anyOfParams"] = []
 
     method.params.forEach(param => {
-      let anyOfSchema = getAnyOfSchema(param, module, schemas)
-      if (anyOfSchema && anyOfSchema.refSchema) {
-        for (const schema of anyOfSchema.refSchema.anyOf) {
-          let anyOfParam = getSchemaType(anyOfSchema.externalSchema | module, schema, schema.name || schema.title, schemas)
-          anyOfParam["externalSchema"] = anyOfSchema.externalSchema
-          structure.anyOfParams.push(anyOfParam)
-        }
-      }
-      else {
+      structure = getAnyOfSchema(param, module, schemas, structure)
+      if (structure.anyOfParams === undefined) {
         let schemaType = getSchemaType(module, param.schema, param.name, schemas)
         if (param.required !== undefined && schemaType) {
           let p = {}
@@ -945,15 +946,8 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
       }
     })
     if (method.result.schema) {
-      let anyOfSchema = getAnyOfSchema(method.result, module, schemas)
-      if (anyOfSchema.refSchema) {
-        for (const schema of anyOfSchema.refSchema.anyOf) {
-          let anyOfResult = getSchemaType(anyOfSchema.externalSchema, schema, schema.name || schema.title, schemas, prefix)
-          anyOfResult["externalSchema"] = anyOfSchema.externalSchema
-          structure.anyOfParams.push(anyOfResult)
-        }
-      }
-      else {
+      structure = getAnyOfSchema(method.result, module, schemas, structure, prefix)
+      if (structure.anyOfParams === undefined) {
         let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, prefix)
         structure["result"] = getParamType(result)
       }
@@ -966,7 +960,7 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
     let structure = getParamsDetails(method, module, schemas, prefix)
 
     structure["signatures"] = []
-    if (structure.anyOfParams.length > 0) {
+    if (structure.anyOfParams) {
       structure.anyOfParams.forEach(param => {
         structure = getParamsSignature(structure, signature, method, getter, eventCB, innerCB, param)
       })
@@ -1030,7 +1024,7 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
     structure['result'] = ''
 
     structure["signatures"] = []
-    if (structure.anyOfParams.length > 0) {
+    if (structure.anyOfParams) {
       structure.anyOfParams.forEach(param => {
         structure = getEventParamsSignature(structure, registersig, unregistersig, callbackName, param)
       })
@@ -1090,16 +1084,8 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
     structure["enum"] = []
 
     method.params.forEach(param => {
-      structure["anyOfParams"] = []
-      let anyOfSchema = getAnyOfSchema(param, module, schemas)
-      if (anyOfSchema.refSchema) {
-        for (const schema of anyOfSchema.refSchema.anyOf) {
-          let anyOfParam = getSchemaType(anyOfSchema.externalSchema, schema, schema.name || schema.title, schemas)
-          anyOfParam["externalSchema"] = anyOfSchema.externalSchema
-          structure.anyOfParams.push(anyOfParam)
-        }
-
-      } else {
+      structure = getAnyOfSchema(param, module, schemas, structure)
+      if (structure.anyOfParams === undefined) {
         let schemaType = getSchemaType(module, param.schema, param.name, schemas)
         schemaType.deps.forEach(d => structure.deps.add(d))
         let p = {}
@@ -1110,15 +1096,8 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
       }
     })
     if (method.result.schema) {
-      let anyOfSchema = getAnyOfSchema(method.result, module, schemas)
-      if (anyOfSchema.refSchema) {
-        for (const schema of anyOfSchema.refSchema.anyOf) {
-          let anyOfResult = getSchemaType(anyOfSchema.externalSchema | module, schema, schema.name || schema.title, schemas, method.name)
-          anyOfParam["externalSchema"] = anyOfSchema.externalSchema
-          structure.anyOfParams.push(anyOfResult)
-        }
-      }
-      else {
+      structure = getAnyOfSchema(method.result, module, schemas, structure, method.name)
+      if (structure.anyOfParams === undefined) {
         let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, method.name)
         result.deps.forEach(dep => structure.deps.add(dep))
         result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})

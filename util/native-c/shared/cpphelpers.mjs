@@ -1049,7 +1049,7 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
     let structure = getEventInnerCallbackSignature(event, module, schemas)
     structure.signatures.forEach(s => {
       if (s.anyOfParam.type) {
-         container = getJsonType(s.anyOfParam.externalSchema, s.anyOfParam.json, s.anyOfParam.json.title, schemas)
+         container = getJsonType(s.anyOfParam.refSchema, s.anyOfParam.json, s.anyOfParam.json.title, schemas)
          paramType = (s.anyOfParam.type === 'char*') ? getFireboltStringType() : s.anyOfParam.type
       }
       impl += `${s.signature}
@@ -1196,7 +1196,7 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
     let container = getJsonType(module, event.result.schema, event.result.name || event.name, schemas)
     structure.signatures.forEach(s => {
       if (s.anyOfParam && s.anyOfParam.type) {
-         container = getJsonType(s.anyOfParam.externalSchema, s.anyOfParam.json, s.anyOfParam.json.title, schemas)
+         container = getJsonType(s.anyOfParam.refSchema, s.anyOfParam.json, s.anyOfParam.json.title, schemas)
       }
 
       impl += `${description(event.name, 'Listen to updates')}\n`
@@ -1267,7 +1267,7 @@ function getImplForEventContextParams(result, module, name, schemas, prefixName 
 }
 function getMethodImplResult(method, resultJsonType, result) {
   let impl = ''
-  if (result.length) {
+  if (result && result.length) {
     if (IsResultBooleanSuccess(method) === true) {
       impl += `            status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;\n`
       impl += `            FIREBOLT_LOG_INFO(${getSdkNameSpace()}::Logger::Category::OpenRPC, ${getSdkNameSpace()}::Logger::Module<${getSdkNameSpace()}::Accessor>(), "${method.name} return status = %d", status);\n`
@@ -1327,7 +1327,7 @@ function getMethodImpl(method, module, schemas) {
     if (transport != nullptr) {\n
         JsonObject jsonParameters;\n`
         if (s.anyOfParam.type) {
-          impl += addJsonDataParameters(s.anyOfParam.externalSchema, schemas, s.anyOfParam.json, s.anyOfParam.name, s.anyOfParam.type)
+          impl += addJsonDataParameters(s.anyOfParam.refSchema, schemas, s.anyOfParam.json, s.anyOfParam.name, s.anyOfParam.type)
         }
 
         method.params.forEach(param => {
@@ -1339,7 +1339,7 @@ function getMethodImpl(method, module, schemas) {
         })
 
         let resultJsonType = ''
-        if (structure.result.length > 0) {
+        if (structure.result && structure.result.length > 0) {
           resultJsonType = getJsonType(module, method.result.schema, method.result.name, schemas, method.name)
 
           impl += `        ${resultJsonType.type} jsonResult;\n`
