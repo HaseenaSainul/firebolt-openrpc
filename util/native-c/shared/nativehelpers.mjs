@@ -84,7 +84,7 @@ const generateMethodParamsSignature = (params) => {
       }
       else {
 	      // (p.required === false) { TODO revisit
-        signatureParams += (p.type === getFireboltStringType() ? `${p.type} ${p.name}` : `${p.type} ${p.name}`)
+        signatureParams += (p.type === getFireboltStringType() ? `${p.type} ${p.name}` : `${p.type}* ${p.name}`)
       }
     })
     return signatureParams
@@ -129,6 +129,8 @@ const getParamsSignature = (structure, signature, method, getter = true, eventCB
       else {
         signature += `${structure["result"]} ${method.result.name || method.name}`
       }
+    } else if (structure.params.length === 0) {
+      signature += 'void'
     }
   }
   signature += ' )'
@@ -1091,6 +1093,7 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
         let p = {}
         p["type"] = getParamType(schemaType)
         p["name"] = param.name
+        p["required"] = param.required ? param.required : false
         structure.params.push(p)
         schemaType.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
       }
