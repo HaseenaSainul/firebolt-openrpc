@@ -233,7 +233,7 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
   }
   else if (json.anyOf) {
     console.log("json.anyOf = ------> name = " + name);
-    let mergedSchema = getMergedSchema(module, json, name, schemas, prefixName)
+    let mergedSchema = getMergedSchema(module, json, name, schemas)
     return getJsonType(module, mergedSchema, name, schemas, prefixName, options)
   }
   else if (json.type === 'object') {
@@ -370,7 +370,7 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
   }
   else if (json.anyOf) {
     console.log("json.anyOf = ------> name = " + name);
-    let mergedSchema = getMergedSchema(module, json, name, schemas, prefixName)
+    let mergedSchema = getMergedSchema(module, json, name, schemas)
     return getJsonDefinition(module, mergedSchema, schemas, name, prefixName, options)
   }
   else if (json.oneOf) {

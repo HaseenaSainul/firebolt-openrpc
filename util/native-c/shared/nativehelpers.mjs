@@ -232,9 +232,7 @@ function union(schemas, module, commonSchemas) {
   return result;
 }
 
-function getMergedSchema(module, json, name, schemas, prefix = '') {
-//  let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
-
+function getMergedSchema(module, json, name, schemas) {
   let refsResolved = [...json.anyOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]
   let allOfsResolved = refsResolved.map(sch => sch.allOf ? deepmerge.all([...sch.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]) : sch)
 
@@ -664,8 +662,8 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
   }
   else if (json.anyOf) {
     console.log("json.anyOf = ------> name = " + name);
+    let mergedSchema = getMergedSchema(module, json, name, schemas)
     let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
-    let mergedSchema = getMergedSchema(module, json, name, schemas, prefix)
     return getSchemaType(module, mergedSchema, '', schemas, prefix, options)
   }
   else if (json.type === 'object') {
@@ -817,10 +815,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       }
     }
     else if (json.anyOf) {
+      console.log("json.anyOf = ------> name = " + name);
+      let mergedSchema = getMergedSchema(module, json, name, schemas)
       let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
-      console.log("json.anyOf = ------> name = " + name + " prefix = " + prefix);
-      let mergedSchema = getMergedSchema(module, json, name, schemas, prefix)
-
       return getSchemaShape(moduleJson, mergedSchema, schemas, name, prefix, options)
     }
     else if (json.oneOf) {
