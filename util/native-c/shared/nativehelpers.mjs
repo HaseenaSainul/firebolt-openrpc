@@ -166,6 +166,43 @@ const getSchemaRef = (name) => {
   return schema
 }
 
+const deepMergeAll = (module, name, schema, schemas, options) => {
+  let nonRefsProperty = [...schema.allOf.map(x => x['$ref'] ? '' : x)].filter(elm => elm)
+  let refsProperty = [...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) : '')].filter(elm => elm)
+  let mergedProperty = []
+  let mergedParamSchema = {
+    type: "object",
+    properties: {}
+  }
+
+  nonRefsProperty.forEach(p => {
+    if (p.properties) {
+      Object.entries(p.properties).every(([pname, prop]) => {
+        let present = false
+        refsProperty.forEach(refP => {
+          if (refP.properties) {
+            Object.entries(refP.properties).every(([refname, refprop]) => {
+              if (refname == pname) {
+                present = true
+              }
+              return !present
+            })
+          }
+        })
+        let prefixedName = (present == false) ? (name + capitalize(pname)) : pname
+        mergedParamSchema.properties[prefixedName] = prop
+        return true
+      })
+      mergedProperty.push(mergedParamSchema)
+    }
+  })
+
+  refsProperty.forEach(ref => mergedProperty.push(ref))
+  let union = deepmerge.all(mergedProperty)
+
+  return union
+}
+
 const getPolymorphicSchema = (method, name) => {
   let schema = {}
   method.params.every(param => {
@@ -645,15 +682,12 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return structure
   }
   else if (json.allOf) {
-    let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
-    if (json.title) {
-      union['title'] = json.title
-    }
-    else {
-      union['title'] = name
-    }
+    let title = json.title ? json.title : name
+    let union = deepMergeAll(module, title, json, schemas, options)
+    union['title'] = title
+
     delete union['$ref']
-    return getSchemaType(module, union, '', schemas, prefixName, options)
+    return getSchemaType(module, union, '', schemas, '', options)
   }
   else if (json.oneOf) {
     structure.type = 'char*'
@@ -739,7 +773,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
 
         let t = description(name, json.description)
         typeName = getTypeName(getModuleName(moduleJson), name, prefixName)
-        cosnole.log("Calling getPropertyAccessors " + typeName)
         t += getPropertyAccessors(typeName, capitalize(name), typeof json.const, {level: level, readonly:true, optional:false})
         structure.type.push(t)
       }
@@ -824,17 +857,12 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       //Just ignore schema shape, since this has to be treated as string
     }
     else if (json.allOf) {
-      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
-      if (json.title) {
-        union['title'] = json.title
-      }
-      else {
-        union['title'] = name
-      }
-      let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+      let title = (json.title ? json.title : name)
+      let union = deepMergeAll(moduleJson, title, json, schemas, options)
+      union.title = title
 
       delete union['$ref']
-      return getSchemaShape(moduleJson, union, schemas, name, prefix, options)
+      return getSchemaShape(moduleJson, union, schemas, name, '', options)
     }
     else if (json.type === 'array') {
       let res = getSchemaType(moduleJson, json, name, schemas, prefixName, {level: 0, descriptions: descriptions})
@@ -1226,5 +1254,6 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
     getUnusedDefinitionsInSchema,
     getPropertyEventInnerCallbackSignature,
     getEventInnerCallbackSignature,
-    getMergedSchema
+    getMergedSchema,
+    deepMergeAll
   }

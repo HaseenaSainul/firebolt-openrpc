@@ -5,7 +5,7 @@ import { getSchemaType, capitalize, camelcase, getTypeName, getModuleName, descr
          getPropertySetterSignature, getFireboltStringType, getMethodSignature, getEventSignature,
          getEventInnerCallbackSignature, getPropertyEventSignature, validJsonObjectProperties, hasProperties,
          getSchemaRef, getPolymorphicSchema, getPolymorphicMethodSignature, IsResultBooleanSuccess,
-         getMergedSchema, IsCallsMetricsMethod } from "./nativehelpers.mjs"
+         getMergedSchema, IsCallsMetricsMethod, deepMergeAll } from "./nativehelpers.mjs"
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const getJsonDataPrefix = () => 'JsonData_'
@@ -211,17 +211,12 @@ function getJsonType(module = {}, json = {}, name = '', schemas = {}, prefixName
     return structure
   }
   else if (json.allOf) {
-    let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
-    if (json.title) {
-      union['title'] = json.title
-    }
-    else {
-      union['title'] = name
-    }
-    let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+    let title = json.title ? json.title : name
+    let union = deepMergeAll(module, title, json, schemas)
+    union['title'] = title
 
     delete union['$ref']
-    return getJsonType(module, union, '', schemas, prefix, options)
+    return getJsonType(module, union, '', schemas, '', options)
   }
   else if (json.oneOf) {
     structure.type = getJsonNativeTypeForOpaqueString()
@@ -377,17 +372,12 @@ function getJsonDefinition(moduleJson = {}, json = {}, schemas = {}, name = '', 
     //Just ignore schema shape, since this has to be treated as string
   }
   else if (json.allOf) {
-    let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
-    if (json.title) {
-      union['title'] = json.title
-    }
-    else {
-      union['title'] = name
-    }
+    let title = json.title ? json.title : name
+    let union = deepMergeAll(moduleJson, title, json, schemas)
+    union['title'] = title
     delete union['$ref']
 
-    let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
-    structure = getJsonDefinition(moduleJson, union, schemas, name, prefix, options)
+    structure = getJsonDefinition(moduleJson, union, schemas, name, '', options)
   }
 
   return structure
@@ -778,7 +768,7 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
               //Enum
               if (schema.namespace == getModuleName(moduleJson)) {
               let typeName = getTypeName(getModuleName(moduleJson), pname || prop.title, prefixName)
-              let res = description((capitalize(name) + "::" + capitalize(pname)), prop.description) + getEnumConversionImpl(typeName, prop)
+              let res = description((getModuleName(moduleJson) + "::" + capitalize(pname)), prop.description) + getEnumConversionImpl(typeName, prop)
               structure.enums.add(res)
               }
             }
@@ -826,18 +816,12 @@ function getImplForSchema(moduleJson = {}, json = {}, schemas = {}, name = '', p
     else if (json.oneOf) {
     }
     else if (json.allOf) {
-      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x)], options)
-      if (json.title) {
-        union['title'] = json.title
-      }
-      else {
-        union['title'] = name
-      }
-
-      let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
+      let title = json.title ? json.title : name
+      let union = deepMergeAll(moduleJson, title, json, schemas)
+      union['title'] = title
 
       delete union['$ref']
-      return getImplForSchema(moduleJson, union, schemas, name, prefix, options)
+      return getImplForSchema(moduleJson, union, schemas, name, '', options)
 
     }
     else if (json.type === 'array') {
