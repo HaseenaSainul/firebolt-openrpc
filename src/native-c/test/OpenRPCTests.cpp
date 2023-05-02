@@ -156,7 +156,7 @@ namespace FireboltSDK {
         return status;
     }
 
-    static void deviceNameChangeCallback(const void* userCB, const void* userData, void* response)
+    static void deviceNameChangeCallback(void* userCB, const void* userData, void* response)
     {
         WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
         FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Received a new event: %s", jsonResponse->Value().c_str());
@@ -176,7 +176,7 @@ namespace FireboltSDK {
         eventControl->ResetEvent();
 
         JsonObject jsonParameters;
-        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallback,reinterpret_cast<const void *>(NotifyEvent), userdata);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallback,reinterpret_cast<void*>(NotifyEvent), userdata);
 
         EXPECT_EQ(status, FireboltSDKErrorNone);
         if (status != FireboltSDKErrorNone) {
@@ -189,7 +189,7 @@ namespace FireboltSDK {
             eventControl->WaitForEvent(WPEFramework::Core::infinite);
         }
 
-        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent)), FireboltSDKErrorNone);
         delete eventControl;
 
         return status;
@@ -204,7 +204,7 @@ namespace FireboltSDK {
         eventControl->ResetEvent();
 
         JsonObject jsonParameters;
-        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallback,reinterpret_cast<const void *>(NotifyEvent), userdata);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallback,reinterpret_cast<void*>(NotifyEvent), userdata);
 
         EXPECT_EQ(status, FireboltSDKErrorNone);
         if (status != FireboltSDKErrorNone) {
@@ -214,7 +214,7 @@ namespace FireboltSDK {
             FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
             "%s Yes registered successfully", __func__);
 
-            status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallback, reinterpret_cast<const void *>(NotifyEvent), userdata);
+            status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallback, reinterpret_cast<void*>(NotifyEvent), userdata);
             EXPECT_EQ(status, FireboltSDKErrorInUse);
             if (status == FireboltSDKErrorInUse) {
                 FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
@@ -223,7 +223,7 @@ namespace FireboltSDK {
             status = ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone : status);
         }
 
-        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent)), FireboltSDKErrorNone);
         delete eventControl;
 
         return status;
@@ -250,12 +250,12 @@ namespace FireboltSDK {
     }
 
     template <typename CALLBACK>
-    /* static */ uint32_t Tests::SubscribeEventForC(const string& eventName, JsonObject& jsonParameters, CALLBACK& callbackFunc, const void* usercb, const void* userdata)
+    /* static */ uint32_t Tests::SubscribeEventForC(const string& eventName, JsonObject& jsonParameters, CALLBACK& callbackFunc, void* usercb, const void* userdata)
     {
         return Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, callbackFunc, usercb, userdata);
     }
 
-    static void deviceNameChangeMultipleCallback(const void* userCB, const void* userData, void* response)
+    static void deviceNameChangeMultipleCallback(void* userCB, const void* userData, void* response)
     {
         WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
         FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Tests>(),
@@ -277,7 +277,7 @@ namespace FireboltSDK {
         eventControl1->ResetEvent();
 
         JsonObject jsonParameters;
-        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeMultipleCallback, reinterpret_cast<const void *>(NotifyEvent1), userdata);
+        uint32_t status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeMultipleCallback, reinterpret_cast<void*>(NotifyEvent1), userdata);
 
         EXPECT_EQ(status, FireboltSDKErrorNone);
         if (status != FireboltSDKErrorNone) {
@@ -292,13 +292,13 @@ namespace FireboltSDK {
             FireboltSDK::Tests::EventControl* eventControl2 = new FireboltSDK::Tests::EventControl("EventControl2");
             userdata = static_cast<void*>(eventControl2);
 
-            status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeMultipleCallback, reinterpret_cast<const void *>(NotifyEvent2), userdata);
+            status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeMultipleCallback, reinterpret_cast<void*>(NotifyEvent2), userdata);
 
             EXPECT_EQ(status, FireboltSDKErrorNone);
             if (status != FireboltSDKErrorNone) {
                 FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Tests>(), "Set %s status = %d", eventName.c_str(), status);
             } else {
-                status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeMultipleCallback, reinterpret_cast<const void *>(NotifyEvent2), userdata);
+                status = Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeMultipleCallback, reinterpret_cast<void*>(NotifyEvent2), userdata);
                 EXPECT_EQ(status, FireboltSDKErrorInUse);
                 status = ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone : status);
 
@@ -308,10 +308,10 @@ namespace FireboltSDK {
                 eventControl1->WaitForEvent(WPEFramework::Core::infinite);
                 eventControl2->WaitForEvent(WPEFramework::Core::infinite);
             }
-            EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent2)), FireboltSDKErrorNone);
+            EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent2)), FireboltSDKErrorNone);
             delete eventControl2;
         }
-        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent1)), FireboltSDKErrorNone);
+        EXPECT_EQ(Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent1)), FireboltSDKErrorNone);
 
         delete eventControl1;
         return status;
@@ -381,7 +381,7 @@ uint32_t test_properties_set()
     return status;
 }
 
-static void deviceNameChangeCallbackForC(const void* userCB, const void* userData, void* response)
+static void deviceNameChangeCallbackForC(void* userCB, const void* userData, void* response)
 {
     WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::String>*>(response));
     FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
@@ -401,7 +401,7 @@ uint32_t test_eventregister()
     eventControl->ResetEvent();
 
     JsonObject jsonParameters;
-    uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata);
+    uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<void*>(NotifyEvent), userdata);
 
     EXPECT_EQ(status, FireboltSDKErrorNone);
     if (status != FireboltSDKErrorNone) {
@@ -414,7 +414,7 @@ uint32_t test_eventregister()
     }
 
     delete eventControl;
-    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent)), FireboltSDKErrorNone);
 
     return status;
 }
@@ -428,7 +428,7 @@ uint32_t test_eventregister_with_same_callback()
     eventControl->ResetEvent();
 
     JsonObject jsonParameters;
-    uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata);
+    uint32_t status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<void*>(NotifyEvent), userdata);
 
     EXPECT_EQ(status, FireboltSDKErrorNone);
     if (status != FireboltSDKErrorNone) {
@@ -438,7 +438,7 @@ uint32_t test_eventregister_with_same_callback()
         FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
         "%s Yes registered successfully", __func__);
 
-        status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata);
+        status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::String>(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<void*>(NotifyEvent), userdata);
         EXPECT_EQ(status, FireboltSDKErrorInUse);
         if (status == FireboltSDKErrorInUse) {
             FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
@@ -448,7 +448,7 @@ uint32_t test_eventregister_with_same_callback()
     }
 
     delete eventControl;
-    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent)), FireboltSDKErrorNone);
 
     return status;
 }
@@ -462,7 +462,7 @@ uint32_t test_eventregister_by_providing_callback()
     eventControl->ResetEvent();
 
     JsonObject jsonParameters;
-    uint32_t status = FireboltSDK::Tests::SubscribeEventForC(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<const void *>(NotifyEvent), userdata);
+    uint32_t status = FireboltSDK::Tests::SubscribeEventForC(eventName, jsonParameters, deviceNameChangeCallbackForC, reinterpret_cast<void*>(NotifyEvent), userdata);
 
     EXPECT_EQ(status, FireboltSDKErrorNone);
     if (status != FireboltSDKErrorNone) {
@@ -475,7 +475,7 @@ uint32_t test_eventregister_by_providing_callback()
     }
 
     delete eventControl;
-    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<const void *>(NotifyEvent)), FireboltSDKErrorNone);
+    EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent)), FireboltSDKErrorNone);
 }
 
 #include "TypesPriv.h"

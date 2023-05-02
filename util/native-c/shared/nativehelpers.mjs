@@ -108,7 +108,7 @@ const getParamsSignature = (structure, signature, method, getter = true, eventCB
   if (eventCB === true) {
     if (innerCB === true) {
       signature += 'InnerCallback'
-      param = 'const void* userCB, const void* userData, void* response'
+      param = 'void* userCB, const void* userData, void* response'
     }
     else {
       signature += ')'

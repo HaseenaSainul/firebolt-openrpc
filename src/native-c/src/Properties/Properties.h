@@ -125,12 +125,12 @@ namespace FireboltSDK {
         }
 
         template <typename RESULT, typename CALLBACK>
-        static uint32_t Subscribe(const string& propertyName, JsonObject& paramsters, const CALLBACK& callback, const void* usercb, const void* userdata)
+        static uint32_t Subscribe(const string& propertyName, JsonObject& paramsters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             return Event::Instance().Subscribe<RESULT, CALLBACK>(EventName(propertyName), paramsters, callback, usercb, userdata);
         }
 
-        static uint32_t Unsubscribe(const string& propertyName, const void* usercb)
+        static uint32_t Unsubscribe(const string& propertyName, void* usercb)
         {
             return Event::Instance().Unsubscribe(EventName(propertyName), usercb);
         }

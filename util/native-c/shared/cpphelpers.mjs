@@ -1213,13 +1213,13 @@ function getEventImplInternal(event, module, schemas, property, prefix = '') {
       impl += `\n`
       let innerCallbackName = ((s.anyOfParam && s.anyOfParam.json) ? `${methodName}_${s.anyOfParam.json.title}InnerCallback` : `${methodName}InnerCallback`)
 
-      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, jsonParameters, ${innerCallbackName}, reinterpret_cast<const void*>(userCB), userData);`
+      impl += `        status = ${getSdkNameSpace()}::${ClassName}Subscribe<${container.type}>(eventName, jsonParameters, ${innerCallbackName}, reinterpret_cast<void*>(userCB), userData);`
       impl += `\n    }
     return status;
 }\n`
 impl += `${s.unrsig}
 {
-    return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
+    return ${getSdkNameSpace()}::${ClassName}Unsubscribe(_T("${eventName}"), reinterpret_cast<void*>(userCB));
 }\n`
     })
   }
@@ -1441,13 +1441,13 @@ function getPolymorphicEventImpl(method, module, schemas) {
     const string eventName = _T("${eventName}");
     uint32_t status = FireboltSDKErrorNone;
     if (userCB != nullptr) {` + '\n'
-      impl += `        status = ${getSdkNameSpace()}::Event::Instance().Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<const void*>(userCB), userData);
+      impl += `        status = ${getSdkNameSpace()}::Event::Instance().Subscribe<${container.type}>(eventName, ${methodName}InnerCallback, reinterpret_cast<void*>(userCB), userData);
     }
     return status;
 }
 uint32_t ${moduleName}_Unregister_${capitalize(method.name)}Pull(OnPull${methodName}Callback userCB)
 {
-    return ${getSdkNameSpace()}::Event::Instance().Unsubscribe(_T("${eventName}"), reinterpret_cast<const void*>(userCB));
+    return ${getSdkNameSpace()}::Event::Instance().Unsubscribe(_T("${eventName}"), reinterpret_cast<void*>(userCB));
 }`
   }
   return impl
@@ -1463,7 +1463,7 @@ function getPolymorphicEventCallbackImpl(method, module, schemas) {
     let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
     let container = getJsonType(module, schema, name, schemas)
 
-    impl += `static void ${methodName}InnerCallback(const void* userCB, const void* userData, void* response)
+    impl += `static void ${methodName}InnerCallback(void* userCB, const void* userData, void* response)
 {` + '\n'
 
     impl +=`    WPEFramework::Core::ProxyType<${container.type}>& jsonResponse = *(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(response));`

@@ -60,7 +60,7 @@ namespace FireboltSDK {
         _transport->SetEventHandler(this);
     }
 
-    uint32_t Event::Unsubscribe(const string& eventName, const void* usercb)
+    uint32_t Event::Unsubscribe(const string& eventName, void* usercb)
     {
         uint32_t status = Revoke(eventName, usercb);
 
@@ -120,7 +120,7 @@ namespace FireboltSDK {
         return FireboltSDKErrorNone;;
     }
 
-    uint32_t Event::Revoke(const string& eventName, const void* usercb)
+    uint32_t Event::Revoke(const string& eventName, void* usercb)
     {
         uint32_t status = FireboltSDKErrorNone;
         _adminLock.Lock();

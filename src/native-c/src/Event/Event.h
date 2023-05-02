@@ -26,7 +26,7 @@ namespace FireboltSDK {
 
     class Event : public IEventHandler {
     public:
-        typedef std::function<uint32_t(const void*, const void*, const string& parameters)> DispatchFunction;
+        typedef std::function<uint32_t(void*, const void*, const string& parameters)> DispatchFunction;
     private:
         enum State : uint8_t {
             IDLE,
@@ -39,7 +39,7 @@ namespace FireboltSDK {
             const void* userdata;
             State state;
         };
-        using CallbackMap = std::map<const void*, CallbackData>;
+        using CallbackMap = std::map<void*, CallbackData>;
         using EventMap = std::map<string, CallbackMap>;
 
         class Response : public WPEFramework::Core::JSON::Container {
@@ -73,14 +73,14 @@ namespace FireboltSDK {
 
     public:
         template <typename RESULT, typename CALLBACK>
-        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* usercb, const void* userdata)
+        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             JsonObject jsonParameters;
             return Subscribe<RESULT, CALLBACK>(eventName, jsonParameters, callback, usercb, userdata);
         }
 
         template <typename RESULT, typename CALLBACK>
-        uint32_t Subscribe(const string& eventName, JsonObject& jsonParameters, const CALLBACK& callback, const void* usercb, const void* userdata)
+        uint32_t Subscribe(const string& eventName, JsonObject& jsonParameters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             uint32_t status = FireboltSDKErrorUnavailable;
             if (_transport != nullptr) {
@@ -110,15 +110,15 @@ namespace FireboltSDK {
             return status;
         }
 
-        uint32_t Unsubscribe(const string& eventName, const void* usercb);
+        uint32_t Unsubscribe(const string& eventName, void* usercb);
 
     private:
         template <typename PARAMETERS, typename CALLBACK>
-        uint32_t Assign(const string& eventName, const CALLBACK& callback, const void* usercb, const void* userdata)
+        uint32_t Assign(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             uint32_t status = FireboltSDKErrorNone;
-            std::function<void(const void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
-            DispatchFunction implementation = [actualCallback](const void* usercb, const void* userdata, const string& parameters) -> uint32_t {
+            std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
+            DispatchFunction implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) -> uint32_t {
 
                 WPEFramework::Core::ProxyType<PARAMETERS>* inbound = new WPEFramework::Core::ProxyType<PARAMETERS>();
                 *inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
@@ -149,7 +149,7 @@ namespace FireboltSDK {
             _adminLock.Unlock();
             return status;
         }
-        uint32_t Revoke(const string& eventName, const void* usercb);
+        uint32_t Revoke(const string& eventName, void* usercb);
 
     private:
         uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override;
