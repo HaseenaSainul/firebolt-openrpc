@@ -132,7 +132,7 @@ const getParamsSignature = (structure, signature, method, getter = true, eventCB
       else {
         signature += `${structure["result"]} ${method.result.name || method.name}`
       }
-    } else if (structure.params.length === 0) {
+    } else if (structure.params.length === 0 && param.length === 0) {
       signature += 'void'
     }
   }
