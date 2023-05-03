@@ -81,8 +81,8 @@ const generateMethodParamsSignature = (params, event = false) => {
       signatureParams += (signatureParams.length > 0) ? ', ' : ''
       let type = p.type
 
-      if ((event !== true) && (type == getFireboltStringType())) {
-        type = 'char*'
+      if ((event === true) && (type == 'char*')) {
+        type = getFireboltStringType()
       }
       if (p.required === true) {
         signatureParams += `${type} ${p.name}`
@@ -118,7 +118,7 @@ const getParamsSignature = (structure, signature, method, getter = true, eventCB
   }
 
   signature += '( ' + param
-  if ((innerCB !== true) && (structure.params.length > 0) && areParamsValid(structure.params)) {
+  if ((innerCB === false) && (structure.params.length > 0) && areParamsValid(structure.params)) {
     signature += (param.length > 0 ? ', ' : '')
     signature += generateMethodParamsSignature(structure.params, eventCB)
   }
@@ -384,8 +384,8 @@ const Indent = '    '
 
 const getParamType = (type) => {
     let res = {}
-    if ((type.json && (type.json.type === 'object') && (!type.json.properties) && (!type.json.additionalProperties)) || (type.type === 'char*')) {
-      res = getFireboltStringType()
+    if (type.json && (type.json.type === 'object') && (!type.json.properties) && (!type.json.additionalProperties)) {
+      res = 'char*'
     }
     else {
       res = type.type
@@ -397,9 +397,7 @@ const getNativeType = json => {
     let type
     let jsonType = json.const ? typeof json.const : json.type
     if (jsonType === 'string') {
-        //Keep fireboltString type and handle it code generation part
-        //based on Get/Set actions
-        type = getFireboltStringType()
+        type = 'char*'
     }
     else if (jsonType === 'number') {
         type = 'float'
@@ -445,8 +443,7 @@ const getMapAccessors = (typeName, accessorPropertyType, level = 0) => {
   let res
 
   res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}Handle handle);` + '\n'
-  let type = (accessorPropertyType === getFireboltStringType()) ? 'char*' : accessorPropertyType
-  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${type} value);` + '\n'
+  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${accessorPropertyType} value);` + '\n'
   res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}Handle handle, char* key);` + '\n'
   res += `${Indent.repeat(level)}${accessorPropertyType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
 
@@ -469,8 +466,7 @@ const getArrayAccessors = (arrayName, propertyName, propertyType, valueType) => 
 
   let res = `uint32_t ${arrayName}_${propertyName}Array_Size(${propertyType}Handle handle);` + '\n'
   res += `${valueType} ${arrayName}_${propertyName}Array_Get(${propertyType}Handle handle, uint32_t index);` + '\n'
-  let type = (valueType === getFireboltStringType()) ? 'char*' : valueType
-  res += `void ${arrayName}_${propertyName}Array_Add(${propertyType}Handle handle, ${type} value);` + '\n'
+  res += `void ${arrayName}_${propertyName}Array_Add(${propertyType}Handle handle, ${valueType} value);` + '\n'
   res += `void ${arrayName}_${propertyName}Array_Clear(${propertyType}Handle handle);` + '\n'
 
   return res
@@ -696,7 +692,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return getSchemaType(module, union, '', schemas, '', options)
   }
   else if (json.oneOf) {
-    structure.type = getFireboltStringType()
+    structure.type = 'char*'
     structure.json.type = 'string'
     return structure
   }
@@ -717,7 +713,7 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
       structure.namespace = (json.namespace ? json.namespace : getModuleName(module))
     }
     else {
-      structure.type = getFireboltStringType()
+      structure.type = 'char*'
     }
     if (name) {
       structure.name = capitalize(name)
@@ -983,7 +979,8 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
       structure = getAnyOfSchema(method.result, module, schemas, structure, prefix)
       if (structure.anyOfParams === undefined) {
         let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, prefix)
-        structure["result"] = getParamType(result)
+        let type = getParamType(result)
+        structure["result"] = (type === 'char*') ? getFireboltStringType(): type
       }
     }
     return structure
@@ -1136,7 +1133,8 @@ const getUnusedDefinitionsInSchema = (moduleJson, combinedSchemas) => {
         let result = getSchemaType(module, method.result.schema, method.result.name || method.name, schemas, method.name)
         result.deps.forEach(dep => structure.deps.add(dep))
         result.enum.forEach(enm => { (structure.enum.includes(enm) === false) ? structure.enum.push(enm) : null})
-        structure["result"] = getParamType(result)
+        let type = getParamType(result)
+        structure["result"] = (type === 'char*') ? getFireboltStringType(): type
       }
     }
     let signature = `uint32_t ${methodName}`

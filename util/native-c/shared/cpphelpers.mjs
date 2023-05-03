@@ -427,15 +427,15 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, modulePropertyType,
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = static_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
 ` + '\n'
-  if (json.type === 'object') {
+  if ((json.type === 'object') && (accessorPropertyType !== 'char*')) {
     result += `    WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
     *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
     *(*element) = (*var)->${subPropertyName};
     return (static_cast<${accessorPropertyType}>(element));` + '\n'
   }
   else {
-    if ((typeof json.const === 'string') || (json.type === 'string' && !json.enum)) {
-      result += `    return (static_cast<${accessorPropertyType}>(&(*var)->${subPropertyName}));` + '\n'
+    if ((typeof json.const === 'string') || (json.type === 'string' && !json.enum) || (accessorPropertyType === 'char*')) {
+      result += `    return (const_cast<${accessorPropertyType}>((*var)->${subPropertyName}.Value().c_str()));` + '\n'
     }
     else {
       result += `    return (static_cast<${accessorPropertyType}>((*var)->${subPropertyName}.Value()));` + '\n'
@@ -451,7 +451,7 @@ const getObjectPropertyAccessorsImpl = (objName, moduleName, modulePropertyType,
     ASSERT(var->IsValid());
 ` + '\n'
 
-    if (json.type === 'object' && (accessorPropertyType !== getFireboltStringType())) {
+    if (json.type === 'object' && (accessorPropertyType !== 'char*')) {
       result += `    WPEFramework::Core::ProxyType<${subPropertyType}>* object = static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value);
     (*var)->${subPropertyName} = *(*object);` + '\n'
     }
@@ -514,7 +514,7 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
   }
   else {
     if ((typeof json.const === 'string') || (json.type === 'string' && !json.enum)) {
-      result += `    return (static_cast<${accessorPropertyType}>(&(const_cast<${subPropertyType}&>((${propertyName}.Get(index))))));` + '\n'
+      result += `    return (const_cast<${accessorPropertyType}>(${propertyName}.Get(index).Value().c_str()));` + '\n'
     }
     else {
       result += `    return (static_cast<${accessorPropertyType}>(${propertyName}.Get(index)));` + '\n'
@@ -564,8 +564,7 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
     }
     return (count);
 }`  + '\n'
-  let type = (accessorPropertyType === getFireboltStringType()) ? 'char*' : accessorPropertyType
-  result += `void ${objName}_AddKey(${objName}Handle handle, char* key, ${type} value)
+  result += `void ${objName}_AddKey(${objName}Handle handle, char* key, ${accessorPropertyType} value)
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
@@ -623,8 +622,7 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
         }
         else {
           result += `
-        ${getJsonNativeTypeForOpaqueString()}* value = new ${getJsonNativeTypeForOpaqueString()}((*var)->Get(key).String().c_str());
-        return (static_cast<${accessorPropertyType}>(value));` + '\n'
+        return (const_cast<${accessorPropertyType}>((*var)->Get(key).String().c_str()));` + '\n'
         }
       }
       else if (json.type === 'boolean') {
@@ -892,7 +890,7 @@ function getPropertyParams(property, params, module, schemas = {}, indents = '')
       }
       else {
         impl += `${indents}    if (${nativeType.name} != nullptr) {\n`
-        if (nativeType.type.includes('FireboltTypes_StringHandle')) {
+        if (nativeType.type.includes('char*')) {
           impl += `${indents}        ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
         } else {
 
@@ -1043,9 +1041,14 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
       if (structure.params.length > 0) {
         structure.params.map(p => {
           if (p.required !== undefined) {
-            impl += `    ${p.type} ${p.name};\n`
-            if ((p.type !== getFireboltStringType()) && (p.required === false)) {
-             impl += `    ${p.type}* ${p.name}Ptr = nullptr;\n`
+            if (p.type !== 'char*') {
+              impl += `    ${p.type} ${p.name};\n`
+              if (p.required === false) {
+               impl += `    ${p.type}* ${p.name}Ptr = nullptr;\n`
+              }
+            }
+            else {
+              impl += `     ${getFireboltStringType()} ${p.name};\n`
             }
           }
         })
@@ -1074,10 +1077,10 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
             else {
               contextParams += `                    if (strcmp(elements.Label(), "${p.name}") == 0) {\n`
             }
-            if (p.type === getFireboltStringType()) {
+            if (p.type === 'char*') {
               contextParams += `                        ${getSdkNameSpace()}::JSON::String* ${p.name}Value = new ${getSdkNameSpace()}::JSON::String();
-                          *${p.name}Value = elements.Current().Value().c_str();
-                          ${p.name} = ${p.name}Value;\n`
+                        *${p.name}Value = elements.Current().Value().c_str();
+                        ${p.name} = &${p.name}Value;\n`
             }
             else if (p.type === 'bool') {
               contextParams += `                        ${p.name} = elements.Current().Boolean();\n`
@@ -1088,7 +1091,7 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
             else {
                 console.log(`WARNING: wrongt type defined for ${p.name}`)
             }
-            if ((p.type !== getFireboltStringType()) && (p.required === false)) {
+            if ((p.type !== 'char*') && (p.required === false)) {
               contextParams += `                        ${p.name}Ptr = &${p.name};\n`
             }
             contextParams += `                    }\n`
@@ -1132,8 +1135,8 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
         if (structure.params.length > 0) {
           structure.params.map(p => {
             if (p.required !== undefined) {
-              if (p.type === getFireboltStringType()) {
-                impl += `static_cast<${p.type}>(${p.name}), `
+              if (p.type === 'char*') {
+                impl += `static_cast<${getFireboltStringType()}>(${p.name}), `
               }
               else if (p.required === true) {
                 impl += `${p.name}, `
