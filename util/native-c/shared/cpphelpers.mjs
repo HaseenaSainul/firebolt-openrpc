@@ -883,7 +883,7 @@ function getPropertyParams(property, params, module, schemas = {}, indents = '')
     if (jsonType.type.length) {
       if (nativeType.required) {
         if (nativeType.type.includes('FireboltTypes_StringHandle')) {
-          impl += `${indents}    ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+          impl += `${indents}    ${jsonType.type} ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
         }
         else {
           impl += `${indents}    ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
@@ -893,7 +893,7 @@ function getPropertyParams(property, params, module, schemas = {}, indents = '')
       else {
         impl += `${indents}    if (${nativeType.name} != nullptr) {\n`
         if (nativeType.type.includes('FireboltTypes_StringHandle')) {
-          impl += `${indents}        ${jsonType.type}& ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+          impl += `${indents}        ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
         } else {
 
           impl += `${indents}        ${jsonType.type} ${capitalize(param.name)} = *(${param.name});\n`
@@ -1133,7 +1133,7 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
           structure.params.map(p => {
             if (p.required !== undefined) {
               if (p.type === getFireboltStringType()) {
-                impl += `static_cast<${container.type}>(${p.name}), `
+                impl += `static_cast<${p.type}>(${p.name}), `
               }
               else if (p.required === true) {
                 impl += `${p.name}, `

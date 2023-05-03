@@ -75,12 +75,13 @@ const getAnyOfSchema = (param, module, schemas, structure, prefix = '') => {
   return structure;
 }
 
-const generateMethodParamsSignature = (params) => {
+const generateMethodParamsSignature = (params, event = false) => {
     let signatureParams = ''
     params.forEach(p => {
       signatureParams += (signatureParams.length > 0) ? ', ' : ''
       let type = p.type
-      if (type == getFireboltStringType()) {
+
+      if ((event !== true) && (type == getFireboltStringType())) {
         type = 'char*'
       }
       if (p.required === true) {
@@ -117,9 +118,9 @@ const getParamsSignature = (structure, signature, method, getter = true, eventCB
   }
 
   signature += '( ' + param
-  if ((structure.params.length > 0) && areParamsValid(structure.params)) {
+  if ((innerCB !== true) && (structure.params.length > 0) && areParamsValid(structure.params)) {
     signature += (param.length > 0 ? ', ' : '')
-    signature += generateMethodParamsSignature(structure.params)
+    signature += generateMethodParamsSignature(structure.params, eventCB)
   }
   if (innerCB === false) {
     if (structure["result"] && (structure["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
