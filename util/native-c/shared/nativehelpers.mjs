@@ -396,7 +396,9 @@ const getNativeType = json => {
     let type
     let jsonType = json.const ? typeof json.const : json.type
     if (jsonType === 'string') {
-        type = 'char*'
+        //Keep fireboltString type and handle it code generation part
+        //based on Get/Set actions
+        type = getFireboltStringType()
     }
     else if (jsonType === 'number') {
         type = 'float'
@@ -425,7 +427,8 @@ const getPropertyAccessors = (objName, propertyName, propertyType,  options = {l
   let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle);` + '\n'
 
   if (!options.readonly) {
-    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()});` + '\n'
+    let type = (propertyType === getFireboltStringType()) ? 'char*' : propertyType
+    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${type} ${propertyName.toLowerCase()});` + '\n'
   }
 
   if (options.optional === true) {
@@ -436,14 +439,15 @@ const getPropertyAccessors = (objName, propertyName, propertyType,  options = {l
   return result
 }
 
-const getMapAccessors = (typeName, nativeType,  level=0) => {
+const getMapAccessors = (typeName, accessorPropertyType, level = 0) => {
 
   let res
 
   res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}Handle handle);` + '\n'
-  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${nativeType} value);` + '\n'
+  let type = (accessorPropertyType === getFireboltStringType()) ? 'char*' : accessorPropertyType
+  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${type} value);` + '\n'
   res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}Handle handle, char* key);` + '\n'
-  res += `${Indent.repeat(level)}${nativeType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
+  res += `${Indent.repeat(level)}${accessorPropertyType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
 
   return res
 }
@@ -464,7 +468,8 @@ const getArrayAccessors = (arrayName, propertyName, propertyType, valueType) => 
 
   let res = `uint32_t ${arrayName}_${propertyName}Array_Size(${propertyType}Handle handle);` + '\n'
   res += `${valueType} ${arrayName}_${propertyName}Array_Get(${propertyType}Handle handle, uint32_t index);` + '\n'
-  res += `void ${arrayName}_${propertyName}Array_Add(${propertyType}Handle handle, ${valueType} value);` + '\n'
+  let type = (valueType === getFireboltStringType()) ? 'char*' : valueType
+  res += `void ${arrayName}_${propertyName}Array_Add(${propertyType}Handle handle, ${type} value);` + '\n'
   res += `void ${arrayName}_${propertyName}Array_Clear(${propertyType}Handle handle);` + '\n'
 
   return res
@@ -690,12 +695,11 @@ function getSchemaType(module = {}, json = {}, name = '', schemas = {}, prefixNa
     return getSchemaType(module, union, '', schemas, '', options)
   }
   else if (json.oneOf) {
-    structure.type = 'char*'
+    structure.type = getFireboltStringType()
     structure.json.type = 'string'
     return structure
   }
   else if (json.anyOf) {
-    console.log("json.anyOf = ------> name = " + name);
     let mergedSchema = getMergedSchema(module, json, name, schemas)
     let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
     return getSchemaType(module, mergedSchema, '', schemas, prefix, options)
@@ -848,7 +852,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', pre
       }
     }
     else if (json.anyOf) {
-      console.log("json.anyOf = ------> name = " + name);
       let mergedSchema = getMergedSchema(module, json, name, schemas)
       let prefix = ((prefixName.length > 0) && (name != prefixName)) ? prefixName : capitalize(name)
       return getSchemaShape(moduleJson, mergedSchema, schemas, name, prefix, options)
