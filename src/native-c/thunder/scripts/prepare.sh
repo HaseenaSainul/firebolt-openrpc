@@ -26,22 +26,24 @@ export THUNDER_ROOT="`pwd`/src"
 mkdir -p ${THUNDER_ROOT}
 cd ${THUNDER_ROOT}
 
-if [ ! -d "${THUNDER_ROOT}/ThunderTools" ]; then
-    # Fetch thunder tools code
-    git clone git@github.com:rdkcentral/ThunderTools
-fi
+if [ ${toolsBranch} ]; then
+    if [ ! -d "${THUNDER_ROOT}/ThunderTools" ]; then
+        # Fetch thunder tools code
+        git clone git@github.com:rdkcentral/ThunderTools
+    fi
 
-if [ "$toolsBranch" != "master" ]; then
-    echo "dev branch " $branch
-    cd ThunderTools
-    # Stash all changes to make proper checkout
-    git stash
-    git checkout master
-    # pull latest changes and branch details
-    git pull origin master
-    git pull
-    git checkout $toolsBranch
-    cd -
+    if [ "$toolsBranch" != "master" ]; then
+        echo "dev branch " $branch
+        cd ThunderTools
+        # Stash all changes to make proper checkout
+        git stash
+        git checkout master
+        # pull latest changes and branch details
+        git pull origin master
+        git pull
+        git checkout $toolsBranch
+        cd -
+    fi
 fi
 
 if [ ! -d "${THUNDER_ROOT}/Thunder" ]; then
