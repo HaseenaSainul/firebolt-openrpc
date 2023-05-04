@@ -78,18 +78,8 @@ InstallCMakeConfigs(TARGET ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
 add_custom_command(
     TARGET ${TARGET}
     POST_BUILD
-    COMMENT "=================== Installing JsonConfig ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/etc/${FIREBOLT_NAMESPACE}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/config/${TARGET}.json ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/etc/${FIREBOLT_NAMESPACE}/config.json
-)
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
     COMMENT "=================== Installing FireboltConfig & Helper CMakes ======================"
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}Config.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/cmake/*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
 )
-
-include(Config.cmake)

@@ -109,7 +109,6 @@ namespace FireboltSDK {
     private:
         uint32_t CreateEventHandler();
         uint32_t DestroyEventHandler();
-        void LoadConfigs(Config& config);
         uint32_t CreateTransport(const string& url, const uint32_t waitTime);
         uint32_t DestroyTransport();
         uint32_t WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime);

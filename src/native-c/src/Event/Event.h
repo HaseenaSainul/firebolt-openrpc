@@ -89,8 +89,8 @@ namespace FireboltSDK {
                 if (status == FireboltSDKErrorNone) {
                     Response response;
 
-                    WPEFramework::Core::JSON::Boolean Listen = true;
-                    jsonParameters.Set(_T("listen"), &Listen);
+                    WPEFramework::Core::JSON::Variant Listen = true;
+                    jsonParameters.Set(_T("listen"), Listen);
                     string parameters;
                     jsonParameters.ToString(parameters);
 

@@ -520,7 +520,7 @@ namespace FireboltSDK {
     public:
         inline bool IsOpen()
         {
-            _channel->IsOpen();
+            return _channel->IsOpen();
         }
 
         void Revoke(const string& eventName)

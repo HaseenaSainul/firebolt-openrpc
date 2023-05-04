@@ -323,7 +323,7 @@ namespace FireboltSDK {
 extern "C" {
 #endif
 
-uint32_t test_firebolt_create_instance()
+void test_firebolt_create_instance()
 {
     const std::string config = _T("{\
     \"waitTime\": 1000,\
@@ -337,7 +337,7 @@ uint32_t test_firebolt_create_instance()
     FireboltSDK::Accessor::Instance(config);
 }
 
-uint32_t test_firebolt_dispose_instance()
+void test_firebolt_dispose_instance()
 {
     FireboltSDK::Accessor::Dispose();
 }
@@ -476,6 +476,7 @@ uint32_t test_eventregister_by_providing_callback()
 
     delete eventControl;
     EXPECT_EQ(FireboltSDK::Properties::Unsubscribe(eventName, reinterpret_cast<void*>(NotifyEvent)), FireboltSDKErrorNone);
+    return status;
 }
 
 #include "TypesPriv.h"

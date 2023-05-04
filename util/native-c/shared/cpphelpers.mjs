@@ -570,13 +570,25 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
     ASSERT(var->IsValid());
 ` + '\n'
-
-    if ((json.type === 'object') || (json.type === 'array' && json.items)) {
-      result += `    ${subPropertyType}& element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
-    } else {
-      result += `    ${subPropertyType} element(value);` + '\n'
+    let elementContainer = subPropertyType
+    if (containerType.includes('VariantContainer')) {
+      elementContainer = 'WPEFramework::Core::JSON::Variant'
     }
-    result += `    (*var)->Set(const_cast<const char*>(key), &element);
+    if ((json.type === 'object') || (json.type === 'array' && json.items)) {
+      if (containerType.includes('VariantContainer')) {
+        result += `    ${subPropertyType}& container = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
+        result += `    string containerStr;` + '\n'
+        result += `    element.ToString(containerStr);` + '\n'
+        result += `    WPEFramework::Core::JSON::VariantContainer containerVariant(containerStr);` + '\n'
+        result += `    WPEFramework::Core::JSON::Variant element = containerVariant;` + '\n'
+      }
+      else {
+        result += `    ${subPropertyType}& element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
+      }
+    } else {
+      result += `    ${elementContainer} element(value);` + '\n'
+    }
+    result += `    (*var)->Set(const_cast<const char*>(key), element);
 }` + '\n'
 
   result += `void ${objName}_RemoveKey(${objName}Handle handle, char* key)
@@ -592,7 +604,19 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${containerType}>* var = static_cast<WPEFramework::Core::ProxyType<${containerType}>*>(handle);
-    ASSERT(var->IsValid());
+    ASSERT(var->IsValid());` + '\n'
+    if ((json.type === 'object') || (json.type === 'array') ||
+        ((json.type === 'string' || (typeof json.const === 'string')) && !json.enum)) {
+        result += `    ${accessorPropertyType} status = nullptr;` + '\n'
+    }
+    else if (json.type === 'boolean') {
+        result += `    ${accessorPropertyType} status = false;` + '\n'
+    }
+    else {
+        result += `    ${accessorPropertyType} status = 0;` + '\n'
+    }
+
+    result += `
     if ((*var)->HasLabel(key) == true) {`
     if (json.type === 'object') {
       result += `
@@ -605,40 +629,41 @@ const getMapAccessorsImpl = (objName, moduleName, containerType, subPropertyType
         *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
         *(*element) = objectMap;
 
-        return (static_cast<${accessorPropertyType}>(element));` + '\n'
+        status = (static_cast<${accessorPropertyType}>(element));` + '\n'
     }
     else if (json.type === 'array' && json.items) {
       result += `
         WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
         *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
         *(*element) = (*var)->Get(key).Array();
-        return (static_cast<${accessorPropertyType}>(element));` + '\n'
+        status = (static_cast<${accessorPropertyType}>(element));` + '\n'
     }
     else {
       if (json.type === 'string' || (typeof json.const === 'string')) {
         if (json.enum) {
           result += `
-        return (const_cast<${accessorPropertyType}>((*var)->Get(key).));` + '\n'
+        status = (const_cast<${accessorPropertyType}>((*var)->Get(key).));` + '\n'
         }
         else {
           result += `
-        return (const_cast<${accessorPropertyType}>((*var)->Get(key).String().c_str()));` + '\n'
+        status = (const_cast<${accessorPropertyType}>((*var)->Get(key).String().c_str()));` + '\n'
         }
       }
       else if (json.type === 'boolean') {
         result += `
-        return (static_cast<${accessorPropertyType}>((*var)->Get(key).Boolean()));` + '\n'
+        status = (static_cast<${accessorPropertyType}>((*var)->Get(key).Boolean()));` + '\n'
       }
       else if (json.type === 'number') {
         result += `
-        return (static_cast<${accessorPropertyType}>((*var)->Get(key).Float()));` + '\n'
+        status = (static_cast<${accessorPropertyType}>((*var)->Get(key).Float()));` + '\n'
       }
       else if (json.type === 'integer') {
         result += `
-        return (static_cast<${accessorPropertyType}>((*var)->Get(key).Number()));` + '\n' 
+        status = (static_cast<${accessorPropertyType}>((*var)->Get(key).Number()));` + '\n'
       }
     }
   result += `    }
+    return status;
 }`
 
   return result
@@ -881,22 +906,22 @@ function getPropertyParams(property, params, module, schemas = {}, indents = '')
     if (jsonType.type.length) {
       if (nativeType.required) {
         if (nativeType.type.includes('FireboltTypes_StringHandle')) {
-          impl += `${indents}    ${jsonType.type} ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
+          impl += `${indents}    WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = *(static_cast<${jsonType.type}*>(${param.name}));\n`
         }
         else {
-          impl += `${indents}    ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
+          impl += `${indents}    WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = ${param.name};\n`
         }
-        impl += `${indents}    jsonParameters.Set(_T("${param.name}"), &${capitalize(param.name)});\n`
+        impl += `${indents}    jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
       }
       else {
         impl += `${indents}    if (${nativeType.name} != nullptr) {\n`
         if (nativeType.type.includes('char*')) {
-          impl += `${indents}        ${jsonType.type} ${capitalize(param.name)} = ${param.name};\n`
+          impl += `${indents}        WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = ${param.name};\n`
         } else {
 
-          impl += `${indents}        ${jsonType.type} ${capitalize(param.name)} = *(${param.name});\n`
+          impl += `${indents}        WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = *(${param.name});\n`
         }
-        impl += `${indents}        jsonParameters.Set(_T("${param.name}"), &${capitalize(param.name)});\n`
+        impl += `${indents}        jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
         impl += `${indents}    }\n`
       }
     }
@@ -975,21 +1000,23 @@ function getPropertySetterImpl(property, module, schemas = {}) {
     if (propType.json) {
       if (propType.json.type === 'object') {
         if (structure.params.length > 0) {
-        impl += `\n    ${container.type}& containerParam = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
-       impl += `\n    jsonParameters.Set(_T("${paramName}"), &containerParam);`
+          impl += `\n    ${container.type}& ${paramName}Container = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
+          impl += `\n    WPEFramework::Core::JSON::Variant containerParam = ${paramName}Container;`
+          impl += `\n    jsonParameters.Set(_T("${paramName}"), containerParam);`
         }
         else {
-        impl += `    ${container.type}& jsonParameters = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
+//        impl += `    ${container.type}& jsonParameters = *(*(static_cast<WPEFramework::Core::ProxyType<${container.type}>*>(${paramName})));`
         }
       }
       else {
         //ToDo Map?
         if ((propType.json.type === 'array') && (propType.json.items))  {
-          impl += `    WPEFramework::Core::JSON::ArrayType<${container.type}> param = *(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${container.type}>>*>(${paramName})));`
+          impl += `    WPEFramework::Core::JSON::ArrayType<${container.type}> paramArray = *(*(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::ArrayType<${container.type}>>*>(${paramName})));\n`
+          impl += `   WPEFramework::Core::JSON::Variant param = paramArray;`
         } else {
-          impl += `    ${container.type} param(${paramName});`
+          impl += `    WPEFramework::Core::JSON::Variant param = ${paramName};`
         }
-        impl += `\n    jsonParameters.Set(_T("${paramName}"), &param);`
+        impl += `\n    jsonParameters.Set(_T("${paramName}"), param);`
       }
     }
 
@@ -1286,16 +1313,17 @@ function addJsonDataParameters(module, schemas, param, name, type) {
   const jsonType = getJsonType(module, param, name, schemas)
   if (jsonType.type.length) {
 
-    if (type.includes('FireboltTypes_StringHandle')) {
-      impl += `        ${jsonType.type} ${capitalize(name)} = ${camelcase(name)};\n`
-    }
-    else if (type.includes('Handle')) {
-      impl += `        ${jsonType.type}& ${capitalize(name)} = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${camelcase(name)})));\n`
+    if (type.includes('Handle') && (!type.includes('FireboltTypes_StringHandle'))) {
+      impl += `        ${jsonType.type}& ${capitalize(name)}Container = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${camelcase(name)})));\n`
+      impl += `        string ${capitalize(name)}Str;\n`
+      impl += `        ${capitalize(name)}Container.ToString(${capitalize(name)}Str);\n`
+      impl += `        WPEFramework::Core::JSON::VariantContainer ${capitalize(name)}VariantContainer(${capitalize(name)}Str);\n`
+      impl += `        WPEFramework::Core::JSON::Variant ${capitalize(name)} = ${capitalize(name)}VariantContainer;\n`
     }
     else {
-      impl += `        ${jsonType.type} ${capitalize(name)} = ${camelcase(name)};\n`
+      impl += `        WPEFramework::Core::JSON::Variant ${capitalize(name)} = ${camelcase(name)};\n`
     }
-    impl += `        jsonParameters.Set(_T("${name.toLowerCase()}"), &${capitalize(name)});\n\n`
+    impl += `        jsonParameters.Set(_T("${name.toLowerCase()}"), ${capitalize(name)});\n\n`
   }
   return impl
 }

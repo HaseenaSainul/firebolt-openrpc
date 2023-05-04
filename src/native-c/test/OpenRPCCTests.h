@@ -25,8 +25,8 @@
 extern "C" {
 #endif
 
-uint32_t test_firebolt_create_instance();
-uint32_t test_firebolt_dispose_instance();
+void test_firebolt_create_instance();
+void test_firebolt_dispose_instance();
 
 uint32_t test_firebolt_main();
 uint32_t test_properties_get_device_id();
