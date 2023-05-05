@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ReleasePath=./build/sdk/native-c/release
+ReleasePath=./build/sdk/native-c/firebolt-openrpc-native-sdk
 rm -rf ${ReleasePath}
 mkdir -p ${ReleasePath}
 cp -ar ./src/native-c/src ${ReleasePath}
