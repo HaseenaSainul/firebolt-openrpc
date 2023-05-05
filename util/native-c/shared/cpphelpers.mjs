@@ -957,7 +957,7 @@ function getPropertyGetterImpl(property, module, schemas = {}) {
       impl += `        if (${property.result.name || property.name} != nullptr) {\n`
 
       if (((propType.json.type === 'string') || (typeof propType.json.const === 'string')) && ((propType.type === 'char*') || (propType.type === 'FireboltTypes_StringHandle'))) {
-        impl += `            ${container.type}* strResult = new ${container.type}();` + '\n'
+        impl += `            ${container.type}* strResult = new ${container.type}(jsonResult);` + '\n'
         impl += `            *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
       } else if ((propType.json.type === 'object') || (propType.json.type === 'array')) {
         impl += `            WPEFramework::Core::ProxyType<${container.type}>* resultPtr = new WPEFramework::Core::ProxyType<${container.type}>();\n`

@@ -29,6 +29,7 @@ endif()
 add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
     Types.cpp
     Module.cpp
+    Firebolt.cpp
     Logger/Logger.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp

@@ -26,7 +26,7 @@ extern "C" {
 
 
 uint32_t FireboltSDK_Initialize(char* configLine) {
-    FireboltSDK::Accessor::Instance(config);
+    FireboltSDK::Accessor::Instance(configLine);
     return FireboltSDKErrorNone;
 }
 
