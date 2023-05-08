@@ -92,7 +92,7 @@ function(InstallLibraries)
                     TARGET ${Argument_TARGET}
                     POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-		    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${Argument_LIBDIR}/lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
+                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${Argument_LIBDIR}/lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
                     COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR}
                     COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so
                 )
