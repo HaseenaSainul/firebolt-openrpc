@@ -254,7 +254,7 @@ namespace FireboltSDK {
 
         public:
             ChannelImpl(CommunicationChannel* parent, const WPEFramework::Core::NodeId& remoteNode, const string& path, const string& query, const bool mask)
-                : BaseClass(5, FactoryImpl::Instance(), path, _T("JSON"), query, "", false, mask, false, remoteNode.AnyInterface(), remoteNode, 256, 256)
+                : BaseClass(5, FactoryImpl::Instance(), path, _T("JSON"), query, "", false, mask, false, remoteNode.AnyInterface(), remoteNode, 1024, 1024)
                   , _parent(*parent)
             {
             }

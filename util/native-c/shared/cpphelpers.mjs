@@ -1431,7 +1431,11 @@ function getPolymorphicMethodImpl(method, module, schemas) {
     impl += `    uint32_t status = FireboltSDKErrorUnavailable;
     ${getSdkNameSpace()}::Transport<WPEFramework::Core::JSON::IElement>* transport = ${getSdkNameSpace()}::Accessor::Instance().GetTransport();
     if (transport != nullptr) {
-        ${jsonType.type} jsonParameters = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${structure.param.name})));
+        WPEFramework::Core::ProxyType<${jsonType.type}> var = *(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${structure.param.name}));
+        string str;
+        (var)->ToString(str);
+        ${jsonType.type} jsonParameters;
+        jsonParameters.FromString(str);
         WPEFramework::Core::JSON::Boolean jsonResult;
         status = transport->Invoke("${methodName}", jsonParameters, jsonResult);
         if (status == FireboltSDKErrorNone) {
