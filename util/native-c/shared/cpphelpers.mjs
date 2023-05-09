@@ -75,6 +75,7 @@ const getCallsMetricsDispatcher = (module, method, schemas, prefixName = '') => 
     }
     impl += `}\n`
   }
+
   return impl
 }
 
@@ -95,6 +96,7 @@ const getCallsMetricsImpl = (module, method, schemas, prefixName = '') => {
     }
     impl += `            WPEFramework::Core::IWorkerPool::Instance().Submit(job);\n`
   }
+
   return impl
 }
 
@@ -926,6 +928,7 @@ function getPropertyParams(property, params, module, schemas = {}, indents = '')
       }
     }
   })
+
   return impl
 }
 
@@ -1188,6 +1191,7 @@ function getEventCallbackImplInternal(event, module, schemas, property) {
 }\n`
     })
   }
+
   return impl;
 }
 
@@ -1238,6 +1242,7 @@ impl += `${s.unrsig}
 }\n`
     })
   }
+
   return impl
 }
 
@@ -1278,8 +1283,10 @@ function getImplForEventContextParams(result, module, name, schemas, prefixName 
     jType.deps.forEach(j => impl.jsonData.add(j))
     jType.type.forEach(t => impl.jsonData.add(t))
   }
+
   return impl
 }
+
 function getMethodImplResult(method, resultJsonType, result) {
   let impl = ''
   if (result && result.length) {
@@ -1305,6 +1312,7 @@ function getMethodImplResult(method, resultJsonType, result) {
       impl += `            }\n`
     }
   }
+
   return impl
 }
 
@@ -1325,6 +1333,7 @@ function addJsonDataParameters(module, schemas, param, name, type) {
     }
     impl += `        jsonParameters.Set(_T("${name.toLowerCase()}"), ${capitalize(name)});\n\n`
   }
+
   return impl
 }
 
@@ -1379,6 +1388,7 @@ function getMethodImpl(method, module, schemas) {
     return status;
 }\n`
   })
+
   return impl
 }
 
@@ -1391,6 +1401,8 @@ function getImplForPolymorphicMethodParamInternal(method, module, impl, federate
     res = getImplForSchema(module, schema, schemas, name, prefixName)
     res.deps.forEach(dep => impl.deps.add(dep))
     res.enums.forEach(e => impl.enums.add(e))
+    res.type.forEach(type => (impl.type.includes(type) === false) ?  impl.type.push(type) : null)
+
     //Get the JsonData definition for the schema
     const json = getPath(schema['$ref'], module, schemas)
     let jType = getJsonDefinition(module, json, schemas, name, prefixName)
@@ -1437,6 +1449,7 @@ function getPolymorphicMethodImpl(method, module, schemas) {
     return status;
 }`
   }
+
   return impl
 }
 
@@ -1466,6 +1479,7 @@ uint32_t ${moduleName}_Unregister_${capitalize(method.name)}Pull(OnPull${methodN
     return ${getSdkNameSpace()}::Event::Instance().Unsubscribe(_T("${eventName}"), reinterpret_cast<void*>(userCB));
 }`
   }
+
   return impl
 }
 
@@ -1496,6 +1510,7 @@ function getPolymorphicEventCallbackImpl(method, module, schemas) {
     impl += `    }
 }`
   }
+
   return impl;
 }
 

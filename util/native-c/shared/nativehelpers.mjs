@@ -412,7 +412,6 @@ const getNativeType = json => {
 }
 
 const getObjectHandleManagement = varName => {
-
     let result = `typedef void* ${varName}Handle;
 ${varName}Handle ${varName}Handle_Create(void);
 void ${varName}Handle_Addref(${varName}Handle handle);
