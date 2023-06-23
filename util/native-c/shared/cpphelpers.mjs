@@ -275,6 +275,7 @@ function getJsonContainerDefinition (name, props = []) {
     c += `\n        ${name}(const ${name}& copy)
         {`
     props.forEach(prop => {
+        c += `\n            Add(_T("${prop.name}"), &${capitalize(prop.name)});`
         c += `\n            ${capitalize(prop.name)} = copy.${capitalize(prop.name)};`
     })
     c += `
@@ -532,13 +533,16 @@ const getArrayAccessorsImpl = (objName, moduleName, modulePropertyType, objHandl
     ASSERT(var->IsValid());` + '\n'
 
   if ((json.type === 'object') || (json.type === 'array')) {
-    result += `    ${subPropertyType}& element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
+
+    result += `    ${subPropertyType} element;
+    element = *(*(static_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
   }
   else {
-    result += `    ${subPropertyType} element(value);` + '\n'
+    result += `    ${subPropertyType} element;` + '\n'
+    result += `    element = value;` + '\n'
   }
   result += `
-    ${propertyName}.Add(element);
+    ${propertyName}.Add() = element;
 }` + '\n'
 
   result += `void ${objName}Array_Clear(${objHandleType} handle)
@@ -1431,11 +1435,9 @@ function getPolymorphicMethodImpl(method, module, schemas) {
     impl += `    uint32_t status = FireboltSDKErrorUnavailable;
     ${getSdkNameSpace()}::Transport<WPEFramework::Core::JSON::IElement>* transport = ${getSdkNameSpace()}::Accessor::Instance().GetTransport();
     if (transport != nullptr) {
-        WPEFramework::Core::ProxyType<${jsonType.type}> var = *(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${structure.param.name}));
-        string str;
-        (var)->ToString(str);
         ${jsonType.type} jsonParameters;
-        jsonParameters.FromString(str);
+        jsonParameters = *(*(static_cast<WPEFramework::Core::ProxyType<${jsonType.type}>*>(${structure.param.name})));
+
         WPEFramework::Core::JSON::Boolean jsonResult;
         status = transport->Invoke("${methodName}", jsonParameters, jsonResult);
         if (status == FireboltSDKErrorNone) {
